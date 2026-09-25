@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+}
+
+.font-serif-title {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+.font-malayalam-title {
+  font-family: 'Manjari', 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+.font-malayalam-body,
+.malayalam-desc,
+.malayalam-body {
+  font-family: 'Uthara', 'Athira', 'Thiruvathira', 'Gayathri', 'Manjari', 'Noto Sans Malayalam', 'Anek Malayalam', sans-serif;
+  line-height: 1.8;
+  letter-spacing: 0.01em;
+}
+
+/* Custom Smooth Transitions & Shadows */
+.book-card-shadow {
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+  transition: all 0.25s ease-in-out;
+}
+
+.book-card-shadow:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.1);
+}
