@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../context/AuthContext';
 
@@ -18,6 +17,7 @@ export default function SignupPage() {
     referralCode: ''
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [showReferralInput, setShowReferralInput] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -59,7 +59,7 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center p-4 bg-slate-950 selection:bg-[#1E3A8A] selection:text-white overflow-hidden py-10">
+    <div className="relative min-h-screen flex items-center justify-center p-3 sm:p-4 bg-slate-950 selection:bg-[#1E3A8A] selection:text-white overflow-hidden">
       {/* Background with Atmospheric Bookstore Imagery & Gradient Overlay */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         <img
@@ -70,25 +70,25 @@ export default function SignupPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/60 to-slate-950/80 backdrop-blur-[2px]" />
       </div>
 
-      {/* Main Auth Card */}
-      <div className="relative z-10 w-full max-w-[430px] bg-white/95 backdrop-blur-md rounded-2xl p-7 sm:p-9 shadow-2xl shadow-black/40 border border-white/40">
-        {/* LOGOS Logo */}
-        <div className="text-center mb-6">
+      {/* Main Auth Card (Compact & Streamlined) */}
+      <div className="relative z-10 w-full max-w-[400px] bg-white/95 backdrop-blur-md rounded-2xl p-5 sm:p-7 shadow-2xl shadow-black/40 border border-white/40 my-auto">
+        {/* LOGOS Logo & Title */}
+        <div className="text-center mb-4">
           <Link href="/" className="inline-block transition-transform hover:scale-105">
             <img
               src="/logo.png"
               alt="LOGOS Books"
-              className="h-10 sm:h-11 w-auto mx-auto object-contain"
+              className="h-8 sm:h-9 w-auto mx-auto object-contain"
             />
           </Link>
-          <h1 className="text-xl sm:text-2xl font-normal text-slate-900 tracking-tight mt-3">
+          <h1 className="text-lg sm:text-xl font-normal text-slate-900 tracking-tight mt-1.5">
             Create Account
           </h1>
         </div>
 
         {error && (
-          <div className="mb-5 p-3 bg-red-50 border border-red-100 text-red-600 text-xs rounded-xl flex items-center gap-2">
-            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="mb-3 p-2.5 bg-red-50 border border-red-100 text-red-600 text-[11px] rounded-xl flex items-center gap-2">
+            <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span>{error}</span>
@@ -96,24 +96,41 @@ export default function SignupPage() {
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-3.5">
-          <div>
-            <label className="block text-[11px] font-medium text-slate-700 mb-1 tracking-wider uppercase">
-              Full Name
-            </label>
-            <input
-              type="text"
-              name="name"
-              required
-              value={formData.name}
-              onChange={handleChange}
-              placeholder="Your full name"
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-light text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20 focus:border-[#1E3A8A] transition-all"
-            />
+        <form onSubmit={handleSubmit} className="space-y-2.5">
+          {/* Row 1: Name & Phone (2 Cols for compact space) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <label className="block text-[10px] font-medium text-slate-700 mb-0.5 tracking-wider uppercase">
+                Full Name
+              </label>
+              <input
+                type="text"
+                name="name"
+                required
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="Your name"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-light text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20 focus:border-[#1E3A8A] transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-medium text-slate-700 mb-0.5 tracking-wider uppercase">
+                Phone <span className="text-slate-400 lowercase">(optional)</span>
+              </label>
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                placeholder="Mobile no."
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-light text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20 focus:border-[#1E3A8A] transition-all"
+              />
+            </div>
           </div>
 
+          {/* Email */}
           <div>
-            <label className="block text-[11px] font-medium text-slate-700 mb-1 tracking-wider uppercase">
+            <label className="block text-[10px] font-medium text-slate-700 mb-0.5 tracking-wider uppercase">
               Email Address
             </label>
             <input
@@ -123,26 +140,13 @@ export default function SignupPage() {
               value={formData.email}
               onChange={handleChange}
               placeholder="you@example.com"
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-light text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20 focus:border-[#1E3A8A] transition-all"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-light text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20 focus:border-[#1E3A8A] transition-all"
             />
           </div>
 
+          {/* Password */}
           <div>
-            <label className="block text-[11px] font-medium text-slate-700 mb-1 tracking-wider uppercase">
-              Phone Number (Optional)
-            </label>
-            <input
-              type="tel"
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-              placeholder="+91 98765 43210"
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-light text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20 focus:border-[#1E3A8A] transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-medium text-slate-700 mb-1 tracking-wider uppercase">
+            <label className="block text-[10px] font-medium text-slate-700 mb-0.5 tracking-wider uppercase">
               Password
             </label>
             <div className="relative">
@@ -153,45 +157,56 @@ export default function SignupPage() {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="At least 6 characters"
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-light text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20 focus:border-[#1E3A8A] transition-all"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-light text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20 focus:border-[#1E3A8A] transition-all"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-[11px] px-1"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-[10px] px-1"
               >
                 {showPassword ? 'Hide' : 'Show'}
               </button>
             </div>
           </div>
 
-          {/* Referral Code Field */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-[11px] font-medium text-slate-700 tracking-wider uppercase">
-                Referral Code (Optional)
-              </label>
-              <span className="text-[10px] text-emerald-600 font-medium">
-                15% OFF 1st Order
-              </span>
-            </div>
-            <input
-              type="text"
-              name="referralCode"
-              value={formData.referralCode}
-              onChange={handleChange}
-              placeholder="e.g. LOGOS-XXXX"
-              className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono uppercase text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20 focus:border-[#1E3A8A] transition-all"
-            />
+          {/* Collapsible Referral Code Toggle */}
+          <div className="pt-0.5">
+            {!showReferralInput ? (
+              <button
+                type="button"
+                onClick={() => setShowReferralInput(true)}
+                className="text-[11px] text-[#1E3A8A] hover:underline flex items-center gap-1 font-light"
+              >
+                <span>+ Have a friend&apos;s referral code? (15% OFF)</span>
+              </button>
+            ) : (
+              <div>
+                <div className="flex items-center justify-between mb-0.5">
+                  <label className="text-[10px] font-medium text-slate-700 tracking-wider uppercase">
+                    Referral Code
+                  </label>
+                  <span className="text-[10px] text-emerald-600 font-medium">15% OFF 1st Order</span>
+                </div>
+                <input
+                  type="text"
+                  name="referralCode"
+                  value={formData.referralCode}
+                  onChange={handleChange}
+                  placeholder="LOGOS-XXXX"
+                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono uppercase text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20 focus:border-[#1E3A8A] transition-all"
+                />
+              </div>
+            )}
           </div>
 
+          {/* Submit Button */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-2 py-3 px-4 bg-[#1E3A8A] hover:bg-[#152e72] text-white rounded-xl text-xs font-medium tracking-wide transition-all shadow-md shadow-blue-950/20 hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full mt-1.5 py-2.5 px-4 bg-[#1E3A8A] hover:bg-[#152e72] text-white rounded-xl text-xs font-medium tracking-wide transition-all shadow-md shadow-blue-950/20 hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {loading ? (
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
               'Create Account'
             )}
@@ -199,11 +214,11 @@ export default function SignupPage() {
         </form>
 
         {/* Divider */}
-        <div className="relative my-4 text-center">
+        <div className="relative my-3 text-center">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-slate-200" />
           </div>
-          <span className="relative px-3 bg-white text-[11px] font-light text-slate-400">
+          <span className="relative px-2.5 bg-white text-[10px] font-light text-slate-400">
             or continue with
           </span>
         </div>
@@ -213,9 +228,9 @@ export default function SignupPage() {
           type="button"
           onClick={handleDemoGoogleLogin}
           disabled={loading}
-          className="w-full py-2.5 px-4 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-normal transition-all flex items-center justify-center gap-2.5 shadow-xs"
+          className="w-full py-2 px-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-normal transition-all flex items-center justify-center gap-2 shadow-xs"
         >
-          <svg className="w-4 h-4" viewBox="0 0 24 24">
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
             <path
               fill="#4285F4"
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -237,7 +252,7 @@ export default function SignupPage() {
         </button>
 
         {/* Login Link */}
-        <div className="mt-5 text-center text-xs font-light text-slate-500">
+        <div className="mt-3.5 text-center text-[11px] font-light text-slate-500">
           Already have an account?{' '}
           <Link
             href="/auth/login"
