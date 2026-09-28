@@ -23,7 +23,7 @@ const findOrCreateWishlist = async (customerId, guestId) => {
 const getWishlist = async (req, res) => {
   try {
     const customerId = req.customer ? req.customer._id : null;
-    const guestId = req.headers['x-guest-id'] || req.query.guestId;
+    const guestId = req.headers['x-guest-id'] || req.headers['x-guest-session-id'] || req.query.guestId;
 
     if (!customerId && !guestId) {
       return res.json({ success: true, wishlist: { books: [] } });
@@ -49,7 +49,7 @@ const toggleWishlist = async (req, res) => {
   try {
     const { bookId, guestId } = req.body;
     const customerId = req.customer ? req.customer._id : null;
-    const gId = guestId || req.headers['x-guest-id'];
+    const gId = guestId || req.headers['x-guest-id'] || req.headers['x-guest-session-id'] || req.query.guestId || ('guest_' + Math.random().toString(36).substring(2, 12));
 
     if (!bookId) {
       return res.status(400).json({ success: false, message: 'Book ID is required' });
@@ -59,11 +59,9 @@ const toggleWishlist = async (req, res) => {
     if (customerId) {
       wishlist = await Wishlist.findOne({ customer: customerId });
       if (!wishlist) wishlist = await Wishlist.create({ customer: customerId, books: [] });
-    } else if (gId) {
+    } else {
       wishlist = await Wishlist.findOne({ guestId: gId });
       if (!wishlist) wishlist = await Wishlist.create({ guestId: gId, books: [] });
-    } else {
-      return res.status(400).json({ success: false, message: 'User or guest session is required' });
     }
 
     const exists = wishlist.books.some(b => b.toString() === bookId);

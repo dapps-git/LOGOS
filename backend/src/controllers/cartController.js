@@ -24,7 +24,7 @@ const findOrCreateCart = async (customerId, guestId) => {
 const getCart = async (req, res) => {
   try {
     const customerId = req.customer ? req.customer._id : null;
-    const guestId = req.headers['x-guest-id'] || req.query.guestId;
+    const guestId = req.headers['x-guest-id'] || req.headers['x-guest-session-id'] || req.query.guestId;
 
     if (!customerId && !guestId) {
       return res.json({ success: true, cart: { items: [] } });
@@ -70,7 +70,7 @@ const addToCart = async (req, res) => {
   try {
     const { bookId, quantity = 1, guestId } = req.body;
     const customerId = req.customer ? req.customer._id : null;
-    const gId = guestId || req.headers['x-guest-id'];
+    const gId = guestId || req.headers['x-guest-id'] || req.headers['x-guest-session-id'] || req.query.guestId || ('guest_' + Math.random().toString(36).substring(2, 12));
 
     if (!bookId) {
       return res.status(400).json({ success: false, message: 'Book ID is required' });
@@ -113,7 +113,7 @@ const updateCartItem = async (req, res) => {
   try {
     const { bookId, quantity, guestId } = req.body;
     const customerId = req.customer ? req.customer._id : null;
-    const gId = guestId || req.headers['x-guest-id'];
+    const gId = guestId || req.headers['x-guest-id'] || req.headers['x-guest-session-id'] || req.query.guestId || ('guest_' + Math.random().toString(36).substring(2, 12));
 
     const cart = await findOrCreateCart(customerId, gId);
     if (!cart) {

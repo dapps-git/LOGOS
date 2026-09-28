@@ -1,13 +1,26 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
 
+function getGuestSessionId() {
+  if (typeof window === 'undefined') return '';
+  let guestId = localStorage.getItem('logos_guest_session_id');
+  if (!guestId) {
+    guestId = 'guest_' + Math.random().toString(36).substring(2, 15);
+    localStorage.setItem('logos_guest_session_id', guestId);
+  }
+  return guestId;
+}
+
 // Helper for authorized fetch
 function getAuthHeaders() {
   if (typeof window === 'undefined') return {};
   const token = localStorage.getItem('logos_customer_token');
-  const guestSessionId = localStorage.getItem('logos_guest_session_id');
+  const guestId = getGuestSessionId();
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  if (guestSessionId) headers['x-guest-session-id'] = guestSessionId;
+  if (guestId) {
+    headers['x-guest-id'] = guestId;
+    headers['x-guest-session-id'] = guestId;
+  }
   return headers;
 }
 
@@ -195,7 +208,8 @@ export async function deleteCustomerAddress(addressId) {
 
 // ----------------- Cart APIs -----------------
 export async function fetchCart() {
-  const res = await fetch(`${API_BASE}/cart`, {
+  const guestId = getGuestSessionId();
+  const res = await fetch(`${API_BASE}/cart?guestId=${guestId}`, {
     headers: getAuthHeaders()
   });
   const data = await res.json();
@@ -203,10 +217,11 @@ export async function fetchCart() {
 }
 
 export async function apiAddToCart(bookId, quantity = 1) {
+  const guestId = getGuestSessionId();
   const res = await fetch(`${API_BASE}/cart/add`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ bookId, quantity })
+    body: JSON.stringify({ bookId, quantity, guestId })
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to add to cart');
@@ -214,10 +229,11 @@ export async function apiAddToCart(bookId, quantity = 1) {
 }
 
 export async function apiUpdateCart(bookId, quantity) {
+  const guestId = getGuestSessionId();
   const res = await fetch(`${API_BASE}/cart/update`, {
     method: 'PUT',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ bookId, quantity })
+    body: JSON.stringify({ bookId, quantity, guestId })
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to update cart');
@@ -225,7 +241,8 @@ export async function apiUpdateCart(bookId, quantity) {
 }
 
 export async function apiRemoveFromCart(bookId) {
-  const res = await fetch(`${API_BASE}/cart/item/${bookId}`, {
+  const guestId = getGuestSessionId();
+  const res = await fetch(`${API_BASE}/cart/item/${bookId}?guestId=${guestId}`, {
     method: 'DELETE',
     headers: getAuthHeaders()
   });
@@ -236,7 +253,8 @@ export async function apiRemoveFromCart(bookId) {
 
 // ----------------- Wishlist APIs -----------------
 export async function fetchWishlist() {
-  const res = await fetch(`${API_BASE}/wishlist`, {
+  const guestId = getGuestSessionId();
+  const res = await fetch(`${API_BASE}/wishlist?guestId=${guestId}`, {
     headers: getAuthHeaders()
   });
   const data = await res.json();
@@ -244,14 +262,15 @@ export async function fetchWishlist() {
 }
 
 export async function apiToggleWishlist(bookId) {
+  const guestId = getGuestSessionId();
   const res = await fetch(`${API_BASE}/wishlist/toggle`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ bookId })
+    body: JSON.stringify({ bookId, guestId })
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to update wishlist');
-  return data;
+  return data.wishlist;
 }
 
 // ----------------- Coupons & Referral APIs -----------------
