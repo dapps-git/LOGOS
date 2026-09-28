@@ -70,34 +70,6 @@ export default function CartPage() {
       <Navbar />
 
       <main className="flex-1 max-w-6xl mx-auto w-full px-3.5 sm:px-6 lg:px-8 pt-24 sm:pt-28 pb-16">
-        {/* Sleek Minimal Header */}
-        <div className="flex items-center justify-between gap-3 mb-5 sm:mb-6 pb-3 border-b border-slate-200/80">
-          <div className="flex items-center gap-2.5">
-            <Link
-              href="/"
-              className="p-1.5 -ml-1.5 text-slate-500 hover:text-slate-900 rounded-full hover:bg-slate-100 transition-colors"
-              title="Continue Shopping"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-            </Link>
-            <h1 className="text-lg sm:text-2xl font-normal text-slate-900 tracking-tight flex items-center gap-2">
-              <span>Shopping Cart</span>
-              <span className="text-[11px] font-mono font-medium px-2 py-0.5 bg-blue-50 text-[#1E3A8A] rounded-full">
-                {itemCount} {itemCount === 1 ? 'item' : 'items'}
-              </span>
-            </h1>
-          </div>
-
-          <Link
-            href="/"
-            className="text-xs font-light text-[#1E3A8A] hover:underline"
-          >
-            Continue Shopping
-          </Link>
-        </div>
-
         {items.length === 0 ? (
           /* Empty Cart State */
           <div className="bg-white rounded-2xl sm:rounded-3xl p-8 sm:p-12 text-center border border-slate-100 shadow-sm max-w-md mx-auto my-8 sm:my-12">
@@ -122,30 +94,6 @@ export default function CartPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8">
             {/* Left Column: Items List */}
             <div className="lg:col-span-8 space-y-4">
-              {/* Free Delivery Bar */}
-              <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-blue-100 shadow-sm">
-                <div className="flex items-center justify-between text-xs mb-2">
-                  <span className="font-normal text-slate-700">
-                    {remainingForFreeShipping === 0 ? (
-                      <span className="text-emerald-600 font-medium flex items-center gap-1">
-                        🎉 Free Delivery Unlocked!
-                      </span>
-                    ) : (
-                      <span>
-                        Add books worth <strong className="text-[#1E3A8A] font-mono">₹{remainingForFreeShipping}</strong> more for <strong>FREE Delivery</strong>
-                      </span>
-                    )}
-                  </span>
-                  <span className="text-slate-400 font-mono text-[11px]">{freeShippingPercent}%</span>
-                </div>
-                <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                  <div
-                    className="bg-[#1E3A8A] h-full rounded-full transition-all duration-500"
-                    style={{ width: `${freeShippingPercent}%` }}
-                  />
-                </div>
-              </div>
-
               {/* Items Card */}
               <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm divide-y divide-slate-100 overflow-hidden">
                 {items.map((item) => {
