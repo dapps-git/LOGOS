@@ -140,13 +140,11 @@ export default function ResetPasswordPage() {
   return (
     <div className="relative min-h-screen flex items-center justify-center p-4 bg-slate-950 selection:bg-[#1E3A8A] selection:text-white overflow-hidden">
       {/* Background with Atmospheric Bookstore Imagery */}
-      <div className="absolute inset-0 z-0">
-        <Image
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <img
           src="https://images.unsplash.com/photo-1507842229458-5742445e43c7?q=80&w=2000&auto=format&fit=crop"
           alt="Logos Bookstore Ambiance"
-          fill
-          priority
-          className="object-cover object-center scale-105 filter brightness-[0.38] contrast-[1.05]"
+          className="w-full h-full object-cover object-center scale-105 filter brightness-[0.38] contrast-[1.05]"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/60 to-slate-950/80 backdrop-blur-[2px]" />
       </div>
