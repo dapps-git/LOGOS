@@ -370,12 +370,20 @@ export default function CheckoutPage() {
                   const book = item.book || {};
                   const title = book.titleMalayalam || book.title || 'LOGOS Book';
                   const price = item.price || book.salePrice || book.price || 299;
-                  const image = book.coverImage || book.image || '/images/bestsellers/book1.png';
+                  const image = book.coverImage || book.image || (book.images && book.images[0]) || '/book1.jpg';
 
                   return (
                     <div key={book._id || book.id || item.book} className="pt-2.5 flex items-center gap-3">
                       <div className="relative w-10 h-14 bg-slate-50 rounded-lg overflow-hidden shrink-0 border border-slate-100">
-                        <Image src={image} alt={title} fill className="object-cover" sizes="40px" />
+                        <img
+                          src={image}
+                          alt={title}
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = '/book1.jpg';
+                          }}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="text-xs font-normal text-slate-800 line-clamp-1">{title}</h4>
