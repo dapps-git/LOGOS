@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Star, ArrowRight } from 'lucide-react';
+import { fetchBestSellers } from '@/lib/api';
 
-const RECENTLY_VIEWED = [
+const DEFAULT_RECENTLY_VIEWED = [
   {
     id: 'rv-1',
     title: 'കമ്മ്യൂണിസ്റ്റ് ഹീറോ',
@@ -48,6 +49,33 @@ const RECENTLY_VIEWED = [
 ];
 
 export const RecentlyViewed = () => {
+  const [books, setBooks] = useState(DEFAULT_RECENTLY_VIEWED);
+
+  useEffect(() => {
+    const loadBooks = async () => {
+      try {
+        const liveBooks = await fetchBestSellers();
+        if (Array.isArray(liveBooks) && liveBooks.length > 0) {
+          const formatted = liveBooks.map((b) => ({
+            id: b._id,
+            title: b.title || b.name,
+            author: b.author,
+            price: Number(b.discountPrice || b.price || 0),
+            originalPrice: b.discountPrice ? Number(b.price) : null,
+            rating: b.rating ? String(b.rating) : '5.4',
+            image: (b.images && b.images[0]) || '/bestseller1.png',
+            href: `/books/${b.slug || b._id}`
+          }));
+          setBooks(formatted.slice(0, 4));
+        }
+      } catch (err) {
+        console.warn('[RecentlyViewed] Live fetch fallback:', err);
+      }
+    };
+
+    loadBooks();
+  }, []);
+
   return (
     <section className="py-10 sm:py-14 px-4 sm:px-8 max-w-6xl mx-auto">
       {/* Section Header */}
@@ -72,7 +100,7 @@ export const RecentlyViewed = () => {
 
       {/* 4-Column Book Cards Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        {RECENTLY_VIEWED.map((book) => (
+        {books.map((book) => (
           <Link
             key={book.id}
             href={book.href}

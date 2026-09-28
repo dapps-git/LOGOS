@@ -2,50 +2,55 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { ChevronDown, Search, User, ShoppingBag, Menu, X } from 'lucide-react';
+import { ChevronDown, Search, User, ShoppingBag, Heart, Menu, X, Gift, Package, LogOut } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
+import { useWishlist } from '../context/WishlistContext';
 
 export const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const { user, isAuthenticated, logout } = useAuth();
+  const { itemCount } = useCart();
+  const { count: wishlistCount } = useWishlist();
 
   const navLinks = [
     { name: 'Home', href: '/', active: true },
     {
       name: 'Book',
-      href: '/books',
+      href: '/#new-arrivals',
       hasDropdown: true,
-      items: ['Fiction', 'Non-Fiction', 'Classics', 'Bestsellers', 'New Releases']
+      items: ['New Arrivals', 'Bestsellers', 'Featured Collections', 'Malayalam Classics']
     },
     {
       name: 'Category',
-      href: '/categories',
+      href: '/#collections',
       hasDropdown: true,
-      items: ['Novels', 'Poetry', 'Philosophy', 'Science', 'Self-Help', 'History']
+      items: ['Novels & Fiction', 'Philosophy', 'Science & Culture', 'Poetry', 'History']
     },
     {
       name: 'Author',
-      href: '/authors',
+      href: '/#featured-authors',
       hasDropdown: true,
       items: ['V. T. Pratheesh', 'Ernest Hemingway', 'Ajish Gangadharan', 'Jisa John', 'K. Raghunathan']
     },
     {
-      name: 'Age',
-      href: '/age-groups',
-      hasDropdown: true,
-      items: ['All Ages', 'Children (0-8)', 'Young Adult (9-17)', 'Adult (18+)']
+      name: 'Combo Offer',
+      href: '/#combo-offer',
+      hasDropdown: false
     }
   ];
 
   return (
     <header className="absolute top-3 sm:top-6 left-0 right-0 z-50 px-3 sm:px-8 max-w-6xl mx-auto">
       {/* Capsule Pill Floating Container */}
-      <nav className="bg-white rounded-full shadow-md border border-slate-100/60 px-5 sm:px-7 py-2.5 sm:py-3 flex items-center justify-between transition-all">
+      <nav className="bg-white rounded-full shadow-md border border-slate-100/80 px-5 sm:px-7 py-2 sm:py-2.5 flex items-center justify-between transition-all">
         {/* Logo */}
         <Link href="/" className="flex items-center flex-shrink-0">
           <img
             src="/logo.png"
             alt="LOGOS Books"
-            className="h-10 sm:h-12 md:h-14 w-auto object-contain"
+            className="h-9 sm:h-11 md:h-12 w-auto object-contain"
           />
         </Link>
 
@@ -55,10 +60,10 @@ export const Navbar = () => {
             <div key={link.name} className="relative group">
               <Link
                 href={link.href}
-                className={`text-[13px] lg:text-sm font-semibold flex items-center gap-1 transition-colors ${
+                className={`text-[13px] font-normal flex items-center gap-1 transition-colors ${
                   link.active
-                    ? 'text-slate-950 font-bold'
-                    : 'text-slate-700 hover:text-slate-950'
+                    ? 'text-slate-900 font-medium'
+                    : 'text-slate-600 hover:text-slate-950'
                 }`}
               >
                 <span>{link.name}</span>
@@ -69,12 +74,12 @@ export const Navbar = () => {
 
               {/* Dropdown Menu */}
               {link.hasDropdown && (
-                <div className="absolute top-full left-0 mt-3 w-48 bg-white rounded-xl shadow-xl border border-slate-100 p-2 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 z-50">
+                <div className="absolute top-full left-0 mt-3 w-52 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 z-50">
                   {link.items?.map((item) => (
                     <Link
                       key={item}
-                      href={`${link.href}?q=${encodeURIComponent(item)}`}
-                      className="block px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-950 hover:bg-slate-50 rounded-lg transition-colors"
+                      href={link.href}
+                      className="block px-3.5 py-2 text-xs font-light text-slate-700 hover:text-[#1E3A8A] hover:bg-blue-50/60 rounded-xl transition-colors"
                     >
                       {item}
                     </Link>
@@ -85,37 +90,113 @@ export const Navbar = () => {
           ))}
         </div>
 
-        {/* Right Icon Actions (Desktop shows all; Mobile shows only toggle bar) */}
-        <div className="flex items-center gap-2 sm:gap-4 text-slate-700">
-          <button
-            type="button"
-            className="hidden md:flex p-1.5 hover:text-slate-950 hover:bg-slate-100 rounded-full transition-colors"
-            title="Search catalog"
+        {/* Right Icon Actions */}
+        <div className="flex items-center gap-2 sm:gap-3 text-slate-700">
+          {/* Wishlist Link */}
+          <Link
+            href="/wishlist"
+            className="p-2 hover:text-[#1E3A8A] hover:bg-slate-100 rounded-full transition-colors relative"
+            title="Wishlist"
           >
-            <Search className="w-4 h-4" />
-          </button>
+            <Heart className="w-4 h-4" />
+            {wishlistCount > 0 && (
+              <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-rose-500 text-white text-[10px] font-mono font-medium rounded-full flex items-center justify-center">
+                {wishlistCount}
+              </span>
+            )}
+          </Link>
 
-          <button
-            type="button"
-            className="hidden md:flex p-1.5 hover:text-slate-950 hover:bg-slate-100 rounded-full transition-colors"
-            title="Account"
-          >
-            <User className="w-4 h-4" />
-          </button>
-
+          {/* Cart Link */}
           <Link
             href="/cart"
-            className="hidden md:flex p-1.5 hover:text-slate-950 hover:bg-slate-100 rounded-full transition-colors relative"
-            title="Cart"
+            className="p-2 hover:text-[#1E3A8A] hover:bg-slate-100 rounded-full transition-colors relative"
+            title="Shopping Cart"
           >
             <ShoppingBag className="w-4 h-4" />
+            {itemCount > 0 && (
+              <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-[#1E3A8A] text-white text-[10px] font-mono font-medium rounded-full flex items-center justify-center">
+                {itemCount}
+              </span>
+            )}
           </Link>
+
+          {/* User Account Menu */}
+          <div className="relative">
+            {isAuthenticated ? (
+              <div className="relative group">
+                <button
+                  type="button"
+                  onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                  className="p-1.5 flex items-center gap-1.5 hover:bg-slate-100 rounded-full transition-colors"
+                >
+                  <div className="w-6 h-6 rounded-full bg-blue-100 text-[#1E3A8A] text-[11px] font-medium flex items-center justify-center">
+                    {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                  </div>
+                  <ChevronDown className="w-3 h-3 text-slate-400 hidden sm:block" />
+                </button>
+
+                {/* Dropdown Card */}
+                <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 z-50">
+                  <div className="px-3.5 py-2.5 border-b border-slate-100 mb-1">
+                    <p className="text-xs font-normal text-slate-900 truncate">{user?.name}</p>
+                    <p className="text-[10px] font-light text-slate-400 truncate">{user?.email}</p>
+                    {user?.referralRewardBalance > 0 && (
+                      <span className="inline-block mt-1 text-[10px] text-emerald-600 font-mono bg-emerald-50 px-2 py-0.5 rounded-full">
+                        ₹{user.referralRewardBalance} Rewards
+                      </span>
+                    )}
+                  </div>
+
+                  <Link
+                    href="/profile"
+                    className="flex items-center gap-2 px-3 py-2 text-xs font-light text-slate-700 hover:text-[#1E3A8A] hover:bg-blue-50/60 rounded-xl transition-colors"
+                  >
+                    <User className="w-3.5 h-3.5" />
+                    <span>My Profile</span>
+                  </Link>
+                  <Link
+                    href="/profile"
+                    className="flex items-center gap-2 px-3 py-2 text-xs font-light text-slate-700 hover:text-[#1E3A8A] hover:bg-blue-50/60 rounded-xl transition-colors"
+                  >
+                    <Package className="w-3.5 h-3.5" />
+                    <span>Orders & Tracking</span>
+                  </Link>
+                  <Link
+                    href="/profile"
+                    className="flex items-center gap-2 px-3 py-2 text-xs font-light text-slate-700 hover:text-[#1E3A8A] hover:bg-blue-50/60 rounded-xl transition-colors"
+                  >
+                    <Gift className="w-3.5 h-3.5" />
+                    <span>Referral Program</span>
+                  </Link>
+
+                  <div className="my-1 border-t border-slate-100" />
+
+                  <button
+                    type="button"
+                    onClick={logout}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-light text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <Link
+                href="/auth/login"
+                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-[#1E3A8A] hover:bg-[#152e72] text-white rounded-full text-xs font-medium transition-all shadow-sm"
+              >
+                <User className="w-3.5 h-3.5" />
+                <span>Sign In</span>
+              </Link>
+            )}
+          </div>
 
           {/* Mobile Menu Toggle Bar */}
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-1 text-slate-800 hover:text-slate-950 md:hidden outline-none focus:outline-none transition-transform active:scale-95"
+            className="p-1 text-slate-800 hover:text-slate-950 md:hidden outline-none focus:outline-none transition-transform active:scale-95 ml-1"
             aria-label="Toggle Navigation Menu"
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6 stroke-[2.2]" />}
@@ -125,41 +206,82 @@ export const Navbar = () => {
 
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 p-4 space-y-3 animate-in fade-in slide-in-from-top-2">
-          {/* Mobile Search & Quick Actions */}
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100 text-slate-700">
-            <Link
-              href="/account"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-1.5 text-xs font-semibold hover:text-slate-950"
-            >
-              <User className="w-4 h-4" />
-              <span>Account</span>
-            </Link>
+        <div className="md:hidden mt-2 bg-white rounded-3xl shadow-2xl border border-slate-100 p-5 space-y-4 animate-in fade-in slide-in-from-top-2">
+          {/* Mobile User Status */}
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            {isAuthenticated ? (
+              <Link
+                href="/profile"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 text-xs font-normal text-slate-800"
+              >
+                <div className="w-6 h-6 rounded-full bg-blue-100 text-[#1E3A8A] text-xs flex items-center justify-center">
+                  {user?.name?.charAt(0) || 'U'}
+                </div>
+                <span>{user?.name || 'Account'}</span>
+              </Link>
+            ) : (
+              <Link
+                href="/auth/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-xs font-medium text-[#1E3A8A]"
+              >
+                Sign In / Join LOGOS
+              </Link>
+            )}
 
-            <Link
-              href="/cart"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-1.5 text-xs font-semibold hover:text-slate-950"
-            >
-              <ShoppingBag className="w-4 h-4" />
-              <span>Cart</span>
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/wishlist"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-xs font-light text-slate-600 flex items-center gap-1"
+              >
+                <Heart className="w-3.5 h-3.5 text-rose-500" />
+                <span>({wishlistCount})</span>
+              </Link>
+              <Link
+                href="/cart"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-xs font-light text-slate-600 flex items-center gap-1"
+              >
+                <ShoppingBag className="w-3.5 h-3.5 text-[#1E3A8A]" />
+                <span>({itemCount})</span>
+              </Link>
+            </div>
           </div>
 
           {/* Navigation Links */}
-          {navLinks.map((link) => (
-            <Link
-              key={link.name}
-              href={link.href}
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 rounded-lg transition-colors"
-            >
-              {link.name}
-            </Link>
-          ))}
+          <div className="space-y-1">
+            {navLinks.map((link) => (
+              <Link
+                key={link.name}
+                href={link.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2 text-xs font-light text-slate-700 hover:bg-slate-50 rounded-xl transition-colors"
+              >
+                {link.name}
+              </Link>
+            ))}
+          </div>
+
+          {isAuthenticated && (
+            <div className="pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  logout();
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full text-left px-3 py-1.5 text-xs text-rose-600 font-light"
+              >
+                Sign Out
+              </button>
+            </div>
+          )}
         </div>
       )}
     </header>
   );
 };
+
+export default Navbar;

@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Star, ArrowRight } from 'lucide-react';
+import { fetchNewArrivals } from '@/lib/api';
 
-const NEW_ARRIVAL_BOOKS = [
+const DEFAULT_NEW_ARRIVAL_BOOKS = [
   {
     id: 'na-1',
     title: 'അപരാഹ്നത്തിലെ മരണം',
@@ -30,7 +31,7 @@ const NEW_ARRIVAL_BOOKS = [
     title: 'ഡാർക്ക് ഫാന്റസി',
     author: 'ജിസ ജോൺ',
     price: 170.00,
-    originalPrice: null,
+    originalPrice: 200.00,
     rating: '5.4',
     image: '/book3.png',
     href: '/books/dark-fantasy'
@@ -48,6 +49,33 @@ const NEW_ARRIVAL_BOOKS = [
 ];
 
 export const NewArrivals = () => {
+  const [books, setBooks] = useState(DEFAULT_NEW_ARRIVAL_BOOKS);
+
+  useEffect(() => {
+    const loadBooks = async () => {
+      try {
+        const liveBooks = await fetchNewArrivals();
+        if (Array.isArray(liveBooks) && liveBooks.length > 0) {
+          const formatted = liveBooks.map((b) => ({
+            id: b._id,
+            title: b.title || b.name,
+            author: b.author,
+            price: Number(b.discountPrice || b.price || 0),
+            originalPrice: b.discountPrice ? Number(b.price) : null,
+            rating: b.rating ? String(b.rating) : '5.4',
+            image: (b.images && b.images[0]) || '/book1.jpg',
+            href: `/books/${b.slug || b._id}`
+          }));
+          setBooks(formatted.slice(0, 8));
+        }
+      } catch (err) {
+        console.warn('[NewArrivals] Live fetch fallback:', err);
+      }
+    };
+
+    loadBooks();
+  }, []);
+
   return (
     <section className="py-10 sm:py-14 px-4 sm:px-8 max-w-6xl mx-auto">
       {/* Section Header */}
@@ -70,15 +98,15 @@ export const NewArrivals = () => {
         </Link>
       </div>
 
-      {/* 4-Column Book Cards Grid */}
+      {/* Book Cards Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        {NEW_ARRIVAL_BOOKS.map((book) => (
+        {books.map((book) => (
           <Link
             key={book.id}
             href={book.href}
             className="group flex flex-col justify-between transition-all"
           >
-            {/* Book Image Showcase Container (matching 311x426 aspect ratio) */}
+            {/* Book Image Showcase Container */}
             <div className="relative aspect-3/4 w-full overflow-hidden bg-[#e5e5e5] rounded-xs transition-transform duration-300 group-hover:scale-[1.02]">
               <img
                 src={book.image}

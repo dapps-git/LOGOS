@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Star, ArrowRight } from 'lucide-react';
+import { fetchBestSellers } from '@/lib/api';
 
-const BESTSELLER_BOOKS = [
+const DEFAULT_BESTSELLER_BOOKS = [
   {
     id: 'bs-1',
     title: 'കമ്മ്യൂണിസ്റ്റ് ഹീറോ',
@@ -48,6 +49,33 @@ const BESTSELLER_BOOKS = [
 ];
 
 export const Bestsellers = () => {
+  const [books, setBooks] = useState(DEFAULT_BESTSELLER_BOOKS);
+
+  useEffect(() => {
+    const loadBooks = async () => {
+      try {
+        const liveBooks = await fetchBestSellers();
+        if (Array.isArray(liveBooks) && liveBooks.length > 0) {
+          const formatted = liveBooks.map((b) => ({
+            id: b._id,
+            title: b.title || b.name,
+            author: b.author,
+            price: Number(b.discountPrice || b.price || 0),
+            originalPrice: b.discountPrice ? Number(b.price) : null,
+            rating: b.rating ? String(b.rating) : '5.4',
+            image: (b.images && b.images[0]) || '/bestseller1.png',
+            href: `/books/${b.slug || b._id}`
+          }));
+          setBooks(formatted.slice(0, 8));
+        }
+      } catch (err) {
+        console.warn('[Bestsellers] Live fetch fallback:', err);
+      }
+    };
+
+    loadBooks();
+  }, []);
+
   return (
     <section className="py-10 sm:py-14 px-4 sm:px-8 max-w-6xl mx-auto">
       {/* Section Header */}
@@ -70,9 +98,9 @@ export const Bestsellers = () => {
         </Link>
       </div>
 
-      {/* 4-Column Book Cards Grid */}
+      {/* Book Cards Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        {BESTSELLER_BOOKS.map((book) => (
+        {books.map((book) => (
           <Link
             key={book.id}
             href={book.href}
