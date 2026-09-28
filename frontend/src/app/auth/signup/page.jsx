@@ -59,19 +59,19 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center p-3 sm:p-4 bg-slate-950 selection:bg-[#1E3A8A] selection:text-white overflow-hidden">
-      {/* Background with Atmospheric Bookstore Imagery & Gradient Overlay */}
+    <div className="relative min-h-screen flex items-center justify-center p-3 sm:p-4 bg-[#F8FAFC] selection:bg-[#1E3A8A] selection:text-white overflow-hidden">
+      {/* Background with User Provided Bookstore Desk Imagery */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         <img
-          src="https://images.unsplash.com/photo-1507842229458-5742445e43c7?q=80&w=2000&auto=format&fit=crop"
-          alt="Logos Bookstore Ambiance"
-          className="w-full h-full object-cover object-center scale-105 filter brightness-[0.38] contrast-[1.05]"
+          src="/auth_bg.jpg"
+          alt="LOGOS Study & Reading Room"
+          className="w-full h-full object-cover object-center"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/60 to-slate-950/80 backdrop-blur-[2px]" />
+        <div className="absolute inset-0 bg-slate-900/10 backdrop-blur-[1px]" />
       </div>
 
       {/* Main Auth Card (Compact & Streamlined) */}
-      <div className="relative z-10 w-full max-w-[400px] bg-white/95 backdrop-blur-md rounded-2xl p-5 sm:p-7 shadow-2xl shadow-black/40 border border-white/40 my-auto">
+      <div className="relative z-10 w-full max-w-[400px] bg-white/95 sm:bg-white/90 backdrop-blur-md rounded-2xl p-5 sm:p-7 shadow-2xl shadow-slate-900/15 border border-white/80 my-auto">
         {/* LOGOS Logo & Title */}
         <div className="text-center mb-4">
           <Link href="/" className="inline-block transition-transform hover:scale-105">

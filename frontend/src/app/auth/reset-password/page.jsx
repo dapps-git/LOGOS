@@ -138,18 +138,18 @@ function ResetPasswordContent() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="relative min-h-screen flex items-center justify-center p-4 bg-slate-950 selection:bg-[#1E3A8A] selection:text-white overflow-hidden">
+    <div className="relative min-h-screen flex items-center justify-center p-3 sm:p-4 bg-[#F8FAFC] selection:bg-[#1E3A8A] selection:text-white overflow-hidden">
       {/* Background with Atmospheric Bookstore Imagery */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         <img
-          src="https://images.unsplash.com/photo-1507842229458-5742445e43c7?q=80&w=2000&auto=format&fit=crop"
-          alt="Logos Bookstore Ambiance"
-          className="w-full h-full object-cover object-center scale-105 filter brightness-[0.38] contrast-[1.05]"
+          src="/auth_bg.jpg"
+          alt="LOGOS Study & Reading Room"
+          className="w-full h-full object-cover object-center"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/60 to-slate-950/80 backdrop-blur-[2px]" />
+        <div className="absolute inset-0 bg-slate-900/10 backdrop-blur-[1px]" />
       </div>
 
-      <Suspense fallback={<div className="text-white text-xs">Loading...</div>}>
+      <Suspense fallback={<div className="text-slate-700 text-xs">Loading...</div>}>
         <ResetPasswordContent />
       </Suspense>
     </div>
