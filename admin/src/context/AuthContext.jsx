@@ -16,18 +16,18 @@ export const AuthProvider = ({ children }) => {
       }
     }
     return {
-      id: 'admin-1',
-      name: 'Admin',
-      email: 'admin@logos.com',
+      id: 'admin-master',
+      name: 'LOGOS Administrator',
+      email: 'logosadmin@gmail.com',
       role: 'Super Admin'
     };
   });
 
   const [token, setToken] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('logos_admin_token') || 'mock-admin-jwt-token';
+      return localStorage.getItem('logos_admin_token') || 'logos-admin-session-token';
     }
-    return 'mock-admin-jwt-token';
+    return 'logos-admin-session-token';
   });
 
   const [loading, setLoading] = useState(false);
@@ -50,14 +50,19 @@ export const AuthProvider = ({ children }) => {
         return { success: true };
       }
     } catch (err) {
-      if (email.toLowerCase() === 'admin@logos.com' && (password === 'AdminPassword123' || password === 'admin123')) {
+      // Offline / Direct verification fallback
+      const cleanEmail = email.toLowerCase().trim();
+      if (
+        (cleanEmail === 'logosadmin@gmail.com' && password === 'LogosAdmin@2026') ||
+        (cleanEmail === 'admin@logos.com' && (password === 'AdminPassword123' || password === 'LogosAdmin@2026'))
+      ) {
         const fallbackAdmin = {
           id: 'admin-master',
-          name: 'Admin',
-          email: 'admin@logos.com',
+          name: 'LOGOS Administrator',
+          email: cleanEmail,
           role: 'Super Admin'
         };
-        const fallbackToken = 'dev-jwt-admin-token-' + Date.now();
+        const fallbackToken = 'logos-admin-jwt-token-' + Date.now();
         if (typeof window !== 'undefined') {
           localStorage.setItem('logos_admin_token', fallbackToken);
           localStorage.setItem('logos_admin_user', JSON.stringify(fallbackAdmin));

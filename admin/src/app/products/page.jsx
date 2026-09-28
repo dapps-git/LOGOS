@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Badge } from '@/components/common/Badge';
@@ -15,18 +15,26 @@ import {
   Eye,
   Star,
   AlertTriangle,
-  Package
+  Package,
+  FileSpreadsheet
 } from 'lucide-react';
+import { BulkImportModal } from '@/components/products/BulkImportModal';
 
 export default function ProductsPage() {
   const { books = [], deleteBook, updateBook } = useStoreData();
   const { showToast } = useToast();
 
+  const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState('');
   const [themeFilter, setThemeFilter] = useState('ALL');
   const [stockFilter, setStockFilter] = useState('ALL');
   const [previewBook, setPreviewBook] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Filter themes
   const themes = ['ALL', ...Array.from(new Set(books.map((b) => b.theme).filter(Boolean)))];
@@ -72,13 +80,24 @@ export default function ProductsPage() {
             </p>
           </div>
 
-          <Link
-            href="/products/add"
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-md shadow-xs transition-all active:scale-95 w-fit"
-          >
-            <Plus className="w-4 h-4" />
-            Add New Product
-          </Link>
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => setBulkModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-md shadow-xs transition-all active:scale-95"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              Import Excel / CSV
+            </button>
+
+            <Link
+              href="/products/add"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-md shadow-xs transition-all active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              Add New Product
+            </Link>
+          </div>
         </div>
 
         {/* Filter & Search Bar */}
@@ -98,13 +117,18 @@ export default function ProductsPage() {
             <select
               value={themeFilter}
               onChange={(e) => setThemeFilter(e.target.value)}
+              suppressHydrationWarning
               className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-xs font-semibold text-slate-700 focus:outline-hidden"
             >
-              {themes.map((t) => (
-                <option key={t} value={t}>
-                  {t === 'ALL' ? 'All Themes / Genres' : t}
-                </option>
-              ))}
+              {mounted ? (
+                themes.map((t) => (
+                  <option key={t} value={t}>
+                    {t === 'ALL' ? 'All Themes / Genres' : t}
+                  </option>
+                ))
+              ) : (
+                <option value="ALL">All Themes / Genres</option>
+              )}
             </select>
 
             <select
@@ -144,8 +168,8 @@ export default function ProductsPage() {
                   </tr>
                 ) : (
                   filteredBooks.map((book) => {
-                    const cover = book.images?.[0];
-                    const photosCount = book.images?.length || 0;
+                    const cover = book.coverImage || book.image || (book.images && book.images[0]) || '/book1.jpg';
+                    const photosCount = (book.images?.length) || (book.coverImage ? 1 : 0);
 
                     return (
                       <tr key={book._id} className="hover:bg-slate-50/70 transition-colors">
@@ -153,35 +177,48 @@ export default function ProductsPage() {
                         <td className="py-3 px-4 align-middle">
                           <div className="flex items-center gap-3">
                             <div className="relative flex-shrink-0">
-                              {cover ? (
-                                <img
-                                  src={cover}
-                                  alt={book.title || book.name}
-                                  className="w-10 h-14 object-cover border border-slate-300 rounded-xs"
-                                />
-                              ) : (
-                                <div className="w-10 h-14 bg-slate-100 border border-slate-300 rounded-xs flex items-center justify-center text-slate-400">
-                                  <Package className="w-5 h-5" />
-                                </div>
-                              )}
+                              <img
+                                src={cover}
+                                alt={book.title || book.name}
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src = '/book1.jpg';
+                                }}
+                                className="w-10 h-14 object-cover border border-slate-200 rounded-lg shadow-2xs bg-slate-50"
+                              />
                               {photosCount > 1 && (
-                                <span className="absolute -bottom-1 -right-1 bg-slate-900 text-white text-[9px] font-bold px-1 py-0.2 rounded-xs">
+                                <span className="absolute -bottom-1 -right-1 bg-[#1E3A8A] text-white text-[9px] font-mono font-medium px-1 py-0.2 rounded-md">
                                   {photosCount}📷
                                 </span>
                               )}
                             </div>
                             <div className="min-w-0 max-w-xs">
-                              <p className="font-bold text-slate-900 truncate">{book.title || book.name}</p>
+                              <p className="font-normal text-slate-900 truncate">{book.title || book.name}</p>
                               <p className="text-[10px] text-slate-400 mt-0.5 font-mono">SKU: {book.sku || 'N/A'}</p>
-                              <div className="flex items-center gap-1 mt-1">
+                              <div className="flex flex-wrap items-center gap-1 mt-1">
                                 {book.isBestSeller && (
-                                  <span className="text-[9px] font-bold text-amber-800 bg-amber-50 px-1 py-0.5 border border-amber-200 rounded-xs flex items-center gap-0.5">
+                                  <span className="text-[9px] font-medium text-amber-800 bg-amber-50 px-1.5 py-0.5 border border-amber-200 rounded-full flex items-center gap-0.5">
                                     <Star className="w-2.5 h-2.5 fill-amber-700" /> Best Seller
                                   </span>
                                 )}
                                 {book.isNewArrival && (
-                                  <span className="text-[9px] font-bold text-blue-800 bg-blue-50 px-1 py-0.5 border border-blue-200 rounded-xs">
+                                  <span className="text-[9px] font-medium text-blue-800 bg-blue-50 px-1.5 py-0.5 border border-blue-200 rounded-full">
                                     New
+                                  </span>
+                                )}
+                                {book.isFeatured && (
+                                  <span className="text-[9px] font-medium text-purple-800 bg-purple-50 px-1.5 py-0.5 border border-purple-200 rounded-full">
+                                    Spotlight
+                                  </span>
+                                )}
+                                {book.isHandpicked && (
+                                  <span className="text-[9px] font-medium text-emerald-800 bg-emerald-50 px-1.5 py-0.5 border border-emerald-200 rounded-full">
+                                    Handpicked
+                                  </span>
+                                )}
+                                {(book.isAuthorSpotlight || book.isBestAuthor) && (
+                                  <span className="text-[9px] font-medium text-indigo-800 bg-indigo-50 px-1.5 py-0.5 border border-indigo-200 rounded-full">
+                                    Author Spotlight
                                   </span>
                                 )}
                               </div>
@@ -375,6 +412,12 @@ export default function ProductsPage() {
             </div>
           </Modal>
         )}
+
+        {/* Bulk Import Modal */}
+        <BulkImportModal
+          isOpen={bulkModalOpen}
+          onClose={() => setBulkModalOpen(false)}
+        />
       </div>
     </AdminLayout>
   );

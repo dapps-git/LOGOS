@@ -20,27 +20,25 @@ export default function WishlistPage() {
     <div className="min-h-screen flex flex-col bg-[#F8FAFC]">
       <Navbar />
 
-      <main className="flex-1 max-w-6xl mx-auto w-full px-3.5 sm:px-6 lg:px-8 pt-24 sm:pt-28 pb-16">
+      <main className="flex-1 max-w-4xl mx-auto w-full px-3.5 sm:px-6 lg:px-8 pt-24 sm:pt-28 pb-16">
         {/* Sleek Minimal Header */}
-        <div className="flex items-center justify-between gap-3 mb-5 sm:mb-8 pb-3 border-b border-slate-200/80">
+        <div className="flex items-center justify-between gap-3 mb-5 sm:mb-6 pb-3 border-b border-slate-200/80">
           <div className="flex items-center gap-2.5">
             <Link
               href="/"
               className="p-1.5 -ml-1.5 text-slate-500 hover:text-slate-900 rounded-full hover:bg-slate-100 transition-colors"
-              title="Back to home"
+              title="Back to store"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
             </Link>
-            <div>
-              <h1 className="text-lg sm:text-2xl font-normal text-slate-900 tracking-tight flex items-center gap-2">
-                <span>Wishlist</span>
-                <span className="text-[11px] font-mono font-medium px-2 py-0.5 bg-blue-50 text-[#1E3A8A] rounded-full">
-                  {count}
-                </span>
-              </h1>
-            </div>
+            <h1 className="text-lg sm:text-xl font-normal text-slate-900 tracking-tight flex items-center gap-2">
+              <span>My Wishlist</span>
+              <span className="text-[11px] font-mono font-medium px-2 py-0.5 bg-blue-50 text-[#1E3A8A] rounded-full">
+                {count} {count === 1 ? 'book' : 'books'}
+              </span>
+            </h1>
           </div>
 
           <Link
@@ -71,8 +69,8 @@ export default function WishlistPage() {
             </Link>
           </div>
         ) : (
-          /* Responsive Wishlist Grid (2 cols mobile, 3-4 cols tablet/desktop) */
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-5">
+          /* Horizontal Row Cards Container (Image Left, Details Right) */
+          <div className="space-y-3.5 sm:space-y-4">
             {books.map((book) => {
               const bookId = book._id || book.id;
               const title = book.titleMalayalam || book.title || 'LOGOS Book';
@@ -84,66 +82,76 @@ export default function WishlistPage() {
               return (
                 <div
                   key={bookId}
-                  className="bg-white rounded-2xl p-2.5 sm:p-4 border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
+                  className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between gap-3.5 sm:gap-6 group"
                 >
-                  <div>
-                    {/* Cover Thumbnail with Resilient Image Loading */}
-                    <div className="relative aspect-3/4 w-full bg-[#f1f3f7] rounded-xl overflow-hidden mb-2.5 border border-slate-100/80">
-                      <img
-                        src={image}
-                        alt={title}
-                        onError={(e) => {
-                          e.currentTarget.onerror = null;
-                          e.currentTarget.src = '/book1.jpg';
-                        }}
-                        className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
-                      />
+                  {/* LEFT: Book Cover Thumbnail */}
+                  <Link
+                    href={`/books/${book.slug || bookId}`}
+                    className="shrink-0 relative w-20 sm:w-28 aspect-3/4 bg-[#f1f3f7] rounded-xl overflow-hidden border border-slate-100/80"
+                  >
+                    <img
+                      src={image}
+                      alt={title}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = '/book1.jpg';
+                      }}
+                      className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
+                    />
+                  </Link>
 
-                      {/* Remove Button */}
+                  {/* RIGHT: Details & Actions */}
+                  <div className="flex-1 min-w-0 flex flex-col justify-between self-stretch py-0.5">
+                    {/* Top Info */}
+                    <div>
+                      <div className="flex items-start justify-between gap-2">
+                        <Link href={`/books/${book.slug || bookId}`} className="block">
+                          <h3 className="text-xs sm:text-base font-normal text-slate-900 group-hover:text-[#1E3A8A] transition-colors line-clamp-2 leading-snug">
+                            {title}
+                          </h3>
+                        </Link>
+                        {/* Remove Trash Button */}
+                        <button
+                          type="button"
+                          onClick={() => toggleWishlist(book)}
+                          className="p-1 text-slate-400 hover:text-red-500 transition-colors shrink-0"
+                          title="Remove from wishlist"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+
+                      <p className="text-[11px] sm:text-xs font-light text-slate-400 truncate mt-0.5">
+                        {author}
+                      </p>
+                    </div>
+
+                    {/* Bottom Row: Price & Move to Cart CTA */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 mt-3 pt-2 border-t border-slate-50">
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-sm sm:text-base font-medium text-slate-900 font-mono">
+                          ₹{Number(price).toFixed(0)}
+                        </span>
+                        {original > price && (
+                          <span className="text-[11px] sm:text-xs font-light text-slate-400 line-through font-mono">
+                            ₹{Number(original).toFixed(0)}
+                          </span>
+                        )}
+                      </div>
+
                       <button
                         type="button"
-                        onClick={() => toggleWishlist(book)}
-                        className="absolute top-1.5 right-1.5 w-6 h-6 sm:w-7 sm:h-7 bg-white/95 hover:bg-white text-slate-400 hover:text-red-500 rounded-full flex items-center justify-center shadow-sm backdrop-blur-sm transition-colors z-10"
-                        title="Remove from wishlist"
+                        onClick={() => handleMoveToCart(book)}
+                        className="py-1.5 sm:py-2 px-3 sm:px-4 bg-[#1E3A8A] hover:bg-[#152e72] text-white text-[11px] sm:text-xs font-medium rounded-xl transition-all shadow-sm shadow-blue-900/10 active:scale-95 flex items-center gap-1.5"
                       >
-                        <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                         </svg>
+                        <span>Move to Cart</span>
                       </button>
                     </div>
-
-                    {/* Book Info */}
-                    <Link href={`/books/${book.slug || bookId}`} className="block">
-                      <h3 className="text-xs sm:text-sm font-normal text-slate-900 group-hover:text-[#1E3A8A] transition-colors line-clamp-2 h-8 sm:h-10 leading-snug">
-                        {title}
-                      </h3>
-                    </Link>
-                    <p className="text-[10px] sm:text-xs font-light text-slate-400 truncate mt-0.5">
-                      {author}
-                    </p>
-
-                    {/* Price */}
-                    <div className="flex items-baseline gap-1.5 mt-1.5">
-                      <span className="text-xs sm:text-sm font-medium text-slate-900 font-mono">
-                        ₹{Number(price).toFixed(0)}
-                      </span>
-                      {original > price && (
-                        <span className="text-[10px] font-light text-slate-400 line-through font-mono">
-                          ₹{Number(original).toFixed(0)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Move to Cart CTA */}
-                  <div className="mt-2.5 pt-2 border-t border-slate-50">
-                    <button
-                      type="button"
-                      onClick={() => handleMoveToCart(book)}
-                      className="w-full py-2 px-2.5 bg-[#1E3A8A] hover:bg-[#152e72] text-white text-[11px] sm:text-xs font-medium rounded-xl transition-all shadow-sm shadow-blue-900/10 active:scale-95 flex items-center justify-center gap-1"
-                    >
-                      <span>Move to Cart</span>
-                    </button>
                   </div>
                 </div>
               );

@@ -19,6 +19,9 @@ const getBooks = async (req, res) => {
       isBestSeller,
       isNewArrival,
       isFeatured,
+      isHandpicked,
+      isAuthorSpotlight,
+      isBestAuthor,
       stockStatus,
       sortBy,
       page = 1,
@@ -48,6 +51,9 @@ const getBooks = async (req, res) => {
     if (isBestSeller === 'true') query.isBestSeller = true;
     if (isNewArrival === 'true') query.isNewArrival = true;
     if (isFeatured === 'true') query.isFeatured = true;
+    if (isHandpicked === 'true') query.isHandpicked = true;
+    if (isAuthorSpotlight === 'true') query.isAuthorSpotlight = true;
+    if (isBestAuthor === 'true') query.isBestAuthor = true;
     if (stockStatus) query.stockStatus = stockStatus;
 
     if (minPrice || maxPrice) {
@@ -234,6 +240,9 @@ const createBook = async (req, res) => {
       isBestSeller,
       isNewArrival,
       isFeatured,
+      isHandpicked,
+      isAuthorSpotlight,
+      isBestAuthor,
       tags
     } = req.body;
 
@@ -245,10 +254,10 @@ const createBook = async (req, res) => {
       });
     }
 
-    if (!Array.isArray(images) || images.length < 3) {
+    if (!Array.isArray(images) || images.length < 1) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide at least 3 photos per product (front cover, back cover, sample page)'
+        message: 'Please provide at least 1 photo per product'
       });
     }
 
@@ -273,6 +282,9 @@ const createBook = async (req, res) => {
       isBestSeller: Boolean(isBestSeller),
       isNewArrival: isNewArrival !== undefined ? Boolean(isNewArrival) : true,
       isFeatured: Boolean(isFeatured),
+      isHandpicked: Boolean(isHandpicked),
+      isAuthorSpotlight: Boolean(isAuthorSpotlight),
+      isBestAuthor: Boolean(isBestAuthor),
       tags: Array.isArray(tags) ? tags : []
     });
 
@@ -367,6 +379,169 @@ const uploadBookImage = async (req, res) => {
   }
 };
 
+// @desc    Bulk Import Books from Excel / JSON dataset
+// @route   POST /api/books/bulk-import
+// @access  Private (Admin)
+const bulkImportBooks = async (req, res) => {
+  try {
+    const { books } = req.body;
+    if (!Array.isArray(books) || books.length === 0) {
+      return res.status(400).json({ success: false, message: 'No book data provided for bulk import' });
+    }
+
+    // Helper to transform Google Drive sharing links to direct image URLs
+    const transformDriveUrl = (url) => {
+      if (!url || typeof url !== 'string') return url;
+      const str = url.trim();
+      const driveMatch = str.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=|drive\/folders\/)|docs\.google\.com\/file\/d\/)([a-zA-Z0-9_-]+)/i);
+      if (driveMatch && driveMatch[1]) {
+        return `https://lh3.googleusercontent.com/d/${driveMatch[1]}`;
+      }
+      return str;
+    };
+
+    const inserted = [];
+    const errors = [];
+
+    for (let i = 0; i < books.length; i++) {
+      const b = books[i];
+      try {
+        const title = (b.title || b.name || b.Title || b.Name || '').trim();
+        const author = (b.author || b.Author || 'LOGOS Author').trim();
+        const publisher = (b.publisher || b.Publisher || 'LOGOS Books').trim();
+        const theme = (b.theme || b.Theme || b.genre || b.Genre || b.category || b.Category || 'General').trim();
+        const price = Number(b.price || b.Price || b.Rate || b.MRP || 299);
+        const discountPrice = b.discountPrice || b.DiscountPrice || b.SalePrice ? Number(b.discountPrice || b.DiscountPrice || b.SalePrice) : null;
+        const stock = b.stock !== undefined ? Number(b.stock) : b.Stock !== undefined ? Number(b.Stock) : 25;
+        const pageCount = Number(b.pageCount || b.PageCount || b.pages || 250);
+        const description = (b.description || b.Description || b.synopsis || b.Synopsis || `${title} by ${author}. Premium edition available at LOGOS Books.`).trim();
+        
+        let imagesList = [];
+        if (Array.isArray(b.images)) {
+          imagesList = b.images.map(transformDriveUrl);
+        } else if (typeof b.images === 'string' && b.images.trim()) {
+          imagesList = b.images.split(/[,;\n]+/).map(s => transformDriveUrl(s.trim())).filter(Boolean);
+        }
+
+        for (let imgNum = 1; imgNum <= 6; imgNum++) {
+          const key = `image${imgNum}` in b ? `image${imgNum}` : `Image${imgNum}` in b ? `Image${imgNum}` : `Image ${imgNum}` in b ? `Image ${imgNum}` : null;
+          if (key && b[key]) {
+            const transformed = transformDriveUrl(String(b[key]).trim());
+            if (transformed && !imagesList.includes(transformed)) {
+              imagesList.push(transformed);
+            }
+          }
+        }
+
+        if (imagesList.length === 0) {
+          imagesList = ['/book1.jpg'];
+        }
+
+        const rawLanguages = b.languages || b.Languages || b.language || b.Language || ['Malayalam'];
+        const languages = Array.isArray(rawLanguages) 
+          ? rawLanguages 
+          : typeof rawLanguages === 'string' 
+            ? rawLanguages.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean) 
+            : ['Malayalam'];
+
+        let rawSku = (b.sku || b.SKU || `LGS-BK-${Date.now().toString().slice(-4)}${i + 1}`).trim();
+        const isbn = (b.isbn || b.ISBN || '').trim();
+
+        const isBestSeller = Boolean(b.isBestSeller || b.isBestseller || b.Bestseller === 'yes' || b.Bestseller === 'true' || b.Bestseller === true);
+        const isNewArrival = b.isNewArrival !== undefined ? Boolean(b.isNewArrival) : true;
+        const isFeatured = Boolean(b.isFeatured || b.Featured === 'yes' || b.Featured === 'true' || b.Featured === true);
+        const isHandpicked = Boolean(b.isHandpicked || b.Handpicked === 'yes' || b.Handpicked === 'true' || b.Handpicked === true);
+        const isAuthorSpotlight = Boolean(b.isAuthorSpotlight || b.AuthorSpotlight === 'yes' || b.AuthorSpotlight === 'true' || b.AuthorSpotlight === true);
+
+        if (!title) {
+          errors.push({ row: i + 1, error: 'Missing title' });
+          continue;
+        }
+
+        // Check if book already exists by title & author or SKU
+        let existingBook = await Book.findOne({
+          $or: [
+            { title: title, author: author },
+            { sku: rawSku }
+          ]
+        });
+
+        if (existingBook) {
+          existingBook.title = title;
+          existingBook.name = title;
+          existingBook.author = author;
+          existingBook.publisher = publisher;
+          existingBook.theme = theme;
+          existingBook.genre = theme;
+          existingBook.category = b.category || b.Category || 'Books';
+          existingBook.languages = languages;
+          existingBook.pageCount = isNaN(pageCount) || pageCount <= 0 ? 250 : pageCount;
+          existingBook.description = description;
+          existingBook.price = isNaN(price) || price < 0 ? 299 : price;
+          existingBook.discountPrice = discountPrice && !isNaN(discountPrice) ? discountPrice : null;
+          existingBook.stock = isNaN(stock) || stock < 0 ? 25 : stock;
+          existingBook.images = imagesList;
+          existingBook.isbn = isbn || existingBook.isbn;
+          existingBook.isBestSeller = isBestSeller;
+          existingBook.isNewArrival = isNewArrival;
+          existingBook.isFeatured = isFeatured;
+          existingBook.isHandpicked = isHandpicked;
+          existingBook.isAuthorSpotlight = isAuthorSpotlight;
+          existingBook.isActive = true;
+          await existingBook.save();
+          inserted.push(existingBook);
+        } else {
+          // Check if SKU is taken by another book; if so, make SKU unique
+          const skuTaken = await Book.findOne({ sku: rawSku });
+          const finalSku = skuTaken ? `${rawSku}-${i + 1}` : rawSku;
+
+          const newBook = new Book({
+            title,
+            name: title,
+            author,
+            publisher,
+            edition: b.edition || b.Edition || '1st Edition',
+            theme,
+            genre: theme,
+            category: b.category || b.Category || 'Books',
+            languages,
+            pageCount: isNaN(pageCount) || pageCount <= 0 ? 250 : pageCount,
+            description,
+            price: isNaN(price) || price < 0 ? 299 : price,
+            discountPrice: discountPrice && !isNaN(discountPrice) ? discountPrice : null,
+            stock: isNaN(stock) || stock < 0 ? 25 : stock,
+            images: imagesList,
+            sku: finalSku,
+            isbn,
+            isBestSeller,
+            isNewArrival,
+            isFeatured,
+            isHandpicked,
+            isAuthorSpotlight,
+            isActive: true
+          });
+
+          await newBook.save();
+          inserted.push(newBook);
+        }
+      } catch (rowErr) {
+        console.error(`[bulkImportBooks] Error on row ${i + 1}:`, rowErr.message);
+        errors.push({ row: i + 1, title: b.title || b.Name || 'Unknown', error: rowErr.message });
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: `Successfully processed ${books.length} items: ${inserted.length} imported/updated, ${errors.length} skipped`,
+      importedCount: inserted.length,
+      errorsCount: errors.length,
+      errors: errors.slice(0, 20)
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getBooks,
   getBookByIdOrSlug,
@@ -377,5 +552,6 @@ module.exports = {
   createBook,
   updateBook,
   deleteBook,
-  uploadBookImage
+  uploadBookImage,
+  bulkImportBooks
 };

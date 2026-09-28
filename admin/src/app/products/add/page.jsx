@@ -49,6 +49,9 @@ function ProductFormContent() {
     isBestSeller: false,
     isNewArrival: true,
     isFeatured: false,
+    isHandpicked: false,
+    isAuthorSpotlight: false,
+    isBestAuthor: false,
     isActive: true
   });
 
@@ -76,6 +79,9 @@ function ProductFormContent() {
           isBestSeller: Boolean(bookToEdit.isBestSeller),
           isNewArrival: Boolean(bookToEdit.isNewArrival),
           isFeatured: Boolean(bookToEdit.isFeatured),
+          isHandpicked: Boolean(bookToEdit.isHandpicked),
+          isAuthorSpotlight: Boolean(bookToEdit.isAuthorSpotlight),
+          isBestAuthor: Boolean(bookToEdit.isBestAuthor),
           isActive: bookToEdit.isActive !== false
         });
       }
@@ -140,6 +146,9 @@ function ProductFormContent() {
       isBestSeller: formData.isBestSeller,
       isNewArrival: formData.isNewArrival,
       isFeatured: formData.isFeatured,
+      isHandpicked: formData.isHandpicked,
+      isAuthorSpotlight: formData.isAuthorSpotlight,
+      isBestAuthor: formData.isBestAuthor,
       isActive: formData.isActive
     };
 
@@ -201,7 +210,7 @@ function ProductFormContent() {
           <div className="bg-white p-6 rounded-md border border-slate-200 shadow-2xs">
             <ImageUploader
               images={formData.images}
-              onChange={(imgs) => setFormData({ ...formData, images: imgs })}
+              onChange={(imgs) => setFormData((prev) => ({ ...prev, images: imgs }))}
               minImages={3}
               maxImages={6}
             />
@@ -453,37 +462,87 @@ function ProductFormContent() {
               </div>
             </div>
 
-            {/* Badges & Flags */}
-            <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center gap-6">
-              <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={formData.isBestSeller}
-                  onChange={(e) => setFormData({ ...formData, isBestSeller: e.target.checked })}
-                  className="rounded border-slate-300 text-emerald-800 focus:ring-emerald-500 w-4 h-4"
-                />
-                Best Seller Badge ⭐
+            {/* Badges & Section Placements */}
+            <div className="pt-4 border-t border-slate-100">
+              <label className="block text-xs font-medium text-slate-800 mb-2">
+                Storefront Section Placements & Badges
               </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                <label className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                  formData.isBestSeller ? 'border-[#1E3A8A] bg-blue-50/50 text-[#1E3A8A]' : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={formData.isBestSeller}
+                    onChange={(e) => setFormData({ ...formData, isBestSeller: e.target.checked })}
+                    className="rounded border-slate-300 text-[#1E3A8A] focus:ring-[#1E3A8A] w-4 h-4"
+                  />
+                  <div>
+                    <span className="text-xs font-medium block">Best Seller ⭐</span>
+                    <span className="text-[10px] text-slate-400 font-light block">Display in Bestsellers section</span>
+                  </div>
+                </label>
 
-              <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={formData.isNewArrival}
-                  onChange={(e) => setFormData({ ...formData, isNewArrival: e.target.checked })}
-                  className="rounded border-slate-300 text-emerald-800 focus:ring-emerald-500 w-4 h-4"
-                />
-                New Arrival 🚀
-              </label>
+                <label className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                  formData.isNewArrival ? 'border-[#1E3A8A] bg-blue-50/50 text-[#1E3A8A]' : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={formData.isNewArrival}
+                    onChange={(e) => setFormData({ ...formData, isNewArrival: e.target.checked })}
+                    className="rounded border-slate-300 text-[#1E3A8A] focus:ring-[#1E3A8A] w-4 h-4"
+                  />
+                  <div>
+                    <span className="text-xs font-medium block">New Arrival 🚀</span>
+                    <span className="text-[10px] text-slate-400 font-light block">Display in Fresh from Press</span>
+                  </div>
+                </label>
 
-              <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={formData.isFeatured}
-                  onChange={(e) => setFormData({ ...formData, isFeatured: e.target.checked })}
-                  className="rounded border-slate-300 text-emerald-800 focus:ring-emerald-500 w-4 h-4"
-                />
-                Featured in Spotlight 🌟
-              </label>
+                <label className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                  formData.isFeatured ? 'border-[#1E3A8A] bg-blue-50/50 text-[#1E3A8A]' : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={formData.isFeatured}
+                    onChange={(e) => setFormData({ ...formData, isFeatured: e.target.checked })}
+                    className="rounded border-slate-300 text-[#1E3A8A] focus:ring-[#1E3A8A] w-4 h-4"
+                  />
+                  <div>
+                    <span className="text-xs font-medium block">Featured Spotlight 🌟</span>
+                    <span className="text-[10px] text-slate-400 font-light block">Highlight in main hero / spotlight</span>
+                  </div>
+                </label>
+
+                <label className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                  formData.isHandpicked ? 'border-[#1E3A8A] bg-blue-50/50 text-[#1E3A8A]' : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={formData.isHandpicked}
+                    onChange={(e) => setFormData({ ...formData, isHandpicked: e.target.checked })}
+                    className="rounded border-slate-300 text-[#1E3A8A] focus:ring-[#1E3A8A] w-4 h-4"
+                  />
+                  <div>
+                    <span className="text-xs font-medium block">Handpicked Reads 📖</span>
+                    <span className="text-[10px] text-slate-400 font-light block">From our editors&apos; desks</span>
+                  </div>
+                </label>
+
+                <label className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                  formData.isAuthorSpotlight ? 'border-[#1E3A8A] bg-blue-50/50 text-[#1E3A8A]' : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={formData.isAuthorSpotlight}
+                    onChange={(e) => setFormData({ ...formData, isAuthorSpotlight: e.target.checked })}
+                    className="rounded border-slate-300 text-[#1E3A8A] focus:ring-[#1E3A8A] w-4 h-4"
+                  />
+                  <div>
+                    <span className="text-xs font-medium block">Best Author / Spotlight ✍️</span>
+                    <span className="text-[10px] text-slate-400 font-light block">Author Spotlight / Best books</span>
+                  </div>
+                </label>
+              </div>
             </div>
           </div>
 

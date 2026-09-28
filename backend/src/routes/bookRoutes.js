@@ -10,7 +10,8 @@ const {
   createBook,
   updateBook,
   deleteBook,
-  uploadBookImage
+  uploadBookImage,
+  bulkImportBooks
 } = require('../controllers/bookController');
 const { protectAdmin } = require('../middleware/adminMiddleware');
 
@@ -23,6 +24,7 @@ router.get('/filters/options', getFilterOptions);
 router.get('/:idOrSlug', getBookByIdOrSlug);
 
 // Admin Book Management
+router.post('/bulk-import', protectAdmin, bulkImportBooks);
 router.post('/', protectAdmin, createBook);
 router.put('/:id', protectAdmin, updateBook);
 router.delete('/:id', protectAdmin, deleteBook);

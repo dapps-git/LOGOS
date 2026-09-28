@@ -16,6 +16,7 @@ export const Navbar = () => {
 
   const navLinks = [
     { name: 'Home', href: '/', active: true },
+    { name: 'Products', href: '/products', hasDropdown: false },
     {
       name: 'Book',
       href: '/#new-arrivals',
@@ -42,9 +43,9 @@ export const Navbar = () => {
   ];
 
   return (
-    <header className="absolute top-3 sm:top-6 left-0 right-0 z-50 px-3 sm:px-8 max-w-6xl mx-auto">
+    <header className="fixed top-2 sm:top-4 left-0 right-0 z-50 px-3 sm:px-8 max-w-6xl mx-auto pointer-events-none">
       {/* Capsule Pill Floating Container */}
-      <nav className="bg-white rounded-full shadow-md border border-slate-100/80 px-5 sm:px-7 py-2 sm:py-2.5 flex items-center justify-between transition-all">
+      <nav className="pointer-events-auto bg-white/95 backdrop-blur-md rounded-full shadow-lg shadow-slate-900/5 border border-slate-100/80 px-5 sm:px-7 py-2 sm:py-2.5 flex items-center justify-between transition-all">
         {/* Logo */}
         <Link href="/" className="flex items-center flex-shrink-0">
           <img
@@ -206,7 +207,7 @@ export const Navbar = () => {
 
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden mt-2 bg-white rounded-3xl shadow-2xl border border-slate-100 p-5 space-y-4 animate-in fade-in slide-in-from-top-2">
+        <div className="pointer-events-auto md:hidden mt-2 bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl border border-slate-100 p-5 space-y-4 animate-in fade-in slide-in-from-top-2">
           {/* Mobile User Status */}
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             {isAuthenticated ? (

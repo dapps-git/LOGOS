@@ -88,7 +88,7 @@ export const HandpickedReads = () => {
         </div>
 
         <Link
-          href="/books?featured=handpicked"
+          href="/products?theme=Handpicked"
           className="p-1.5 text-slate-700 hover:text-slate-950 hover:bg-slate-100 rounded-full transition-all flex-shrink-0 group mb-0.5"
           title="Meet all the authors"
         >

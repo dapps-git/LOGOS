@@ -9,57 +9,64 @@ export const StatCard = ({
   trend,
   trendType = 'up',
   icon: Icon,
-  variant = 'green',
+  variant = 'blue',
   className = ''
 }) => {
   const variantStyles = {
-    green: {
-      cardBg: 'bg-[#f0fdf4]',
-      borderColor: 'border-[#bbf7d0]',
-      iconBg: 'bg-[#dcfce7]',
-      iconColor: 'text-[#15803d]',
-      trendColor: 'text-[#15803d]'
-    },
     blue: {
-      cardBg: 'bg-[#f0f9ff]',
-      borderColor: 'border-[#bae6fd]',
-      iconBg: 'bg-[#e0f2fe]',
-      iconColor: 'text-[#0284c7]',
-      trendColor: 'text-[#0284c7]'
+      cardBg: 'bg-white',
+      borderColor: 'border-blue-100',
+      iconBg: 'bg-blue-50 text-[#1E3A8A]',
+      iconColor: 'text-[#1E3A8A]',
+      trendColor: 'text-blue-700'
+    },
+    royal: {
+      cardBg: 'bg-white',
+      borderColor: 'border-slate-200/80',
+      iconBg: 'bg-indigo-50 text-indigo-700',
+      iconColor: 'text-indigo-700',
+      trendColor: 'text-indigo-700'
     },
     amber: {
-      cardBg: 'bg-[#fffbeb]',
-      borderColor: 'border-[#fde68a]',
-      iconBg: 'bg-[#fef3c7]',
-      iconColor: 'text-[#b45309]',
-      trendColor: 'text-[#15803d]'
+      cardBg: 'bg-white',
+      borderColor: 'border-amber-100',
+      iconBg: 'bg-amber-50 text-amber-700',
+      iconColor: 'text-amber-700',
+      trendColor: 'text-amber-700'
     },
     pink: {
-      cardBg: 'bg-[#fff1f2]',
-      borderColor: 'border-[#fecdd3]',
-      iconBg: 'bg-[#ffe4e6]',
-      iconColor: 'text-[#e11d48]',
-      trendColor: 'text-[#e11d48]'
+      cardBg: 'bg-white',
+      borderColor: 'border-rose-100',
+      iconBg: 'bg-rose-50 text-rose-700',
+      iconColor: 'text-rose-700',
+      trendColor: 'text-rose-700'
+    },
+    green: {
+      cardBg: 'bg-white',
+      borderColor: 'border-blue-100',
+      iconBg: 'bg-blue-50 text-[#1E3A8A]',
+      iconColor: 'text-[#1E3A8A]',
+      trendColor: 'text-[#1E3A8A]'
     }
   };
 
-  const style = variantStyles[variant] || variantStyles.green;
+  const style = variantStyles[variant] || variantStyles.blue;
 
   return (
-    <div className={`p-5 rounded-md border ${style.cardBg} ${style.borderColor} transition-all duration-150 hover:shadow-sm ${className}`}>
+    <div className={`p-5 rounded-2xl border ${style.cardBg} ${style.borderColor} shadow-xs hover:shadow-md transition-all duration-200 ${className}`}>
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{title}</p>
-          <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">{value}</h3>
+          <p className="text-[11px] font-normal uppercase tracking-wider text-slate-400">{title}</p>
+          <h3 className="text-2xl sm:text-3xl font-medium tracking-tight text-slate-900">{value}</h3>
         </div>
-        <div className={`w-10 h-10 rounded-md flex items-center justify-center ${style.iconBg} ${style.iconColor} border ${style.borderColor}`}>
+        <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${style.iconBg} ${style.iconColor} border ${style.borderColor} shadow-2xs`}>
           <Icon className="w-5 h-5" />
         </div>
       </div>
 
       {trend && (
-        <div className="mt-3 flex items-center gap-1.5 text-xs font-medium">
-          <span className={`inline-flex items-center gap-0.5 font-bold ${style.trendColor}`}>
+        <div className="mt-3.5 flex items-center gap-1.5 text-xs font-light">
+          <span className={`inline-flex items-center gap-0.5 font-medium ${style.trendColor}`}>
             {trendType === 'up' ? (
               <ArrowUpRight className="w-3.5 h-3.5" />
             ) : (
@@ -67,7 +74,7 @@ export const StatCard = ({
             )}
             {trend}
           </span>
-          <span className="text-slate-500">from last month</span>
+          <span className="text-slate-400">vs last month</span>
         </div>
       )}
     </div>

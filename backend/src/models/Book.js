@@ -111,9 +111,9 @@ const bookSchema = new mongoose.Schema({
     required: [true, 'Book images are required'],
     validate: {
       validator: function (val) {
-        return Array.isArray(val) && val.length >= 3;
+        return Array.isArray(val) && val.length >= 1;
       },
-      message: 'A minimum of 3 photos (front cover, back cover, interior sample) are required for each book'
+      message: 'At least 1 book cover photo is required'
     }
   },
   isBestSeller: {
@@ -127,6 +127,21 @@ const bookSchema = new mongoose.Schema({
     index: true
   },
   isFeatured: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  isHandpicked: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  isAuthorSpotlight: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  isBestAuthor: {
     type: Boolean,
     default: false,
     index: true

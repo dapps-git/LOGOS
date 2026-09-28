@@ -96,15 +96,15 @@ export default function Dashboard() {
         </div>
 
         {/* Middle Row: Recent Orders, Top Selling Books, Quick Actions */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6">
           {/* Recent Orders (5 cols) */}
-          <div className="lg:col-span-5 bg-white rounded-md border border-slate-200 p-5 shadow-2xs flex flex-col justify-between">
+          <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between pb-4 mb-2 border-b border-slate-100">
-                <h3 className="text-sm font-bold text-slate-900">Recent Orders</h3>
+              <div className="flex items-center justify-between pb-3.5 mb-3 border-b border-slate-100">
+                <h3 className="text-sm font-medium text-slate-900">Recent Orders</h3>
                 <Link
                   href="/orders"
-                  className="text-xs font-bold text-emerald-800 hover:text-emerald-900 hover:underline"
+                  className="text-xs font-light text-[#1E3A8A] hover:underline"
                 >
                   View All
                 </Link>
@@ -114,16 +114,16 @@ export default function Dashboard() {
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-100">
-                      <th className="pb-2 font-bold">Order ID</th>
-                      <th className="pb-2 font-bold">Customer</th>
-                      <th className="pb-2 font-bold text-right">Amount</th>
-                      <th className="pb-2 font-bold text-right">Status</th>
+                      <th className="pb-2 font-normal">Order ID</th>
+                      <th className="pb-2 font-normal">Customer</th>
+                      <th className="pb-2 font-normal text-right">Amount</th>
+                      <th className="pb-2 font-normal text-right">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {orders.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="py-8 text-center text-slate-400">
+                        <td colSpan={4} className="py-8 text-center text-slate-400 font-light">
                           No orders placed yet.
                         </td>
                       </tr>
@@ -134,11 +134,13 @@ export default function Dashboard() {
                           onClick={() => setSelectedInvoiceOrder(order)}
                           className="hover:bg-slate-50/80 cursor-pointer transition-colors"
                         >
-                          <td className="py-2.5 font-bold text-slate-800">{order.orderNumber || order._id}</td>
-                          <td className="py-2.5 font-medium text-slate-600 truncate max-w-[120px]">
+                          <td className="py-2.5 font-mono text-[11px] font-medium text-slate-800">
+                            {order.orderNumber || order._id}
+                          </td>
+                          <td className="py-2.5 font-light text-slate-600 truncate max-w-[120px]">
                             {order.customer?.name || order.shippingAddress?.fullName || 'Customer'}
                           </td>
-                          <td className="py-2.5 text-right font-bold text-slate-800">
+                          <td className="py-2.5 text-right font-mono font-medium text-slate-800">
                             ₹{order.finalTotal || order.totalAmount || 0}
                           </td>
                           <td className="py-2.5 text-right">
@@ -156,97 +158,92 @@ export default function Dashboard() {
           </div>
 
           {/* Top Selling Books (4 cols) */}
-          <div className="lg:col-span-4 bg-white rounded-md border border-slate-200 p-5 shadow-2xs flex flex-col justify-between">
+          <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between pb-4 mb-3 border-b border-slate-100">
-                <h3 className="text-sm font-bold text-slate-900">Top Selling Books</h3>
+              <div className="flex items-center justify-between pb-3.5 mb-3 border-b border-slate-100">
+                <h3 className="text-sm font-medium text-slate-900">Top Selling Books</h3>
                 <Link
                   href="/products"
-                  className="text-xs font-bold text-emerald-800 hover:text-emerald-900 hover:underline"
+                  className="text-xs font-light text-[#1E3A8A] hover:underline"
                 >
                   View All
                 </Link>
               </div>
 
               {topBooks.length === 0 ? (
-                <div className="py-8 text-center text-slate-400 text-xs">
+                <div className="py-8 text-center text-slate-400 text-xs font-light">
                   No books in catalog yet.
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {topBooks.map((book) => (
-                    <div key={book._id} className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        {book.images?.[0] ? (
+                  {topBooks.map((book) => {
+                    const cover = book.coverImage || book.image || (book.images && book.images[0]) || '/book1.jpg';
+                    return (
+                      <div key={book._id} className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
                           <img
-                            src={book.images[0]}
-                            alt={book.title}
-                            className="w-9 h-12 object-cover rounded-sm border border-slate-200 flex-shrink-0 shadow-2xs"
+                            src={cover}
+                            alt={book.title || book.name}
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = '/book1.jpg';
+                            }}
+                            className="w-9 h-12 object-cover rounded-lg border border-slate-100 shrink-0 shadow-2xs bg-slate-50"
                           />
-                        ) : (
-                          <div className="w-9 h-12 bg-slate-100 rounded-sm border border-slate-200 flex items-center justify-center flex-shrink-0 text-slate-400 text-[10px]">
-                            <Package className="w-4 h-4" />
+                          <div className="min-w-0">
+                            <p className="text-xs font-normal text-slate-900 truncate">{book.title || book.name}</p>
+                            <p className="text-[10px] text-slate-400 font-light truncate">{book.author || 'Author'}</p>
                           </div>
-                        )}
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-slate-900 truncate">{book.title || book.name}</p>
-                          <p className="text-[10px] text-slate-400 truncate">{book.author || 'Author'}</p>
                         </div>
+                        <span className="text-xs font-mono font-light text-slate-500 whitespace-nowrap">
+                          {book.salesCount || 0} sold
+                        </span>
                       </div>
-                      <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">
-                        {book.salesCount || 0} sold
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
           </div>
 
           {/* Quick Actions (3 cols) */}
-          <div className="lg:col-span-3 bg-white rounded-md border border-slate-200 p-5 shadow-2xs flex flex-col justify-between">
+          <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs flex flex-col justify-between">
             <div>
-              <h3 className="text-sm font-bold text-slate-900 mb-4">Quick Actions</h3>
+              <h3 className="text-sm font-medium text-slate-900 mb-3.5 pb-2 border-b border-slate-100">
+                Quick Actions
+              </h3>
 
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 <Link
                   href="/products/add"
-                  className="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-md bg-[#ede9fe] hover:bg-[#ddd6fe] text-[#6d28d9] font-bold text-xs transition-colors shadow-2xs"
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-blue-50/70 hover:bg-blue-100/70 text-[#1E3A8A] font-medium text-xs transition-colors border border-blue-100/60"
                 >
                   <Plus className="w-4 h-4" />
-                  Add Product
+                  <span>Add New Book</span>
                 </Link>
 
                 <Link
                   href="/banners"
-                  className="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-md bg-[#e0f2fe] hover:bg-[#bae6fd] text-[#0284c7] font-bold text-xs transition-colors shadow-2xs"
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 font-medium text-xs transition-colors border border-slate-200/80"
                 >
-                  <ImageIcon className="w-4 h-4" />
-                  Manage Banners
+                  <ImageIcon className="w-4 h-4 text-[#1E3A8A]" />
+                  <span>Manage Banners</span>
                 </Link>
 
                 <Link
                   href="/inventory"
-                  className="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-md bg-[#dcfce7] hover:bg-[#bbf7d0] text-[#15803d] font-bold text-xs transition-colors shadow-2xs"
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 font-medium text-xs transition-colors border border-slate-200/80"
                 >
-                  <Boxes className="w-4 h-4" />
-                  Check Stock
-                </Link>
-
-                <Link
-                  href="/returns"
-                  className="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-md bg-[#ffedd5] hover:bg-[#fed7aa] text-[#c2410c] font-bold text-xs transition-colors shadow-2xs"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  View Returns
+                  <Boxes className="w-4 h-4 text-[#1E3A8A]" />
+                  <span>Inventory Control</span>
                 </Link>
 
                 <Link
                   href="/invoices"
-                  className="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-md bg-[#f3e8ff] hover:bg-[#e9d5ff] text-[#7e22ce] font-bold text-xs transition-colors shadow-2xs"
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 font-medium text-xs transition-colors border border-slate-200/80"
                 >
-                  <FileText className="w-4 h-4" />
-                  Generate Invoice
+                  <FileText className="w-4 h-4 text-[#1E3A8A]" />
+                  <span>Generate Invoices</span>
                 </Link>
               </div>
             </div>

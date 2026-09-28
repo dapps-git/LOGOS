@@ -154,53 +154,53 @@ export const StoreDataProvider = ({ children }) => {
     }
   }, [customers]);
 
-  // Try fetching fresh data from backend
+  // Fetch fresh data from backend API
+  const fetchAllData = async () => {
+    try {
+      const bookData = await apiClient('/books?limit=1000');
+      if (Array.isArray(bookData?.books)) {
+        setBooks(bookData.books);
+      }
+    } catch {}
+
+    try {
+      const bannerData = await apiClient('/banners/admin/all');
+      if (Array.isArray(bannerData?.banners)) {
+        setBanners(bannerData.banners);
+      }
+    } catch {}
+
+    try {
+      const orderData = await apiClient('/orders/admin/all');
+      if (Array.isArray(orderData?.orders)) {
+        setOrders(orderData.orders);
+      }
+    } catch {}
+
+    try {
+      const couponData = await apiClient('/coupons/admin/all');
+      if (Array.isArray(couponData?.coupons)) {
+        setCoupons(couponData.coupons);
+      }
+    } catch {}
+
+    try {
+      const referralData = await apiClient('/referrals/admin/all');
+      if (Array.isArray(referralData?.referrals)) {
+        setReferrals(referralData.referrals);
+      }
+    } catch {}
+
+    try {
+      const customerData = await apiClient('/auth/admin/customers');
+      if (Array.isArray(customerData?.customers)) {
+        setCustomers(customerData.customers);
+      }
+    } catch {}
+  };
+
   useEffect(() => {
-    const fetchBackendData = async () => {
-      try {
-        const bookData = await apiClient('/books?limit=100');
-        if (Array.isArray(bookData?.books)) {
-          setBooks(bookData.books);
-        }
-      } catch {}
-
-      try {
-        const bannerData = await apiClient('/banners/admin/all');
-        if (Array.isArray(bannerData?.banners)) {
-          setBanners(bannerData.banners);
-        }
-      } catch {}
-
-      try {
-        const orderData = await apiClient('/orders/admin/all');
-        if (Array.isArray(orderData?.orders)) {
-          setOrders(orderData.orders);
-        }
-      } catch {}
-
-      try {
-        const couponData = await apiClient('/coupons/admin/all');
-        if (Array.isArray(couponData?.coupons)) {
-          setCoupons(couponData.coupons);
-        }
-      } catch {}
-
-      try {
-        const referralData = await apiClient('/referrals/admin/all');
-        if (Array.isArray(referralData?.referrals)) {
-          setReferrals(referralData.referrals);
-        }
-      } catch {}
-
-      try {
-        const customerData = await apiClient('/auth/admin/customers');
-        if (Array.isArray(customerData?.customers)) {
-          setCustomers(customerData.customers);
-        }
-      } catch {}
-    };
-
-    fetchBackendData();
+    fetchAllData();
   }, []);
 
   // --- Actions ---
@@ -369,7 +369,9 @@ export const StoreDataProvider = ({ children }) => {
         updatePaymentStatus,
         addCoupon,
         deleteCoupon,
-        updateReturnStatus
+        updateReturnStatus,
+        refreshData: fetchAllData,
+        fetchAllData
       }}
     >
       {children}

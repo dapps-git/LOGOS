@@ -160,23 +160,21 @@ export default function InventoryPage() {
                   filteredBooks.map((book) => {
                     const isOut = (book.stock || 0) === 0;
                     const isLow = book.stock > 0 && book.stock <= 5;
-                    const cover = book.images?.[0];
+                    const cover = book.coverImage || book.image || (book.images && book.images[0]) || '/book1.jpg';
 
                     return (
                       <tr key={book._id} className="hover:bg-slate-50/70 transition-colors">
                         <td className="py-3.5 px-4 align-middle">
                           <div className="flex items-center gap-3">
-                            {cover ? (
-                              <img
-                                src={cover}
-                                alt={book.title || book.name}
-                                className="w-9 h-12 object-cover border border-slate-200 rounded-xs flex-shrink-0"
-                              />
-                            ) : (
-                              <div className="w-9 h-12 bg-slate-100 border border-slate-200 rounded-xs flex items-center justify-center flex-shrink-0 text-slate-400">
-                                <Package className="w-4 h-4" />
-                              </div>
-                            )}
+                            <img
+                              src={cover}
+                              alt={book.title || book.name}
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = '/book1.jpg';
+                              }}
+                              className="w-10 h-14 object-cover border border-slate-200 rounded-lg shadow-2xs bg-slate-50 shrink-0"
+                            />
                             <div className="min-w-0 max-w-xs">
                               <p className="font-bold text-slate-900 truncate">{book.title || book.name}</p>
                               <p className="text-[10px] text-slate-400 mt-0.5 font-mono">SKU: {book.sku || 'N/A'}</p>

@@ -92,7 +92,7 @@ export const Bestsellers = () => {
         </div>
 
         <Link
-          href="/books?sort=bestsellers"
+          href="/products?sort=bestsellers"
           className="p-1.5 text-slate-700 hover:text-slate-950 hover:bg-slate-100 rounded-full transition-all flex-shrink-0 group mb-0.5"
           title="View all books"
         >

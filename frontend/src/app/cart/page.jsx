@@ -70,6 +70,34 @@ export default function CartPage() {
       <Navbar />
 
       <main className="flex-1 max-w-6xl mx-auto w-full px-3.5 sm:px-6 lg:px-8 pt-24 sm:pt-28 pb-16">
+        {/* Sleek Minimal Header */}
+        <div className="flex items-center justify-between gap-3 mb-5 sm:mb-6 pb-3 border-b border-slate-200/80">
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/"
+              className="p-1.5 -ml-1.5 text-slate-500 hover:text-slate-900 rounded-full hover:bg-slate-100 transition-colors"
+              title="Back to store"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+            </Link>
+            <h1 className="text-lg sm:text-xl font-normal text-slate-900 tracking-tight flex items-center gap-2">
+              <span>Shopping Cart</span>
+              <span className="text-[11px] font-mono font-medium px-2 py-0.5 bg-blue-50 text-[#1E3A8A] rounded-full">
+                {itemCount} {itemCount === 1 ? 'item' : 'items'}
+              </span>
+            </h1>
+          </div>
+
+          <Link
+            href="/"
+            className="text-xs font-light text-[#1E3A8A] hover:underline"
+          >
+            Continue Shopping
+          </Link>
+        </div>
+
         {items.length === 0 ? (
           /* Empty Cart State */
           <div className="bg-white rounded-2xl sm:rounded-3xl p-8 sm:p-12 text-center border border-slate-100 shadow-sm max-w-md mx-auto my-8 sm:my-12">
@@ -92,62 +120,87 @@ export default function CartPage() {
         ) : (
           /* Cart Grid */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8">
-            {/* Left Column: Items List */}
-            <div className="lg:col-span-8 space-y-4">
-              {/* Items Card */}
-              <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm divide-y divide-slate-100 overflow-hidden">
-                {items.map((item) => {
-                  const book = item.book || {};
-                  const bookId = book._id || book.id || item.book;
-                  const price = item.price || book.salePrice || book.price || 299;
-                  const original = book.originalPrice || price + 60;
-                  const image = book.coverImage || book.image || (book.images && book.images[0]) || '/book1.jpg';
-                  const title = book.titleMalayalam || book.title || 'LOGOS Book';
-                  const author = book.author || 'LOGOS Publications';
+            {/* Left Column: Items List (Image Left, Details Right) */}
+            <div className="lg:col-span-8 space-y-3.5 sm:space-y-4">
+              {items.map((item) => {
+                const book = item.book || {};
+                const bookId = book._id || book.id || item.book;
+                const price = item.price || book.salePrice || book.price || 299;
+                const original = book.originalPrice || price + 60;
+                const image = book.coverImage || book.image || (book.images && book.images[0]) || '/book1.jpg';
+                const title = book.titleMalayalam || book.title || 'LOGOS Book';
+                const author = book.author || 'LOGOS Publications';
 
-                  return (
-                    <div key={bookId} className="p-3.5 sm:p-5 flex items-start sm:items-center justify-between gap-3 sm:gap-4">
-                      {/* Image & Title */}
-                      <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
-                        <Link
-                          href={`/books/${book.slug || bookId}`}
-                          className="shrink-0 relative w-14 sm:w-16 aspect-3/4 bg-[#f1f3f7] rounded-xl overflow-hidden shadow-xs border border-slate-100"
-                        >
-                          <img
-                            src={image}
-                            alt={title}
-                            onError={(e) => {
-                              e.currentTarget.onerror = null;
-                              e.currentTarget.src = '/book1.jpg';
-                            }}
-                            className="w-full h-full object-cover object-center"
-                          />
-                        </Link>
+                return (
+                  <div
+                    key={bookId}
+                    className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between gap-3.5 sm:gap-6 group"
+                  >
+                    {/* LEFT: Book Cover Image */}
+                    <Link
+                      href={`/books/${book.slug || bookId}`}
+                      className="shrink-0 relative w-20 sm:w-24 aspect-3/4 bg-[#f1f3f7] rounded-xl overflow-hidden border border-slate-100/80 shadow-xs"
+                    >
+                      <img
+                        src={image}
+                        alt={title}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = '/book1.jpg';
+                        }}
+                        className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
+                      />
+                    </Link>
 
-                        <div className="min-w-0 flex-1">
-                          <Link href={`/books/${book.slug || bookId}`}>
-                            <h3 className="text-xs sm:text-sm font-normal text-slate-900 hover:text-[#1E3A8A] transition-colors line-clamp-1">
+                    {/* RIGHT: Product Details & Controls */}
+                    <div className="flex-1 min-w-0 flex flex-col justify-between self-stretch py-0.5">
+                      {/* Top Row: Title, Author, Remove Icon */}
+                      <div>
+                        <div className="flex items-start justify-between gap-2">
+                          <Link href={`/books/${book.slug || bookId}`} className="block">
+                            <h3 className="text-xs sm:text-base font-normal text-slate-900 group-hover:text-[#1E3A8A] transition-colors line-clamp-2 leading-snug">
                               {title}
                             </h3>
                           </Link>
-                          <p className="text-[11px] font-light text-slate-400 truncate mt-0.5">{author}</p>
-                          <div className="flex items-baseline gap-1.5 sm:hidden mt-1">
-                            <span className="text-xs font-medium text-slate-900 font-mono">
-                              ₹{price * item.quantity}
-                            </span>
-                            {original > price && (
-                              <span className="text-[10px] font-light text-slate-400 line-through font-mono">
-                                ₹{original * item.quantity}
-                              </span>
-                            )}
-                          </div>
+                          {/* Remove Trash Button */}
+                          <button
+                            type="button"
+                            onClick={() => removeFromCart(bookId)}
+                            className="p-1 text-slate-400 hover:text-red-500 transition-colors shrink-0"
+                            title="Remove from cart"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
                         </div>
+
+                        <p className="text-[11px] sm:text-xs font-light text-slate-400 truncate mt-0.5">
+                          {author}
+                        </p>
                       </div>
 
-                      {/* Quantity Stepper & Price on Desktop/Mobile */}
-                      <div className="flex items-center gap-3 sm:gap-6 shrink-0">
-                        {/* Stepper */}
-                        <div className="flex items-center border border-slate-200 rounded-xl bg-[#FAFBFD] overflow-hidden">
+                      {/* Bottom Row: Price & Quantity Stepper */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 mt-3 pt-2 border-t border-slate-50">
+                        {/* Price Breakdown */}
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-sm sm:text-base font-medium text-slate-900 font-mono">
+                            ₹{price * item.quantity}
+                          </span>
+                          {original > price && (
+                            <span className="text-[11px] sm:text-xs font-light text-slate-400 line-through font-mono">
+                              ₹{original * item.quantity}
+                            </span>
+                          )}
+                          {item.quantity > 1 && (
+                            <span className="text-[10px] text-slate-400 font-light font-mono ml-1 hidden sm:inline">
+                              (₹{price}/each)
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Quantity Stepper */}
+                        <div className="flex items-center border border-slate-200 rounded-xl bg-[#FAFBFD] overflow-hidden shadow-xs">
                           <button
                             type="button"
                             onClick={() => updateQuantity(bookId, item.quantity - 1)}
@@ -166,35 +219,11 @@ export default function CartPage() {
                             +
                           </button>
                         </div>
-
-                        {/* Desktop Price */}
-                        <div className="text-right hidden sm:block min-w-[70px]">
-                          <div className="text-sm font-medium text-slate-900 font-mono">
-                            ₹{price * item.quantity}
-                          </div>
-                          {original > price && (
-                            <div className="text-[11px] font-light text-slate-400 line-through font-mono">
-                              ₹{original * item.quantity}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Remove */}
-                        <button
-                          type="button"
-                          onClick={() => removeFromCart(bookId)}
-                          className="text-slate-400 hover:text-red-500 transition-colors p-1"
-                          title="Remove item"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Right Column: Coupons & Order Summary */}

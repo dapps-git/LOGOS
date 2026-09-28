@@ -186,29 +186,32 @@ const seedData = async () => {
       }
     }
 
-    // 4. Seed Banners
+    // 4. Seed Banners (Hero Section & Bottom Section with LOGOS logo)
     console.log('[LOGOS Seed] Seeding Banners...');
     const banners = [
       {
-        title: 'Curated Stories for the Discerning Reader',
-        subtitle: 'Explore 10,000+ handpicked editions across genres',
-        description: 'Immerse yourself in world-class fiction, philosophy, and collectors editions.',
-        badge: 'Spring Literary Festival',
-        image: 'https://images.unsplash.com/photo-1507842229450-7622998f4115?auto=format&fit=crop&w=1600&q=80',
-        link: '/books',
-        buttonText: 'Discover All Books',
+        title: 'Discover Timeless Wisdom & Literary Treasures',
+        subtitle: 'Handpicked Malayalam & English masterpieces with fast doorstep delivery',
+        description: 'Immerse yourself in world-class fiction, classic Malayalam literature, philosophy, and collectors editions.',
+        badge: 'Featured Collection',
+        image: '/banner.png',
+        link: '/#new-arrivals',
+        buttonText: 'Explore Books',
         position: 'hero',
-        order: 1
+        order: 1,
+        isActive: true
       },
       {
-        title: 'Epic Science Fiction & Fantasy Collection',
-        subtitle: 'From Dune to The Lord of the Rings',
-        badge: 'Featured Spotlight',
-        image: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=1600&q=80',
-        link: '/books?theme=Sci-Fi',
-        buttonText: 'Explore Sci-Fi',
-        position: 'featured',
-        order: 2
+        title: 'Special Combo Deals & Curated Box Sets',
+        subtitle: 'Complete author sets & philosophical treasures with guaranteed LOGOS authenticity',
+        description: 'Exclusive bundle discounts and free delivery on all curated book box sets.',
+        badge: 'LOGOS Official',
+        image: '/combo_banner.png',
+        link: '/#combo-offer',
+        buttonText: 'View Combo Offers',
+        position: 'bottom',
+        order: 2,
+        isActive: true
       }
     ];
 
