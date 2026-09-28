@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Star, ArrowRight } from 'lucide-react';
+import { Star, ArrowRight, Heart } from 'lucide-react';
 import { fetchBestSellers } from '@/lib/api';
+import { useWishlist } from '@/context/WishlistContext';
 
 const DEFAULT_RECENTLY_VIEWED = [
   {
@@ -50,6 +51,7 @@ const DEFAULT_RECENTLY_VIEWED = [
 
 export const RecentlyViewed = () => {
   const [books, setBooks] = useState(DEFAULT_RECENTLY_VIEWED);
+  const { toggleWishlist, isBookInWishlist } = useWishlist();
 
   useEffect(() => {
     const loadBooks = async () => {
@@ -113,6 +115,37 @@ export const RecentlyViewed = () => {
                 alt={book.title}
                 className="w-full h-full object-cover object-center"
               />
+              {/* Wishlist Heart Button */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  toggleWishlist({
+                    id: book.id,
+                    _id: book.id,
+                    title: book.title,
+                    author: book.author,
+                    price: book.price,
+                    originalPrice: book.originalPrice,
+                    coverImage: book.image,
+                    image: book.image,
+                    slug: book.href ? book.href.replace('/books/', '') : book.id
+                  });
+                }}
+                className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md transition-all shadow-sm z-10 ${
+                  isBookInWishlist(book.id)
+                    ? 'bg-white text-rose-500 shadow-rose-200'
+                    : 'bg-white/80 text-slate-400 hover:text-rose-500 hover:bg-white'
+                }`}
+                title="Wishlist"
+              >
+                <Heart
+                  className={`w-3.5 h-3.5 ${
+                    isBookInWishlist(book.id) ? 'fill-rose-500 text-rose-500' : ''
+                  }`}
+                />
+              </button>
             </div>
 
             {/* Book Metadata & Pricing */}
