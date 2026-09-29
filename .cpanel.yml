@@ -1,0 +1,5 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/tweaxzow/repositories/LOGOS/
+    - /bin/cp -R * $DEPLOYPATH
