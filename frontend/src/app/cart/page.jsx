@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
+import { apiGetAvailableCoupons } from '../../lib/api';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 
@@ -36,17 +37,28 @@ export default function CartPage() {
 
   const [couponInput, setCouponInput] = useState('');
   const [couponMsg, setCouponMsg] = useState(null);
+  const [availableCoupons, setAvailableCoupons] = useState([]);
   const [referralInput, setReferralInput] = useState('');
   const [referralMsg, setReferralMsg] = useState(null);
   const [applyingCoupon, setApplyingCoupon] = useState(false);
   const [applyingReferral, setApplyingReferral] = useState(false);
 
-  const handleApplyCoupon = async (e) => {
-    e.preventDefault();
-    if (!couponInput.trim()) return;
+  useEffect(() => {
+    apiGetAvailableCoupons()
+      .then((data) => {
+        if (Array.isArray(data)) setAvailableCoupons(data);
+        else if (data?.coupons) setAvailableCoupons(data.coupons);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleApplyCoupon = async (e, codeToApply) => {
+    if (e) e.preventDefault();
+    const code = (codeToApply || couponInput).trim().toUpperCase();
+    if (!code) return;
     setApplyingCoupon(true);
     setCouponMsg(null);
-    const res = await applyCouponCode(couponInput.trim().toUpperCase());
+    const res = await applyCouponCode(code);
     setCouponMsg(res);
     setApplyingCoupon(false);
   };
@@ -280,6 +292,48 @@ export default function CartPage() {
                   <p className={`text-[10px] mt-1.5 font-light ${couponMsg.success ? 'text-emerald-600' : 'text-red-500'}`}>
                     {couponMsg.message}
                   </p>
+                )}
+
+                {/* Available Coupons Suggestions */}
+                {!appliedCoupon && availableCoupons.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                      Available Offers
+                    </p>
+                    <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                      {availableCoupons.map((coupon) => (
+                        <div
+                          key={coupon._id || coupon.code}
+                          className="flex items-center justify-between p-2 rounded-xl bg-slate-50 hover:bg-blue-50/50 border border-slate-200/80 transition-all text-left"
+                        >
+                          <div className="min-w-0 pr-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono text-xs font-semibold text-[#1E3A8A] uppercase">
+                                {coupon.code}
+                              </span>
+                              <span className="text-[9px] px-1.5 py-0.2 bg-emerald-100 text-emerald-700 rounded-md font-medium">
+                                {coupon.discountType === 'percentage'
+                                  ? `${coupon.discountValue}% OFF`
+                                  : `₹${coupon.discountValue} OFF`}
+                              </span>
+                            </div>
+                            {coupon.minOrderAmount > 0 && (
+                              <p className="text-[9px] text-slate-400">
+                                Min order: ₹{coupon.minOrderAmount}
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleApplyCoupon(null, coupon.code)}
+                            className="px-2.5 py-1 bg-white hover:bg-[#1E3A8A] hover:text-white border border-slate-200 hover:border-[#1E3A8A] text-[#1E3A8A] text-[10px] font-medium rounded-lg transition-all shadow-2xs shrink-0"
+                          >
+                            Apply
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
 

@@ -111,47 +111,48 @@ export const StoreDataProvider = ({ children }) => {
     return initialMockCustomers;
   });
 
+  // Safe localStorage helper to prevent QuotaExceededError
+  const safeSetItem = (key, data) => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch (e) {
+      console.warn(`[StoreDataContext] LocalStorage quota reached for ${key}. Silently continuing with in-memory state.`);
+      // If quota exceeded, selectively clear heavy cached images to free up space
+      try {
+        localStorage.removeItem('logos_admin_banners');
+        localStorage.removeItem('logos_admin_books');
+      } catch {}
+    }
+  };
+
   // Sync to localStorage
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('logos_admin_books', JSON.stringify(books));
-    }
+    safeSetItem('logos_admin_books', books);
   }, [books]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('logos_admin_banners', JSON.stringify(banners));
-    }
+    safeSetItem('logos_admin_banners', banners);
   }, [banners]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('logos_admin_orders', JSON.stringify(orders));
-    }
+    safeSetItem('logos_admin_orders', orders);
   }, [orders]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('logos_admin_coupons', JSON.stringify(coupons));
-    }
+    safeSetItem('logos_admin_coupons', coupons);
   }, [coupons]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('logos_admin_referrals', JSON.stringify(referrals));
-    }
+    safeSetItem('logos_admin_referrals', referrals);
   }, [referrals]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('logos_admin_returns', JSON.stringify(returnsList));
-    }
+    safeSetItem('logos_admin_returns', returnsList);
   }, [returnsList]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('logos_admin_customers', JSON.stringify(customers));
-    }
+    safeSetItem('logos_admin_customers', customers);
   }, [customers]);
 
   // Fetch fresh data from backend API

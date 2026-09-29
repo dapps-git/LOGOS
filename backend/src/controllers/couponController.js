@@ -91,6 +91,14 @@ const validateCoupon = async (req, res) => {
     return res.json({
       success: true,
       message: `Coupon applied: ₹${discountAmount} discount`,
+      coupon: {
+        code: coupon.code,
+        discountType: coupon.discountType,
+        discountValue: coupon.discountValue,
+        maxDiscount: coupon.maxDiscount,
+        minOrderValue: coupon.minOrderValue,
+        isWelcomeCoupon: coupon.isWelcomeCoupon
+      },
       code: coupon.code,
       discountType: coupon.discountType,
       discountValue: coupon.discountValue,

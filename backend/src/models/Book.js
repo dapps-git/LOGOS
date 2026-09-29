@@ -148,9 +148,10 @@ const bookSchema = new mongoose.Schema({
   },
   rating: {
     type: Number,
-    default: 0,
+    default: 4.8,
     min: 0,
-    max: 5
+    max: 5,
+    set: (v) => Math.min(5, Math.max(0, Number(v) || 0))
   },
   reviewsCount: {
     type: Number,

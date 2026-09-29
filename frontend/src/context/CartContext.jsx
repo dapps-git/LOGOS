@@ -154,12 +154,19 @@ export function CartProvider({ children }) {
   const applyCouponCode = async (code) => {
     try {
       const res = await apiValidateCoupon(code, subtotal);
-      if (res && res.coupon) {
-        setAppliedCoupon(res.coupon);
+      const couponObj = res.coupon || {
+        code: res.code || code,
+        discountType: res.discountType,
+        discountValue: res.discountValue,
+        discountAmount: res.discountAmount,
+        maxDiscount: res.maxDiscount
+      };
+      if (res && (res.success || res.coupon || res.code)) {
+        setAppliedCoupon(couponObj);
         setAppliedReferral(null); // Mutually exclusive or priority
-        return { success: true, message: `Coupon ${code} applied successfully!` };
+        return { success: true, message: res.message || `Coupon ${code} applied successfully!` };
       }
-      return { success: false, message: 'Invalid coupon code' };
+      return { success: false, message: res.message || 'Invalid coupon code' };
     } catch (err) {
       return { success: false, message: err.message || 'Coupon could not be applied' };
     }

@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const Customer = require('../models/Customer');
 const Admin = require('../models/Admin');
 const Referral = require('../models/Referral');
+const sendEmail = require('../utils/sendEmail');
 
 const generateToken = (id, role = 'customer') => {
   return jwt.sign({ id, role }, process.env.JWT_SECRET, {
@@ -325,11 +326,17 @@ const forgotPassword = async (req, res) => {
     customer.resetPasswordOTPExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
     await customer.save();
 
-    // In development or production, return OTP success
+    // Send OTP via Nodemailer
+    await sendEmail({
+      email: customer.email,
+      otp,
+      subject: 'LOGOS Books - Your Password Reset OTP',
+      text: `Your LOGOS Books password reset verification code is: ${otp}. It is valid for 15 minutes.`
+    });
+
     return res.json({
       success: true,
-      message: 'Reset OTP generated successfully',
-      // For immediate ease of use in local/development environments
+      message: 'Password reset OTP has been sent to your email address',
       otpPreview: process.env.NODE_ENV !== 'production' ? otp : undefined
     });
   } catch (error) {

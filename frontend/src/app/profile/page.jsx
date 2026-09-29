@@ -17,7 +17,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const { user, loading: authLoading, logout, updateProfile, addAddress, deleteAddress } = useAuth();
 
-  const [activeTab, setActiveTab] = useState('orders'); // 'orders', 'profile', 'addresses', 'referrals', 'coupons'
+  const [activeTab, setActiveTab] = useState('orders'); // 'orders', 'profile', 'addresses'
   
   // Orders State
   const [orders, setOrders] = useState([]);
@@ -25,20 +25,13 @@ export default function ProfilePage() {
   const [selectedOrderForCancel, setSelectedOrderForCancel] = useState(null);
   const [cancelReason, setCancelReason] = useState('');
 
-  // Referral State
-  const [referralSummary, setReferralSummary] = useState(null);
-  const [copiedCode, setCopiedCode] = useState(false);
-
-  // Coupons State
-  const [coupons, setCoupons] = useState([]);
-
   // Profile Form
   const [profileForm, setProfileForm] = useState({
     name: '',
-    phone: '',
-    avatar: ''
+    phone: ''
   });
   const [profileMsg, setProfileMsg] = useState(null);
+  const [savingProfile, setSavingProfile] = useState(false);
 
   // Address Form Modal
   const [showAddressModal, setShowAddressModal] = useState(false);
@@ -62,8 +55,7 @@ export default function ProfilePage() {
     if (user) {
       setProfileForm({
         name: user.name || '',
-        phone: user.phone || '',
-        avatar: user.avatar || ''
+        phone: user.phone || ''
       });
       loadData();
     }
@@ -72,16 +64,10 @@ export default function ProfilePage() {
   const loadData = async () => {
     setOrdersLoading(true);
     try {
-      const [ordersData, refData, coupData] = await Promise.all([
-        apiGetMyOrders().catch(() => []),
-        apiGetMyReferralSummary().catch(() => null),
-        apiGetAvailableCoupons().catch(() => [])
-      ]);
+      const ordersData = await apiGetMyOrders().catch(() => []);
       setOrders(ordersData || []);
-      setReferralSummary(refData || null);
-      setCoupons(coupData || []);
     } catch (err) {
-      console.warn('Error loading dashboard data:', err);
+      console.warn('Error loading orders:', err);
     } finally {
       setOrdersLoading(false);
     }
@@ -90,11 +76,14 @@ export default function ProfilePage() {
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     setProfileMsg(null);
+    setSavingProfile(true);
     try {
       await updateProfile(profileForm);
       setProfileMsg({ success: true, text: 'Profile updated successfully!' });
     } catch (err) {
       setProfileMsg({ success: false, text: err.message || 'Failed to update' });
+    } finally {
+      setSavingProfile(false);
     }
   };
 
@@ -130,183 +119,263 @@ export default function ProfilePage() {
     }
   };
 
-  const copyReferralCode = () => {
-    if (user?.referralCode) {
-      navigator.clipboard.writeText(user.referralCode);
-      setCopiedCode(true);
-      setTimeout(() => setCopiedCode(false), 2000);
-    }
-  };
-
   if (authLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
-        <div className="w-8 h-8 border-3 border-[#1E3A8A]/30 border-t-[#1E3A8A] rounded-full animate-spin" />
+        <div className="w-8 h-8 border-3 border-[#1044A5]/30 border-t-[#1044A5] rounded-full animate-spin" />
       </div>
     );
   }
+
+  const userInitial = user.name ? user.name.trim().charAt(0).toUpperCase() : 'U';
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAFC]">
       <Navbar />
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-28 pb-16">
-        {/* User Greeting & Header */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-100 shadow-sm mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-blue-50 text-[#1E3A8A] flex items-center justify-center text-xl font-medium border border-blue-100">
-              {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-normal text-slate-900">
-                Hello, {user.name || 'Reader'}
-              </h1>
-              <p className="text-xs font-light text-slate-500 mt-0.5">{user.email}</p>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-[11px] font-mono font-medium px-2.5 py-0.5 bg-blue-50 text-[#1E3A8A] rounded-full">
-                  Code: {user.referralCode || 'LOGOS-READER'}
-                </span>
-                <span className="text-[11px] font-light text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                  ₹{user.referralRewardBalance || 0} Rewards Balance
-                </span>
+      <main className="flex-1 max-w-2xl sm:max-w-3xl mx-auto w-full px-4 sm:px-6 pt-24 sm:pt-28 pb-16">
+        {/* 1. User Profile Greeting Card */}
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 border border-slate-100/90 shadow-sm relative mb-5 sm:mb-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3.5 sm:gap-4">
+              {/* Circular Initial Avatar */}
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#EBF3FF] text-[#1044A5] flex items-center justify-center text-xl sm:text-2xl font-semibold shrink-0">
+                {userInitial}
+              </div>
+
+              {/* Name & Email */}
+              <div className="min-w-0">
+                <h1 className="text-base sm:text-lg font-semibold text-slate-800 tracking-tight truncate">
+                  Hello, {user.name || 'Reader'}
+                </h1>
+                <p className="text-xs sm:text-sm text-slate-400 font-normal truncate mt-0.5">
+                  {user.email}
+                </p>
               </div>
             </div>
-          </div>
 
+            {/* Sign Out Button */}
+            <button
+              type="button"
+              onClick={logout}
+              className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 transition-colors pt-1"
+            >
+              <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 2. Horizontal Tab Navigation Pills */}
+        <div className="flex items-center gap-2 sm:gap-3 mb-6 sm:mb-7 overflow-x-auto no-scrollbar">
+          {/* Tab 1: My Orders */}
           <button
             type="button"
-            onClick={logout}
-            className="self-start sm:self-auto px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-xl transition-all"
+            onClick={() => setActiveTab('orders')}
+            className={`px-5 py-2.5 rounded-full text-xs font-medium flex items-center gap-2 transition-all whitespace-nowrap ${
+              activeTab === 'orders'
+                ? 'bg-[#1044A5] text-white shadow-xs'
+                : 'bg-[#EEF5FF] text-slate-600 hover:text-slate-900'
+            }`}
           >
-            Sign Out
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+            <span>My Orders</span>
+          </button>
+
+          {/* Tab 2: Personal Info */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('profile')}
+            className={`px-5 py-2.5 rounded-full text-xs font-medium flex items-center gap-2 transition-all whitespace-nowrap ${
+              activeTab === 'profile'
+                ? 'bg-[#1044A5] text-white shadow-xs'
+                : 'bg-[#EEF5FF] text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <span>Personal Info</span>
+          </button>
+
+          {/* Tab 3: Delivery */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('addresses')}
+            className={`px-5 py-2.5 rounded-full text-xs font-medium flex items-center gap-2 transition-all whitespace-nowrap ${
+              activeTab === 'addresses'
+                ? 'bg-[#1044A5] text-white shadow-xs'
+                : 'bg-[#EEF5FF] text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span>Delivery</span>
           </button>
         </div>
 
-        {/* Dashboard Navigation Tabs */}
-        <div className="flex overflow-x-auto gap-2 pb-2 mb-8 no-scrollbar border-b border-slate-200">
-          {[
-            { id: 'orders', label: 'My Orders', icon: '📦' },
-            { id: 'profile', label: 'Personal Info', icon: '👤' },
-            { id: 'addresses', label: 'Delivery Addresses', icon: '📍' },
-            { id: 'referrals', label: 'Referrals & Rewards', icon: '🎁' },
-            { id: 'coupons', label: 'Coupons & Vouchers', icon: '🏷️' }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-5 py-3 rounded-2xl text-xs font-normal whitespace-nowrap transition-all flex items-center gap-2 ${
-                activeTab === tab.id
-                  ? 'bg-[#1E3A8A] text-white shadow-md shadow-blue-900/10'
-                  : 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-100'
-              }`}
-            >
-              <span>{tab.icon}</span>
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Tab 1: Orders */}
+        {/* 3. Tab Content */}
+        {/* TAB 1: MY ORDERS */}
         {activeTab === 'orders' && (
-          <div className="space-y-4">
-            <h2 className="text-base font-normal text-slate-900 mb-4">
-              Your Orders ({orders.length})
-            </h2>
+          <div>
+            <div className="mb-4">
+              <h2 className="text-xl font-bold text-slate-800 tracking-tight">My Orders</h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {ordersLoading ? 'Loading...' : `${orders.length} ${orders.length === 1 ? 'order' : 'orders'}`}
+              </p>
+            </div>
 
             {ordersLoading ? (
-              <div className="p-12 text-center text-xs font-light text-slate-400">Loading orders...</div>
-            ) : orders.length === 0 ? (
               <div className="bg-white rounded-3xl p-12 text-center border border-slate-100 shadow-sm">
-                <p className="text-sm font-light text-slate-500 mb-4">You have not placed any book orders yet.</p>
+                <div className="w-6 h-6 border-2 border-[#1044A5]/30 border-t-[#1044A5] rounded-full animate-spin mx-auto mb-2" />
+                <p className="text-xs text-slate-400">Loading your orders...</p>
+              </div>
+            ) : orders.length === 0 ? (
+              /* Empty Orders State matching Screenshot */
+              <div className="bg-white rounded-3xl p-8 sm:p-14 text-center border border-slate-100/90 shadow-sm flex flex-col items-center justify-center">
+                {/* Book Stack Illustration */}
+                <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-full bg-[#EFF5FF] flex items-center justify-center mb-6 relative">
+                  <svg className="w-20 h-20 sm:w-24 sm:h-24" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    {/* Sparkle 1 */}
+                    <path d="M30 40L32 32L40 30L32 28L30 20L28 28L20 30L28 32L30 40Z" fill="#3B82F6" opacity="0.6"/>
+                    {/* Sparkle 2 */}
+                    <path d="M90 28L91.5 22L98 20.5L91.5 19L90 13L88.5 19L82 20.5L88.5 22L90 28Z" fill="#60A5FA" opacity="0.8"/>
+                    {/* Decorative Leaf */}
+                    <path d="M85 58C92 50 100 58 100 70C92 70 85 64 85 58Z" fill="#93C5FD" opacity="0.7"/>
+                    <path d="M88 64C94 56 102 62 102 72" stroke="#60A5FA" strokeWidth="1.5" strokeLinecap="round"/>
+                    
+                    {/* Book 1 (Top) */}
+                    <rect x="42" y="42" width="36" height="8" rx="2" fill="#1D4ED8"/>
+                    <path d="M44 44H76V48H44z" fill="#3B82F6"/>
+                    <rect x="74" y="43" width="3" height="6" rx="1" fill="#FFFFFF"/>
+                    
+                    {/* Book 2 (Middle) */}
+                    <rect x="36" y="52" width="48" height="11" rx="2.5" fill="#1E40AF"/>
+                    <path d="M38 54H82V61H38z" fill="#2563EB"/>
+                    <rect x="80" y="54" width="3" height="7" rx="1" fill="#FFFFFF"/>
+                    
+                    {/* Book 3 (Bottom) */}
+                    <rect x="30" y="65" width="60" height="14" rx="3" fill="#1E3A8A"/>
+                    <path d="M32 67H88V77H32z" fill="#1D4ED8"/>
+                    <rect x="86" y="68" width="3" height="8" rx="1" fill="#FFFFFF"/>
+                    {/* Ribbon */}
+                    <path d="M50 77V85L53 82L56 85V77H50Z" fill="#60A5FA"/>
+                  </svg>
+                </div>
+
+                <h3 className="text-lg sm:text-xl font-bold text-slate-800 mb-1.5">
+                  No orders yet
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-400 max-w-xs mb-6 leading-relaxed">
+                  Your bookshelf is waiting for its first adventure.
+                </p>
+
                 <Link
                   href="/"
-                  className="inline-block px-6 py-3 bg-[#1E3A8A] text-white rounded-full text-xs font-medium"
+                  className="inline-flex items-center gap-2 px-7 py-3 bg-[#1044A5] hover:bg-[#0c3986] text-white rounded-full text-xs sm:text-sm font-medium transition-all shadow-md shadow-blue-900/15 active:scale-95"
                 >
-                  Start Shopping
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  <span>Start Shopping</span>
                 </Link>
               </div>
             ) : (
-              orders.map((order) => (
-                <div
-                  key={order._id}
-                  className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
-                    <div>
-                      <span className="text-xs font-mono font-medium text-slate-900">
-                        Order #{order.orderId || order._id.slice(-6).toUpperCase()}
-                      </span>
-                      <p className="text-[11px] font-light text-slate-400 mt-0.5">
-                        Placed on {new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </p>
-                    </div>
+              /* Order List Cards */
+              <div className="space-y-4">
+                {orders.map((order) => {
+                  const itemsList = order.items || order.orderItems || [];
+                  const orderNum = order.orderNumber || order.orderId || order._id?.slice(-6).toUpperCase();
+                  const orderDate = new Date(order.createdAt).toLocaleDateString('en-IN', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric'
+                  });
 
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`text-xs font-medium px-3 py-1 rounded-full capitalize ${
-                          order.orderStatus === 'delivered'
-                            ? 'bg-emerald-50 text-emerald-700'
-                            : order.orderStatus === 'cancelled'
-                            ? 'bg-rose-50 text-rose-700'
-                            : order.orderStatus === 'shipped'
-                            ? 'bg-indigo-50 text-indigo-700'
-                            : 'bg-amber-50 text-amber-700'
-                        }`}
-                      >
-                        {order.orderStatus || 'Processing'}
-                      </span>
-                      <span className="text-sm font-medium font-mono text-slate-900">
-                        ₹{order.totalPrice}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Order Items */}
-                  <div className="space-y-3">
-                    {order.orderItems?.map((item, idx) => (
-                      <div key={idx} className="flex items-center justify-between text-xs font-light text-slate-700">
-                        <div className="flex items-center gap-3">
-                          <span className="w-6 h-6 rounded bg-slate-100 flex items-center justify-center text-[10px] font-mono text-slate-500">
-                            {item.quantity}x
+                  return (
+                    <div
+                      key={order._id}
+                      className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 border border-slate-100 shadow-sm space-y-4"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
+                        <div>
+                          <span className="text-xs font-mono font-medium text-slate-900">
+                            Order #{orderNum}
                           </span>
-                          <span className="font-normal text-slate-900">{item.title}</span>
-                          <span className="text-slate-400">by {item.author}</span>
+                          <p className="text-[11px] text-slate-400 mt-0.5">Placed on {orderDate}</p>
                         </div>
-                        <span className="font-mono">₹{item.price * item.quantity}</span>
+
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={`text-xs font-medium px-3 py-1 rounded-full capitalize ${
+                              order.orderStatus === 'delivered'
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : order.orderStatus === 'cancelled'
+                                ? 'bg-rose-50 text-rose-700'
+                                : order.orderStatus === 'shipped'
+                                ? 'bg-indigo-50 text-indigo-700'
+                                : 'bg-amber-50 text-amber-700'
+                            }`}
+                          >
+                            {order.orderStatus || 'Processing'}
+                          </span>
+                          <span className="text-sm font-medium font-mono text-slate-900">
+                            ₹{order.totalAmount || order.totalPrice}
+                          </span>
+                        </div>
                       </div>
-                    ))}
-                  </div>
 
-                  {/* Footer & Actions */}
-                  <div className="pt-3 border-t border-slate-50 flex items-center justify-between">
-                    <p className="text-[11px] font-light text-slate-500">
-                      Payment: <span className="uppercase font-medium text-slate-700">{order.paymentMethod}</span> ({order.paymentStatus || 'Pending'})
-                    </p>
+                      {/* Items List */}
+                      <div className="space-y-2.5">
+                        {itemsList.map((item, idx) => (
+                          <div key={idx} className="flex items-center justify-between text-xs text-slate-700">
+                            <div className="flex items-center gap-2.5 truncate pr-2">
+                              <span className="w-5 h-5 rounded bg-slate-100 flex items-center justify-center text-[10px] font-mono text-slate-500 shrink-0">
+                                {item.quantity}x
+                              </span>
+                              <span className="font-medium text-slate-800 truncate">{item.title}</span>
+                              {item.author && <span className="text-slate-400 text-[11px] shrink-0">by {item.author}</span>}
+                            </div>
+                            <span className="font-mono text-slate-800 shrink-0">₹{item.price * item.quantity}</span>
+                          </div>
+                        ))}
+                      </div>
 
-                    {order.orderStatus !== 'cancelled' && order.orderStatus !== 'delivered' && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedOrderForCancel(order)}
-                        className="text-xs text-rose-600 hover:underline font-light"
-                      >
-                        Cancel Order / Return Request
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))
+                      {/* Footer & Actions */}
+                      <div className="pt-3 border-t border-slate-50 flex items-center justify-between">
+                        <p className="text-[11px] text-slate-500">
+                          Payment: <span className="uppercase font-medium text-slate-700">{order.paymentMethod}</span> ({order.paymentStatus || 'Pending'})
+                        </p>
+
+                        <Link
+                          href={`/orders/${order._id}`}
+                          className="text-xs text-[#1044A5] hover:underline font-medium"
+                        >
+                          View Details →
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         )}
 
-        {/* Tab 2: Personal Profile */}
+        {/* TAB 2: PERSONAL INFO */}
         {activeTab === 'profile' && (
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-100 shadow-sm max-w-2xl">
-            <h2 className="text-base font-normal text-slate-900 mb-6">Personal Profile Details</h2>
+          <div className="bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 border border-slate-100 shadow-sm">
+            <h2 className="text-lg font-bold text-slate-800 mb-5">Personal Information</h2>
 
             {profileMsg && (
               <div
-                className={`mb-6 p-3.5 rounded-xl text-xs ${
+                className={`mb-5 p-3.5 rounded-xl text-xs ${
                   profileMsg.success
                     ? 'bg-emerald-50 border border-emerald-100 text-emerald-700'
                     : 'bg-rose-50 border border-rose-100 text-rose-700'
@@ -316,9 +385,9 @@ export default function ProfilePage() {
               </div>
             )}
 
-            <form onSubmit={handleUpdateProfile} className="space-y-4">
+            <form onSubmit={handleUpdateProfile} className="space-y-4 max-w-md">
               <div>
-                <label className="block text-xs font-normal text-slate-700 mb-1.5 uppercase tracking-wider">
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider">
                   Full Name
                 </label>
                 <input
@@ -326,24 +395,25 @@ export default function ProfilePage() {
                   required
                   value={profileForm.name}
                   onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                  className="w-full px-4 py-3 bg-[#FAFBFD] border border-slate-200 rounded-xl text-xs font-light text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20 focus:border-[#1E3A8A]"
+                  className="w-full px-4 py-2.5 bg-[#FAFBFD] border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 focus:border-[#1044A5]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-normal text-slate-700 mb-1.5 uppercase tracking-wider">
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider">
                   Email Address
                 </label>
                 <input
                   type="email"
                   disabled
                   value={user.email}
-                  className="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-xs font-light text-slate-500 cursor-not-allowed"
+                  className="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-500 cursor-not-allowed"
                 />
+                <span className="text-[10px] text-slate-400 mt-1 block">Email address cannot be changed.</span>
               </div>
 
               <div>
-                <label className="block text-xs font-normal text-slate-700 mb-1.5 uppercase tracking-wider">
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider">
                   Phone Number
                 </label>
                 <input
@@ -351,60 +421,71 @@ export default function ProfilePage() {
                   value={profileForm.phone}
                   onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
                   placeholder="+91 98765 43210"
-                  className="w-full px-4 py-3 bg-[#FAFBFD] border border-slate-200 rounded-xl text-xs font-light text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20 focus:border-[#1E3A8A]"
+                  className="w-full px-4 py-2.5 bg-[#FAFBFD] border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 focus:border-[#1044A5]"
                 />
               </div>
 
               <button
                 type="submit"
-                className="py-3.5 px-6 bg-[#1E3A8A] hover:bg-[#152e72] text-white rounded-xl text-xs font-medium tracking-wide transition-all shadow-md shadow-blue-900/10"
+                disabled={savingProfile}
+                className="py-2.5 px-6 bg-[#1044A5] hover:bg-[#0c3986] text-white rounded-xl text-xs font-medium tracking-wide transition-all shadow-md shadow-blue-900/10 disabled:opacity-50"
               >
-                Save Changes
+                {savingProfile ? 'Saving...' : 'Save Changes'}
               </button>
             </form>
           </div>
         )}
 
-        {/* Tab 3: Saved Addresses */}
+        {/* TAB 3: DELIVERY ADDRESSES */}
         {activeTab === 'addresses' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-normal text-slate-900">Saved Delivery Addresses</h2>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <h2 className="text-xl font-bold text-slate-800 tracking-tight">Delivery Addresses</h2>
+                <p className="text-xs text-slate-400 mt-0.5">Manage your saved shipping addresses</p>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowAddressModal(true)}
-                className="px-4 py-2.5 bg-[#1E3A8A] hover:bg-[#152e72] text-white rounded-xl text-xs font-medium"
+                className="px-4 py-2 bg-[#1044A5] hover:bg-[#0c3986] text-white rounded-xl text-xs font-medium transition-all shadow-xs"
               >
-                + Add New Address
+                + Add Address
               </button>
             </div>
 
             {user.addresses?.length === 0 ? (
-              <div className="bg-white rounded-3xl p-8 text-center border border-slate-100">
-                <p className="text-xs font-light text-slate-500">No saved addresses found.</p>
+              <div className="bg-white rounded-3xl p-10 text-center border border-slate-100 shadow-sm">
+                <p className="text-xs text-slate-400 mb-3">No saved addresses found.</p>
+                <button
+                  type="button"
+                  onClick={() => setShowAddressModal(true)}
+                  className="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-xl transition-all"
+                >
+                  Add Your First Address
+                </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {user.addresses?.map((addr) => (
                   <div
                     key={addr._id}
-                    className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col justify-between"
+                    className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-sm font-medium text-slate-900">{addr.fullName}</h3>
+                        <h3 className="text-xs font-semibold text-slate-900">{addr.fullName}</h3>
                         <button
                           type="button"
                           onClick={() => deleteAddress(addr._id)}
-                          className="text-xs text-rose-500 hover:underline font-light"
+                          className="text-xs text-rose-500 hover:underline"
                         >
                           Delete
                         </button>
                       </div>
-                      <p className="text-xs font-light text-slate-600 leading-relaxed">
+                      <p className="text-xs text-slate-600 leading-relaxed">
                         {addr.streetAddress}, {addr.city}, {addr.state} - {addr.postalCode}
                       </p>
-                      <p className="text-xs font-light text-slate-500 mt-2">Phone: {addr.phone}</p>
+                      <p className="text-xs text-slate-400 mt-2">Phone: {addr.phone}</p>
                     </div>
                   </div>
                 ))}
@@ -412,243 +493,99 @@ export default function ProfilePage() {
             )}
           </div>
         )}
+      </main>
 
-        {/* Tab 4: Referral & Rewards Hub */}
-        {activeTab === 'referrals' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <div className="lg:col-span-6 bg-gradient-to-br from-blue-900 to-indigo-950 text-white rounded-3xl p-8 shadow-xl">
-              <span className="text-[11px] uppercase tracking-widest text-blue-200 font-medium block mb-2">
-                REFERRAL PROGRAM
-              </span>
-              <h2 className="text-2xl font-normal mb-3">Invite Friends & Earn Points</h2>
-              <p className="text-xs font-light text-blue-100 leading-relaxed mb-6">
-                Share your unique code with fellow book lovers. They get <strong>15% OFF</strong> their first order, and you earn <strong>₹50 reward credits</strong> on their successful delivery!
-              </p>
+      {/* Address Form Modal */}
+      {showAddressModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <h3 className="text-sm font-semibold text-slate-900">Add New Delivery Address</h3>
+              <button
+                type="button"
+                onClick={() => setShowAddressModal(false)}
+                className="text-slate-400 hover:text-slate-600 text-base"
+              >
+                ✕
+              </button>
+            </div>
 
-              {/* Code Box */}
-              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 flex items-center justify-between">
+            <form onSubmit={handleAddNewAddress} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-[11px] font-medium text-slate-700 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={newAddr.fullName}
+                  onChange={(e) => setNewAddr({ ...newAddr, fullName: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-medium text-slate-700 mb-1">Phone Number</label>
+                <input
+                  type="tel"
+                  required
+                  value={newAddr.phone}
+                  onChange={(e) => setNewAddr({ ...newAddr, phone: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-medium text-slate-700 mb-1">Street Address</label>
+                <input
+                  type="text"
+                  required
+                  value={newAddr.streetAddress}
+                  onChange={(e) => setNewAddr({ ...newAddr, streetAddress: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <span className="text-[10px] text-blue-200 uppercase block">Your Referral Code</span>
-                  <span className="text-lg font-mono font-bold tracking-wider">{user.referralCode || 'LOGOS-FRIEND'}</span>
+                  <label className="block text-[11px] font-medium text-slate-700 mb-1">City</label>
+                  <input
+                    type="text"
+                    required
+                    value={newAddr.city}
+                    onChange={(e) => setNewAddr({ ...newAddr, city: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl"
+                  />
                 </div>
-                <button
-                  type="button"
-                  onClick={copyReferralCode}
-                  className="px-4 py-2 bg-white text-[#1E3A8A] rounded-xl text-xs font-medium hover:bg-blue-50 transition-all"
-                >
-                  {copiedCode ? '✓ Copied!' : 'Copy Code'}
-                </button>
-              </div>
-
-              {/* Balance Box */}
-              <div className="mt-6 pt-6 border-t border-white/10 flex justify-between items-center">
                 <div>
-                  <span className="text-xs text-blue-200 font-light">Available Wallet Balance</span>
-                  <div className="text-2xl font-mono font-bold text-emerald-300">₹{user.referralRewardBalance || 0}</div>
-                </div>
-                <span className="text-xs font-light text-blue-200">
-                  {user.successfulReferralsCount || 0} Friends Joined
-                </span>
-              </div>
-            </div>
-
-            <div className="lg:col-span-6 bg-white rounded-3xl p-8 border border-slate-100 shadow-sm">
-              <h3 className="text-base font-normal text-slate-900 mb-4">How It Works</h3>
-              <div className="space-y-4 text-xs font-light text-slate-600">
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-blue-50 text-[#1E3A8A] flex items-center justify-center font-bold text-xs shrink-0">1</div>
-                  <p><strong>Share your code</strong> with friends via WhatsApp, social media, or email.</p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-blue-50 text-[#1E3A8A] flex items-center justify-center font-bold text-xs shrink-0">2</div>
-                  <p>They enter your referral code during signup or checkout to unlock <strong>15% OFF</strong>.</p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-blue-50 text-[#1E3A8A] flex items-center justify-center font-bold text-xs shrink-0">3</div>
-                  <p>You automatically receive ₹50 reward credits directly to your LOGOS wallet after their order is delivered!</p>
+                  <label className="block text-[11px] font-medium text-slate-700 mb-1">Postal Code</label>
+                  <input
+                    type="text"
+                    required
+                    value={newAddr.postalCode}
+                    onChange={(e) => setNewAddr({ ...newAddr, postalCode: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl"
+                  />
                 </div>
               </div>
-            </div>
-          </div>
-        )}
 
-        {/* Tab 5: Coupons */}
-        {activeTab === 'coupons' && (
-          <div className="space-y-4">
-            <h2 className="text-base font-normal text-slate-900 mb-4">Available Discount Vouchers</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {[
-                { code: 'LOGOS10', discount: '10% OFF', desc: 'Valid on all orders above ₹499' },
-                { code: 'WELCOME15', discount: '15% OFF', desc: 'Special discount for first time readers' },
-                { code: 'READMORE', discount: 'Flat ₹50 OFF', desc: 'Valid on any 3 or more books combo' }
-              ].map((c) => (
-                <div
-                  key={c.code}
-                  className="bg-white rounded-3xl p-5 border border-dashed border-blue-200 shadow-sm flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-mono font-bold text-[#1E3A8A] bg-blue-50 px-2.5 py-1 rounded-lg">
-                        {c.code}
-                      </span>
-                      <span className="text-xs font-medium text-emerald-600">{c.discount}</span>
-                    </div>
-                    <p className="text-xs font-light text-slate-500 mt-2">{c.desc}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(c.code);
-                      alert(`Coupon ${c.code} copied! Apply at cart.`);
-                    }}
-                    className="mt-4 w-full py-2 bg-[#FAFBFD] hover:bg-slate-100 text-slate-700 text-xs font-normal rounded-xl border border-slate-200"
-                  >
-                    Copy Coupon
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Address Modal */}
-        {showAddressModal && (
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-100">
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-base font-normal text-slate-900">Add Delivery Address</h3>
+              <div className="pt-3 flex gap-2">
                 <button
                   type="button"
                   onClick={() => setShowAddressModal(false)}
-                  className="text-slate-400 hover:text-slate-600"
+                  className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-medium"
                 >
-                  ✕
+                  Cancel
                 </button>
-              </div>
-
-              <form onSubmit={handleAddNewAddress} className="space-y-3.5">
-                <div>
-                  <label className="block text-xs font-normal text-slate-700 mb-1">Full Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={newAddr.fullName}
-                    onChange={(e) => setNewAddr({ ...newAddr, fullName: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-[#FAFBFD] border border-slate-200 rounded-xl text-xs text-slate-800"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-normal text-slate-700 mb-1">Phone Number</label>
-                  <input
-                    type="tel"
-                    required
-                    value={newAddr.phone}
-                    onChange={(e) => setNewAddr({ ...newAddr, phone: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-[#FAFBFD] border border-slate-200 rounded-xl text-xs text-slate-800"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-normal text-slate-700 mb-1">Street Address</label>
-                  <input
-                    type="text"
-                    required
-                    value={newAddr.streetAddress}
-                    onChange={(e) => setNewAddr({ ...newAddr, streetAddress: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-[#FAFBFD] border border-slate-200 rounded-xl text-xs text-slate-800"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-normal text-slate-700 mb-1">City</label>
-                    <input
-                      type="text"
-                      required
-                      value={newAddr.city}
-                      onChange={(e) => setNewAddr({ ...newAddr, city: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-[#FAFBFD] border border-slate-200 rounded-xl text-xs text-slate-800"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-normal text-slate-700 mb-1">PIN Code</label>
-                    <input
-                      type="text"
-                      required
-                      value={newAddr.postalCode}
-                      onChange={(e) => setNewAddr({ ...newAddr, postalCode: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-[#FAFBFD] border border-slate-200 rounded-xl text-xs text-slate-800"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddressModal(false)}
-                    className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-xl"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 py-3 px-4 bg-[#1E3A8A] hover:bg-[#152e72] text-white text-xs font-medium rounded-xl"
-                  >
-                    Save Address
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Cancel Order / Return Request Modal */}
-        {selectedOrderForCancel && (
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-100">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-base font-normal text-slate-900">Cancel Order / Request Refund</h3>
                 <button
-                  type="button"
-                  onClick={() => setSelectedOrderForCancel(null)}
-                  className="text-slate-400 hover:text-slate-600"
+                  type="submit"
+                  className="flex-1 py-2.5 bg-[#1044A5] text-white rounded-xl font-medium"
                 >
-                  ✕
+                  Save Address
                 </button>
               </div>
-
-              <p className="text-xs font-light text-slate-500 mb-4">
-                Please provide a reason for cancelling order #{selectedOrderForCancel.orderId || selectedOrderForCancel._id.slice(-6)}.
-              </p>
-
-              <form onSubmit={handleCancelOrderSubmit} className="space-y-4">
-                <textarea
-                  required
-                  rows={3}
-                  value={cancelReason}
-                  onChange={(e) => setCancelReason(e.target.value)}
-                  placeholder="e.g. Ordered by mistake, found another book, address change..."
-                  className="w-full px-3.5 py-2.5 bg-[#FAFBFD] border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20"
-                />
-
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedOrderForCancel(null)}
-                    className="flex-1 py-3 px-4 bg-slate-100 text-slate-700 text-xs font-medium rounded-xl"
-                  >
-                    Keep Order
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 py-3 px-4 bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium rounded-xl"
-                  >
-                    Confirm Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
+            </form>
           </div>
-        )}
-      </main>
+        </div>
+      )}
 
       <Footer />
     </div>

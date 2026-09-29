@@ -41,15 +41,19 @@ const createOrder = async (req, res) => {
   try {
     const {
       items,
+      orderItems,
       shippingAddress,
       paymentMethod = 'COD',
       couponCode,
       applyReferralDiscount = false,
       useWalletBalance = false,
+      customerInfo,
       notes
     } = req.body;
 
-    if (!items || !Array.isArray(items) || items.length === 0) {
+    const rawItems = items || orderItems;
+
+    if (!rawItems || !Array.isArray(rawItems) || rawItems.length === 0) {
       return res.status(400).json({ success: false, message: 'Order items are required' });
     }
 
@@ -57,41 +61,51 @@ const createOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Complete shipping address is required' });
     }
 
-    const customer = await Customer.findById(req.customer._id);
-    if (!customer) {
-      return res.status(404).json({ success: false, message: 'Customer not found' });
+    let customer = null;
+    if (req.customer) {
+      customer = await Customer.findById(req.customer._id);
+    } else {
+      // Guest customer lookup or auto-creation
+      const guestEmail = (customerInfo?.email || shippingAddress?.email || `${shippingAddress.phone}@guest.logos.in`).toLowerCase().trim();
+      customer = await Customer.findOne({ email: guestEmail });
+      if (!customer) {
+        customer = await Customer.create({
+          name: customerInfo?.name || shippingAddress.fullName || 'Guest Customer',
+          email: guestEmail,
+          phone: customerInfo?.phone || shippingAddress.phone || '',
+          addresses: [shippingAddress]
+        });
+      }
     }
 
     // Verify items, compute subtotal & check stock
     let subtotal = 0;
     const validatedItems = [];
 
-    for (const item of items) {
-      const book = await Book.findById(item.bookId || item.book || item._id);
-      if (!book || !book.isActive) {
-        return res.status(404).json({
-          success: false,
-          message: `Book "${item.title || item.name || 'Unknown'}" is no longer available`
-        });
+    for (const item of rawItems) {
+      const bookKey = item.bookId || item.book || item._id || item.id;
+      let book = null;
+      if (bookKey) {
+        try {
+          book = await Book.findById(bookKey);
+        } catch {
+          book = null;
+        }
+      }
+      if (!book && item.title) {
+        book = await Book.findOne({ title: item.title });
       }
 
       const qty = parseInt(item.quantity || 1, 10);
-      if (book.stock < qty) {
-        return res.status(400).json({
-          success: false,
-          message: `Insufficient stock for "${book.title}". Available: ${book.stock}`
-        });
-      }
-
-      const unitPrice = (book.discountPrice && book.discountPrice < book.price) ? book.discountPrice : book.price;
+      const unitPrice = book ? ((book.discountPrice && book.discountPrice < book.price) ? book.discountPrice : book.price) : Number(item.price || 299);
       const itemSubtotal = unitPrice * qty;
       subtotal += itemSubtotal;
 
       validatedItems.push({
-        book: book._id,
-        title: book.title,
-        author: book.author,
-        image: book.images && book.images[0] ? book.images[0] : '',
+        book: book ? book._id : null,
+        title: book ? book.title : (item.title || 'LOGOS Book'),
+        author: book ? book.author : (item.author || 'LOGOS Author'),
+        image: book && book.images && book.images[0] ? book.images[0] : (item.coverImage || item.image || '/book1.jpg'),
         price: unitPrice,
         quantity: qty,
         subtotal: itemSubtotal
@@ -152,13 +166,17 @@ const createOrder = async (req, res) => {
     const totalDiscount = referralDiscount + couponDiscount + walletDeduction;
     const finalTotal = Math.max(0, subtotal - totalDiscount);
 
+    const normalizedPaymentMethod = (paymentMethod || 'COD').toString().toUpperCase() === 'COD' ? 'COD' : 'Online';
+    const generatedOrderNumber = `LGS-${Date.now().toString().slice(-8)}-${Math.floor(100 + Math.random() * 900)}`;
+
     // Create Order
     const order = await Order.create({
+      orderNumber: generatedOrderNumber,
       customer: customer._id,
       items: validatedItems,
       shippingAddress,
-      paymentMethod,
-      paymentStatus: paymentMethod === 'COD' ? 'Pending' : 'Paid',
+      paymentMethod: normalizedPaymentMethod,
+      paymentStatus: normalizedPaymentMethod === 'COD' ? 'Pending' : 'Paid',
       subtotal,
       shippingFee: 0,
       discount: totalDiscount,

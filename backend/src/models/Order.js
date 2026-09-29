@@ -35,8 +35,8 @@ const orderSchema = new mongoose.Schema({
   orderNumber: {
     type: String,
     unique: true,
-    required: true,
-    index: true
+    index: true,
+    default: () => `LGS-${Date.now().toString().slice(-8)}-${Math.floor(100 + Math.random() * 900)}`
   },
   customer: {
     type: mongoose.Schema.Types.ObjectId,
@@ -56,8 +56,14 @@ const orderSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['COD', 'Online', 'Card', 'UPI', 'Wallet'],
-    default: 'COD'
+    enum: ['COD', 'Online', 'Card', 'UPI', 'Wallet', 'cod', 'online', 'razorpay', 'RAZORPAY'],
+    default: 'COD',
+    set: (v) => {
+      if (!v) return 'COD';
+      const upper = String(v).toUpperCase();
+      if (upper === 'COD') return 'COD';
+      return 'Online';
+    }
   },
   paymentStatus: {
     type: String,
@@ -106,7 +112,7 @@ const orderSchema = new mongoose.Schema({
   },
   orderStatus: {
     type: String,
-    enum: ['Pending', 'Confirmed', 'Processing', 'Shipped', 'Delivered', 'Cancelled', 'Returned'],
+    enum: ['Pending', 'Confirmed', 'Processing', 'Shipped', 'Out for Delivery', 'Delivered', 'Cancelled', 'Returned', 'Refunded', 'pending', 'confirmed', 'processing', 'shipped', 'out for delivery', 'delivered', 'cancelled', 'returned', 'refunded'],
     default: 'Pending',
     index: true
   },

@@ -5,22 +5,26 @@ import Link from 'next/link';
 
 export const Footer = () => {
   return (
-    <footer className="bg-[#1e3c8a] text-white pt-14 pb-8 px-4 sm:px-8">
+    <footer className="bg-[#070F1E] text-slate-200 pt-14 pb-8 px-4 sm:px-8 border-t border-slate-800/80">
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-10 lg:gap-14 pb-12">
           {/* Brand Column */}
           <div className="md:col-span-6 space-y-4">
-            <h2 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight text-white">
-              Logos Book
-            </h2>
+            <Link href="/" className="inline-block transition-transform hover:scale-105">
+              <img
+                src="/logo.png"
+                alt="LOGOS Books"
+                className="h-11 sm:h-12 w-auto object-contain brightness-0 invert opacity-95 hover:opacity-100 transition-opacity"
+              />
+            </Link>
 
-            <p className="text-xs sm:text-sm text-blue-100/90 italic font-serif max-w-md leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-400 italic font-serif max-w-md leading-relaxed">
               Independent bookselling and publishing for readers across Malayalam, English and Hindi.
             </p>
 
             {/* Social Links */}
             <div className="pt-3 space-y-2">
-              <span className="text-[11px] font-bold tracking-wider uppercase text-blue-200 block">
+              <span className="text-[11px] font-bold tracking-wider uppercase text-sky-400 block">
                 Follow Us
               </span>
               <div className="flex items-center gap-3">
@@ -29,7 +33,7 @@ export const Footer = () => {
                   href="https://facebook.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-8 h-8 rounded-md bg-[#1877F2] flex items-center justify-center text-white hover:opacity-90 transition-opacity"
+                  className="w-8 h-8 rounded-lg bg-[#1877F2] flex items-center justify-center text-white hover:opacity-90 transition-all shadow-sm"
                   title="Facebook"
                 >
                   <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
@@ -42,7 +46,7 @@ export const Footer = () => {
                   href="https://instagram.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-8 h-8 rounded-md bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] flex items-center justify-center text-white hover:opacity-90 transition-opacity"
+                  className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] flex items-center justify-center text-white hover:opacity-90 transition-all shadow-sm"
                   title="Instagram"
                 >
                   <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
@@ -55,7 +59,7 @@ export const Footer = () => {
                   href="https://whatsapp.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-8 h-8 rounded-md bg-[#25D366] flex items-center justify-center text-white hover:opacity-90 transition-opacity"
+                  className="w-8 h-8 rounded-lg bg-[#25D366] flex items-center justify-center text-white hover:opacity-90 transition-all shadow-sm"
                   title="WhatsApp"
                 >
                   <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
@@ -68,22 +72,22 @@ export const Footer = () => {
 
           {/* Books Links */}
           <div className="md:col-span-3 space-y-3">
-            <h3 className="text-xs font-bold tracking-wider uppercase text-blue-200">
+            <h3 className="text-xs font-bold tracking-wider uppercase text-sky-400">
               Books
             </h3>
-            <ul className="space-y-2.5 text-xs sm:text-sm text-white/90">
+            <ul className="space-y-2.5 text-xs sm:text-sm text-slate-300">
               <li>
-                <Link href="/authors" className="hover:text-blue-200 transition-colors">
+                <Link href="/authors" className="hover:text-white transition-colors">
                   Authors
                 </Link>
               </li>
               <li>
-                <Link href="/categories" className="hover:text-blue-200 transition-colors">
+                <Link href="/categories" className="hover:text-white transition-colors">
                   Category
                 </Link>
               </li>
               <li>
-                <Link href="/age-groups" className="hover:text-blue-200 transition-colors">
+                <Link href="/age-groups" className="hover:text-white transition-colors">
                   Age
                 </Link>
               </li>
@@ -92,32 +96,32 @@ export const Footer = () => {
 
           {/* Policies Links */}
           <div className="md:col-span-3 space-y-3">
-            <h3 className="text-xs font-bold tracking-wider uppercase text-blue-200">
+            <h3 className="text-xs font-bold tracking-wider uppercase text-sky-400">
               Policies
             </h3>
-            <ul className="space-y-2.5 text-xs sm:text-sm text-white/90">
+            <ul className="space-y-2.5 text-xs sm:text-sm text-slate-300">
               <li>
-                <Link href="/policies/terms" className="hover:text-blue-200 transition-colors">
+                <Link href="/policies/terms" className="hover:text-white transition-colors">
                   Terms &amp; Conditions
                 </Link>
               </li>
               <li>
-                <Link href="/policies/privacy" className="hover:text-blue-200 transition-colors">
+                <Link href="/policies/privacy" className="hover:text-white transition-colors">
                   Privacy policy
                 </Link>
               </li>
               <li>
-                <Link href="/policies/returns" className="hover:text-blue-200 transition-colors">
+                <Link href="/policies/returns" className="hover:text-white transition-colors">
                   Return &amp; Refund
                 </Link>
               </li>
               <li>
-                <Link href="/policies/shipping" className="hover:text-blue-200 transition-colors">
+                <Link href="/policies/shipping" className="hover:text-white transition-colors">
                   Shipping &amp; Delivery
                 </Link>
               </li>
               <li>
-                <Link href="/faq" className="hover:text-blue-200 transition-colors">
+                <Link href="/faq" className="hover:text-white transition-colors">
                   FAQ
                 </Link>
               </li>
@@ -126,8 +130,8 @@ export const Footer = () => {
         </div>
 
         {/* Bottom Copyright Row */}
-        <div className="border-t border-white/20 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-blue-100/80 gap-3">
-          <p>© 2026 Logos Book. All rights reserved.</p>
+        <div className="border-t border-slate-800 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-3">
+          <p>© {new Date().getFullYear()} LOGOS. All rights reserved.</p>
           <p>Made for readers, in India.</p>
         </div>
       </div>

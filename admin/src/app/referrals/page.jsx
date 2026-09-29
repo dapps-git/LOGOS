@@ -71,23 +71,7 @@ export default function ReferralsPage() {
           </div>
         </div>
 
-        {/* How Referral Works Banner */}
-        <div className="p-6 bg-slate-900 text-white border border-slate-800 rounded-md flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="space-y-1.5 max-w-xl">
-            <span className="text-xs font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-500/30 rounded-xs px-2.5 py-0.5 inline-block uppercase tracking-wider">
-              Customer Virality Mechanism
-            </span>
-            <h3 className="text-lg font-black uppercase tracking-tight">How LOGOS Referral System Operates</h3>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Every registered user receives a unique code (e.g. <span className="font-mono text-emerald-300 font-bold">LOGOS-AK44</span>).
-              When their invited friend signs up and completes their first book purchase, the friend gets an automatic <span className="font-bold text-white">15% discount</span> and the referrer automatically receives a <span className="font-bold text-emerald-400">₹100 wallet credit</span>.
-            </p>
-          </div>
 
-          <div className="flex-shrink-0 flex items-center justify-center w-32 h-24 bg-white/5 border border-white/10 rounded-md p-3 text-center">
-            <Gift className="w-10 h-10 text-emerald-400 mx-auto" />
-          </div>
-        </div>
 
         {/* Referral Activity Table */}
         <div className="bg-white border border-slate-200 rounded-md overflow-hidden">
@@ -137,8 +121,12 @@ export default function ReferralsPage() {
                       <td className="py-3.5 px-4 text-slate-600 align-middle">
                         {ref.orderId ? (
                           <div>
-                            <span className="font-bold text-slate-900">{ref.orderId}</span>
-                            <span className="text-[10px] text-slate-400 block">Amt: ₹{ref.orderAmount}</span>
+                            <span className="font-bold text-slate-900">
+                              {typeof ref.orderId === 'object' ? (ref.orderId.orderNumber || ref.orderId._id || 'Order') : ref.orderId}
+                            </span>
+                            <span className="text-[10px] text-slate-400 block">
+                              Amt: ₹{typeof ref.orderId === 'object' ? (ref.orderId.totalAmount || ref.orderAmount || 0) : (ref.orderAmount || 0)}
+                            </span>
                           </div>
                         ) : (
                           <span className="text-slate-400 italic">No purchase yet</span>
