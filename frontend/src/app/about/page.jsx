@@ -26,116 +26,155 @@ export default function AboutUsPage() {
 
       <main className="flex-1 w-full pt-24 sm:pt-28 pb-16">
         {/* 1. Hero & Breadcrumbs Section */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-12">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-16">
           {/* Breadcrumbs */}
-          <div className="flex items-center gap-2 text-xs text-slate-400 mb-6">
+          <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-6 font-normal">
             <Link href="/" className="hover:text-slate-700 transition-colors">Home</Link>
             <span>›</span>
             <span className="text-[#1044A5] font-medium">About Us</span>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-            <div className="lg:col-span-7 space-y-5">
-              <span className="inline-block px-3 py-1 rounded-full bg-blue-50 border border-blue-200/80 text-[#1044A5] text-xs font-semibold uppercase tracking-wider">
-                ESTABLISHED IN 2012 • KERALA, INDIA
-              </span>
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight">
-                Reading is not just a habit—<br />
-                <span className="text-[#1044A5]">it’s a transformative journey.</span>
-              </h1>
-              <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-normal">
-                At <strong>Logos Books</strong>, we believe that literature, language, and culture are the soul of our society. Since our inception in 2012, we have been committed to nurturing a vibrant culture of reading, intellectual dialogue, and literary excellence.
-              </p>
-              <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
-                We are a pioneering publishing house and bookstore chain based in Kerala, India, driven by the vision of creating a more informed and enlightened society. With over <strong>1,000+ titles in Malayalam</strong> from both renowned literary legends and promising new voices, our collection stands as a testimony to the richness and depth of Malayalam literature.
-              </p>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+            {/* Left Column: Heading & Text */}
+            <div className="lg:col-span-7 space-y-6">
+              {/* Location / Established Pill */}
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#EBF3FE] border border-blue-100 text-[#1044A5] text-[11px] font-bold tracking-wide uppercase">
+                <svg className="w-3.5 h-3.5 text-[#1044A5] fill-current" viewBox="0 0 24 24">
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                </svg>
+                <span>ESTABLISHED IN 2012 • KERALA, INDIA</span>
+              </div>
 
-              {/* Stats Highlights */}
-              <div className="grid grid-cols-3 gap-3 pt-3">
-                <div className="p-3.5 rounded-2xl bg-white border border-slate-200/80 text-center shadow-2xs">
-                  <span className="text-xl sm:text-2xl font-black text-[#1044A5] block font-mono">2012</span>
-                  <span className="text-[11px] text-slate-500 font-medium">Inception Year</span>
+              {/* Main Headline */}
+              <h1 className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold text-slate-900 tracking-tight leading-[1.18]">
+                Reading is not just a<br />
+                habit—<br />
+                <span className="text-[#1044A5]">it’s a transformative<br className="hidden sm:inline" /> journey.</span>
+              </h1>
+
+              {/* Paragraphs */}
+              <div className="space-y-3.5 text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
+                <p>
+                  At <strong className="text-slate-900 font-bold">Logos Books</strong>, we believe that literature, language, and culture are the soul of our society. Since our inception in 2012, we have been committed to nurturing a vibrant culture of reading, intellectual dialogue, and literary excellence.
+                </p>
+                <p>
+                  We are a pioneering publishing house and bookstore chain based in Kerala, India, driven by the vision of creating a more informed and enlightened society. With over <strong>1,000+ titles in Malayalam</strong> from both renowned literary legends and promising new voices, our collection stands as a testimony to the richness and depth of Malayalam literature.
+                </p>
+              </div>
+
+              {/* 3 Stats Boxes Matching Screenshot */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-2">
+                {/* 1. Inception Year */}
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-[#F4F8FC] border border-blue-50 flex items-center gap-3.5 shadow-2xs">
+                  <div className="w-10 h-10 rounded-xl bg-blue-100/70 text-[#1044A5] flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-[#1044A5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <span className="text-lg sm:text-xl font-extrabold text-slate-900 block leading-tight font-mono">2012</span>
+                    <span className="text-[11px] text-slate-500 font-medium">Inception Year</span>
+                  </div>
                 </div>
-                <div className="p-3.5 rounded-2xl bg-white border border-slate-200/80 text-center shadow-2xs">
-                  <span className="text-xl sm:text-2xl font-black text-[#1044A5] block font-mono">1000+</span>
-                  <span className="text-[11px] text-slate-500 font-medium">Published Titles</span>
+
+                {/* 2. Published Titles */}
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-[#F4F8FC] border border-blue-50 flex items-center gap-3.5 shadow-2xs">
+                  <div className="w-10 h-10 rounded-xl bg-blue-100/70 text-[#1044A5] flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-[#1044A5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                  </div>
+                  <div>
+                    <span className="text-lg sm:text-xl font-extrabold text-slate-900 block leading-tight font-mono">1000+</span>
+                    <span className="text-[11px] text-slate-500 font-medium">Published Titles</span>
+                  </div>
                 </div>
-                <div className="p-3.5 rounded-2xl bg-white border border-slate-200/80 text-center shadow-2xs">
-                  <span className="text-xl sm:text-2xl font-black text-[#1044A5] block font-mono">National</span>
-                  <span className="text-[11px] text-slate-500 font-medium">&amp; Global Awards</span>
+
+                {/* 3. National & Global Awards */}
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-[#F4F8FC] border border-blue-50 flex items-center gap-3.5 shadow-2xs">
+                  <div className="w-10 h-10 rounded-xl bg-blue-100/70 text-[#1044A5] flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-[#1044A5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <span className="text-lg sm:text-xl font-extrabold text-slate-900 block leading-tight">National</span>
+                    <span className="text-[11px] text-slate-500 font-medium">&amp; Global Awards</span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Right Visual Image */}
+            {/* Right Visual Books Image Matching Screenshot */}
             <div className="lg:col-span-5 relative">
-              <div className="relative rounded-3xl overflow-hidden shadow-xl border border-slate-200 aspect-4/3 bg-slate-100">
+              <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-slate-200/90 bg-white">
                 <img
-                  src="/banner.png"
-                  alt="Logos Books Publishing & Reading"
-                  className="w-full h-full object-cover"
+                  src="/about-books-hero.jpg"
+                  alt="Logos Books Publishing & Reading Showcase"
+                  className="w-full h-auto object-cover rounded-3xl"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = '/banner.png';
+                  }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent flex items-end p-6">
-                  <p className="text-xs text-white/90 font-serif italic">
-                    &ldquo;Preserving, promoting, and nurturing language and culture through the power of the written word.&rdquo;
-                  </p>
-                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* 2. Message from the Director (Terracotta Wave Banner matching Screenshot 1) */}
-        <div className="w-full my-12 relative overflow-hidden bg-[#572714] text-white py-14 px-4 sm:px-8 shadow-inner">
-          {/* Top Wave SVG */}
-          <div className="absolute top-0 left-0 right-0 overflow-hidden leading-none opacity-20 pointer-events-none">
-            <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="w-full h-8 fill-white">
-              <path d="M0,0 C150,90 350,-40 500,40 C650,120 900,10 1200,40 L1200,0 L0,0 Z"></path>
-            </svg>
-          </div>
-
-          <div className="max-w-4xl mx-auto space-y-6 relative z-10">
-            <div>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white mb-2">
-                Message from the Director
-              </h2>
-              <div className="inline-block">
-                <p className="text-xs sm:text-sm font-bold tracking-wider uppercase text-amber-200">
-                  TEJASWINI AJITH
-                </p>
-                <p className="text-[11px] uppercase tracking-widest text-amber-100/70">
-                  DIRECTOR, LOGOS BOOKS
-                </p>
+        {/* 2. Message from the Director (Dark Warm Terracotta Section matching Screenshot) */}
+        <div className="w-full my-12 bg-[#4E2412] text-white py-14 px-4 sm:px-8 shadow-inner">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12 items-center">
+            {/* Director Photo on Left */}
+            <div className="md:col-span-4 lg:col-span-3 flex justify-center md:justify-start">
+              <div className="w-48 sm:w-56 md:w-full max-w-[240px] aspect-square rounded-2xl overflow-hidden shadow-2xl border-2 border-[#D4A373]/30">
+                <img
+                  src="/director-tejaswini.jpg"
+                  alt="Tejaswini Ajith - Director, Logos Books"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = '/banner.png';
+                  }}
+                />
               </div>
             </div>
 
-            <div className="space-y-4 text-xs sm:text-sm text-amber-50/90 leading-relaxed font-light">
-              <p>
-                At Logos Books, we see book publishing not merely as a business—but as a divine cultural responsibility. Literature, language, and culture are the soul of any society, and we are deeply committed to preserving, promoting, and nurturing them through the power of the written word.
-              </p>
-              <p>
-                Every book we publish carries a part of our collective conscience. We believe that publishing is a sacred act, one that shapes minds, preserves values, and builds bridges across generations. It is our humble contribution to a more thoughtful and enriched world.
-              </p>
-              <p>
-                We stand firmly for quality and timelessness, because a book is not bound by time—a book is forever. And the words it carries, the thoughts it inspires, and the change it brings, are eternal.
-              </p>
-              <p>
-                On behalf of the entire Logos Books family, I thank our readers, writers, partners, and supporters for believing in our journey. Let us continue to celebrate the joy of reading, the richness of language, and the spirit of culture—together.
-              </p>
-            </div>
+            {/* Director Quote & Details on Right */}
+            <div className="md:col-span-8 lg:col-span-9 space-y-4">
+              <div>
+                <span className="text-[11px] font-semibold tracking-widest uppercase text-[#D4A373] block mb-1">
+                  MESSAGE FROM THE DIRECTOR
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white uppercase">
+                  TEJASWINI AJITH
+                </h2>
+                <p className="text-[11px] font-medium tracking-wider uppercase text-[#D4A373]/80">
+                  DIRECTOR, LOGOS BOOKS
+                </p>
+              </div>
 
-            <div className="pt-3 border-t border-amber-400/20">
-              <p className="text-base sm:text-lg font-bold text-amber-200 tracking-wide font-serif italic">
-                Let’s read. Let’s rise.
-              </p>
-            </div>
-          </div>
+              <div className="space-y-3.5 text-xs sm:text-sm text-amber-50/90 leading-relaxed font-light">
+                <p>
+                  At Logos Books, we see book publishing not merely as a business— but as a divine cultural responsibility. Literature, language, and culture are the soul of any society, and we are deeply committed to preserving, promoting, and nurturing them through the power of the written word.
+                </p>
+                <p>
+                  Every book we publish carries a part of our collective conscience. We believe that publishing is a sacred act, one that shapes minds, preserves values, and builds bridges across generations. It is our humble contribution to a more thoughtful and enriched world.
+                </p>
+                <p>
+                  We stand firmly for quality and timelessness, because a book is not bound by time—a book is forever. And the words it carries, the thoughts it inspires, and the change it brings, are eternal.
+                </p>
+                <p>
+                  On behalf of the entire Logos Books family, I thank our readers, writers, partners, and supporters for believing in our journey. Let us continue to celebrate the joy of reading, the richness of language, and the spirit of culture—together.
+                </p>
+              </div>
 
-          {/* Bottom Wave SVG */}
-          <div className="absolute bottom-0 left-0 right-0 overflow-hidden leading-none opacity-20 pointer-events-none">
-            <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="w-full h-8 fill-white">
-              <path d="M0,0 C150,90 350,-40 500,40 C650,120 900,10 1200,40 L1200,120 L0,120 Z"></path>
-            </svg>
+              <div className="pt-2">
+                <p className="text-base font-bold text-amber-200 tracking-wide font-serif italic">
+                  Let’s read. Let’s rise.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
