@@ -26,8 +26,9 @@ export const Navbar = () => {
   }, []);
 
   const navLinks = [
-    { name: 'Home', href: '/', active: true },
+    { name: 'Home', href: '/' },
     { name: 'Products', href: '/products', hasDropdown: false },
+    { name: 'About Us', href: '/about', hasDropdown: false },
     {
       name: 'Book',
       href: '/#new-arrivals',

@@ -70,8 +70,37 @@ export const Footer = () => {
             </div>
           </div>
 
+          {/* About Column */}
+          <div className="md:col-span-2 space-y-3">
+            <h3 className="text-xs font-bold tracking-wider uppercase text-sky-400">
+              About Logos
+            </h3>
+            <ul className="space-y-2.5 text-xs sm:text-sm text-slate-300">
+              <li>
+                <Link href="/about" className="hover:text-white transition-colors">
+                  About Us
+                </Link>
+              </li>
+              <li>
+                <Link href="/vision" className="hover:text-white transition-colors">
+                  Our Vision
+                </Link>
+              </li>
+              <li>
+                <Link href="/about#contact" className="hover:text-white transition-colors">
+                  Publishing Desk
+                </Link>
+              </li>
+              <li>
+                <Link href="/about#contact" className="hover:text-white transition-colors">
+                  Contact Us
+                </Link>
+              </li>
+            </ul>
+          </div>
+
           {/* Books Links */}
-          <div className="md:col-span-3 space-y-3">
+          <div className="md:col-span-2 space-y-3">
             <h3 className="text-xs font-bold tracking-wider uppercase text-sky-400">
               Books
             </h3>
@@ -95,7 +124,7 @@ export const Footer = () => {
           </div>
 
           {/* Policies Links */}
-          <div className="md:col-span-3 space-y-3">
+          <div className="md:col-span-2 space-y-3">
             <h3 className="text-xs font-bold tracking-wider uppercase text-sky-400">
               Policies
             </h3>
