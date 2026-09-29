@@ -25,7 +25,12 @@ connectDB();
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
+  'http://localhost:3002',
   'http://localhost:5173',
+  'https://logos-chi-ten.vercel.app',
+  'https://logos-4n4d.vercel.app',
+  'https://tweaki.pw',
+  'https://www.tweaki.pw',
   process.env.CLIENT_URL,
   process.env.ADMIN_URL
 ].filter(Boolean);
