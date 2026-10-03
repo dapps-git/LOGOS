@@ -61,6 +61,21 @@ const createOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Complete shipping address is required' });
     }
 
+    const cleanPin = String(shippingAddress.postalCode).replace(/\D/g, '');
+    if (cleanPin.length !== 6) {
+      return res.status(400).json({ success: false, message: 'PIN code must be exactly 6 digits' });
+    }
+
+    const cleanPhone = String(shippingAddress.phone).replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      return res.status(400).json({ success: false, message: 'Phone number must be at least 10 digits' });
+    }
+
+    shippingAddress.postalCode = cleanPin;
+    shippingAddress.phone = cleanPhone.slice(-10);
+    shippingAddress.state = shippingAddress.state || 'Kerala';
+    shippingAddress.postOffice = shippingAddress.postOffice || '';
+
     let customer = null;
     if (req.customer) {
       customer = await Customer.findById(req.customer._id);
@@ -321,6 +336,8 @@ const updateOrderStatusAdmin = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
+    const previousStatus = order.orderStatus;
+
     if (status) {
       order.orderStatus = status;
       order.statusHistory.push({
@@ -328,6 +345,32 @@ const updateOrderStatusAdmin = async (req, res) => {
         timestamp: new Date(),
         note: note || `Order status updated to ${status}`
       });
+
+      // Handle return review transitions
+      if (['Return Accepted', 'Returned', 'Refunded'].includes(status)) {
+        if (!order.returnRequest) {
+          order.returnRequest = { reason: 'Return accepted', requestedAt: new Date() };
+        }
+        order.returnRequest.status = 'Approved';
+        order.returnRequest.reviewedAt = new Date();
+        if (note) order.returnRequest.adminNote = note;
+
+        // If transitioning from un-restocked state to return accepted, restore stock
+        if (!['Cancelled', 'Returned', 'Return Accepted'].includes(previousStatus)) {
+          for (const item of order.items) {
+            if (item.book) {
+              await Book.findByIdAndUpdate(item.book, { $inc: { stock: item.quantity } });
+            }
+          }
+        }
+      } else if (status === 'Return Rejected') {
+        if (!order.returnRequest) {
+          order.returnRequest = { reason: 'Return requested', requestedAt: new Date() };
+        }
+        order.returnRequest.status = 'Rejected';
+        order.returnRequest.reviewedAt = new Date();
+        if (note) order.returnRequest.adminNote = note;
+      }
     }
 
     if (trackingNumber) order.trackingNumber = trackingNumber;
@@ -392,7 +435,7 @@ const cancelOrder = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    // IDOR Protection: Check ownership
+    // IDOR Protection: Check ownership or Admin
     const isOwner = req.customer && order.customer && order.customer.toString() === req.customer._id.toString();
     const isAdmin = Boolean(req.admin);
 
@@ -400,25 +443,33 @@ const cancelOrder = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized to cancel this order' });
     }
 
-    if (['Shipped', 'Delivered', 'Cancelled'].includes(order.orderStatus)) {
+    const currentStatus = (order.orderStatus || '').toLowerCase();
+    const nonCancellable = ['shipped', 'out for delivery', 'delivered', 'cancelled', 'returned', 'refunded', 'return requested', 'return accepted'];
+
+    if (nonCancellable.includes(currentStatus)) {
       return res.status(400).json({
         success: false,
-        message: `Order cannot be cancelled as it is already ${order.orderStatus}`
+        message: `Order cannot be cancelled as it is already ${order.orderStatus}. Once an order is shipped or delivered, cancellation is not allowed.`
       });
     }
 
+    const cancellationReason = req.body.cancellationReason || req.body.reason || 'Order cancelled by customer';
     order.orderStatus = 'Cancelled';
+    order.cancellationReason = cancellationReason;
     order.statusHistory.push({
       status: 'Cancelled',
       timestamp: new Date(),
-      note: req.body.reason || 'Order cancelled by customer'
+      note: `Order cancelled. Reason: ${cancellationReason}`
     });
+    order.notes = (order.notes ? order.notes + ' | ' : '') + `Cancellation Note: ${cancellationReason}`;
 
     // Restock books
     for (const item of order.items) {
-      await Book.findByIdAndUpdate(item.book, {
-        $inc: { stock: item.quantity }
-      });
+      if (item.book) {
+        await Book.findByIdAndUpdate(item.book, {
+          $inc: { stock: item.quantity }
+        });
+      }
     }
 
     await order.save();
@@ -433,6 +484,135 @@ const cancelOrder = async (req, res) => {
   }
 };
 
+// @desc    Request return for delivered order (Customer)
+// @route   POST /api/orders/:id/return
+// @access  Private (Customer / Admin)
+const requestReturn = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    const isOwner = req.customer && order.customer && order.customer.toString() === req.customer._id.toString();
+    const isAdmin = Boolean(req.admin);
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ success: false, message: 'Not authorized to request return for this order' });
+    }
+
+    const currentStatus = (order.orderStatus || '').toLowerCase();
+    if (currentStatus !== 'delivered') {
+      return res.status(400).json({
+        success: false,
+        message: 'Return can only be requested after the order has been delivered.'
+      });
+    }
+
+    if (order.returnRequest && order.returnRequest.status === 'Pending') {
+      return res.status(400).json({
+        success: false,
+        message: 'A return request is already submitted and under review by our admin team.'
+      });
+    }
+
+    const reason = (req.body.reason || req.body.returnReason || '').trim();
+    const description = (req.body.description || '').trim();
+    const fullReason = [reason, description].filter(Boolean).join(' - ');
+
+    if (!fullReason || fullReason.length < 3) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid and detailed return reason.'
+      });
+    }
+
+    order.orderStatus = 'Return Requested';
+    order.returnRequest = {
+      reason: fullReason,
+      requestedAt: new Date(),
+      status: 'Pending',
+      adminNote: ''
+    };
+    order.statusHistory.push({
+      status: 'Return Requested',
+      timestamp: new Date(),
+      note: `Customer requested return: ${fullReason}`
+    });
+    order.notes = (order.notes ? order.notes + ' | ' : '') + `Return Request: ${fullReason}`;
+
+    await order.save();
+
+    return res.json({
+      success: true,
+      message: 'Return request submitted successfully. It will be reviewed by admin.',
+      order
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Admin review and approve/reject return
+// @route   PUT /api/orders/admin/:id/return-review
+// @access  Private (Admin)
+const reviewReturnAdmin = async (req, res) => {
+  try {
+    const { action, note } = req.body; // 'approve' or 'reject'
+    const order = await Order.findById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    if (!order.returnRequest) {
+      order.returnRequest = { reason: 'Customer Return', requestedAt: new Date() };
+    }
+
+    if (action === 'approve') {
+      order.orderStatus = 'Return Accepted';
+      order.returnRequest.status = 'Approved';
+      order.returnRequest.reviewedAt = new Date();
+      order.returnRequest.adminNote = note || 'Return request accepted by admin';
+      order.statusHistory.push({
+        status: 'Return Accepted',
+        timestamp: new Date(),
+        note: note || 'Return request approved by admin. Processing return/refund.'
+      });
+
+      // Restock books
+      for (const item of order.items) {
+        if (item.book) {
+          await Book.findByIdAndUpdate(item.book, {
+            $inc: { stock: item.quantity }
+          });
+        }
+      }
+    } else if (action === 'reject') {
+      order.orderStatus = 'Return Rejected';
+      order.returnRequest.status = 'Rejected';
+      order.returnRequest.reviewedAt = new Date();
+      order.returnRequest.adminNote = note || 'Return request declined by admin';
+      order.statusHistory.push({
+        status: 'Return Rejected',
+        timestamp: new Date(),
+        note: `Return request rejected by admin: ${note || 'Did not satisfy return policy requirements'}`
+      });
+    } else {
+      return res.status(400).json({ success: false, message: 'Invalid action. Must be approve or reject.' });
+    }
+
+    await order.save();
+
+    return res.json({
+      success: true,
+      message: `Return request ${action === 'approve' ? 'approved' : 'rejected'} successfully`,
+      order
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   createOrder,
   getMyOrders,
@@ -440,5 +620,7 @@ module.exports = {
   getAllOrdersAdmin,
   updateOrderStatusAdmin,
   updatePaymentStatusAdmin,
-  cancelOrder
+  cancelOrder,
+  requestReturn,
+  reviewReturnAdmin
 };

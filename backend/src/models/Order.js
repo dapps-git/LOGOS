@@ -49,8 +49,9 @@ const orderSchema = new mongoose.Schema({
     fullName: { type: String, required: true },
     phone: { type: String, required: true },
     streetAddress: { type: String, required: true },
+    postOffice: { type: String, default: '' },
     city: { type: String, required: true },
-    state: { type: String, required: true },
+    state: { type: String, required: true, default: 'Kerala' },
     postalCode: { type: String, required: true },
     country: { type: String, default: 'India' }
   },
@@ -112,9 +113,28 @@ const orderSchema = new mongoose.Schema({
   },
   orderStatus: {
     type: String,
-    enum: ['Pending', 'Confirmed', 'Processing', 'Shipped', 'Out for Delivery', 'Delivered', 'Cancelled', 'Returned', 'Refunded', 'pending', 'confirmed', 'processing', 'shipped', 'out for delivery', 'delivered', 'cancelled', 'returned', 'refunded'],
+    enum: [
+      'Pending', 'Confirmed', 'Processing', 'Shipped', 'Out for Delivery', 'Delivered', 'Cancelled', 'Returned', 'Refunded',
+      'Return Requested', 'Return Accepted', 'Return Rejected',
+      'pending', 'confirmed', 'processing', 'shipped', 'out for delivery', 'delivered', 'cancelled', 'returned', 'refunded',
+      'return requested', 'return accepted', 'return rejected'
+    ],
     default: 'Pending',
     index: true
+  },
+  cancellationReason: {
+    type: String
+  },
+  returnRequest: {
+    reason: { type: String },
+    requestedAt: { type: Date },
+    reviewedAt: { type: Date },
+    adminNote: { type: String },
+    status: {
+      type: String,
+      enum: ['None', 'Pending', 'Approved', 'Rejected'],
+      default: 'None'
+    }
   },
   statusHistory: [{
     status: { type: String },

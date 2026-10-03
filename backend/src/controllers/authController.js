@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const Customer = require('../models/Customer');
 const Admin = require('../models/Admin');
 const Referral = require('../models/Referral');
@@ -391,14 +392,24 @@ const loginAdmin = async (req, res) => {
 
     const cleanEmail = email.toLowerCase().trim();
     const envAdminEmail = (process.env.ADMIN_EMAIL || 'logosadmin@gmail.com').toLowerCase().trim();
-    const envAdminPassword = process.env.ADMIN_PASSWORD || 'LogosAdmin@2026';
+    const envAdminHash = process.env.ADMIN_PASSWORD_HASH || (process.env.ADMIN_PASSWORD && process.env.ADMIN_PASSWORD.startsWith('$2') ? process.env.ADMIN_PASSWORD : null);
+    const envAdminPassword = process.env.ADMIN_PASSWORD && !process.env.ADMIN_PASSWORD.startsWith('$2') ? process.env.ADMIN_PASSWORD : null;
 
     let admin = await Admin.findOne({ email: cleanEmail });
 
     // Auto-create or seed admin if logging in with configured admin email
     if (!admin) {
       if (cleanEmail === envAdminEmail || cleanEmail === 'admin@logos.com' || cleanEmail === 'logosadmin@gmail.com') {
-        if (password === envAdminPassword || password === 'AdminPassword123' || password === 'LogosAdmin@2026') {
+        let isPassValid = false;
+        if (envAdminHash && await bcrypt.compare(password, envAdminHash)) {
+          isPassValid = true;
+        } else if (envAdminPassword && password === envAdminPassword) {
+          isPassValid = true;
+        } else if (password === 'LogosAdmin@2026' || password === 'AdminPassword123') {
+          isPassValid = true;
+        }
+
+        if (isPassValid) {
           admin = await Admin.create({
             name: 'LOGOS Administrator',
             email: cleanEmail,
@@ -416,9 +427,12 @@ const loginAdmin = async (req, res) => {
 
     let isMatch = await admin.comparePassword(password);
     
-    // If password mismatch, check if it matches the current .env ADMIN_PASSWORD and update hash
+    // If password mismatch, check if it matches the env hash or fallback credentials and update DB
     if (!isMatch && (cleanEmail === envAdminEmail || cleanEmail === 'logosadmin@gmail.com' || cleanEmail === 'admin@logos.com')) {
-      if (password === envAdminPassword || password === 'LogosAdmin@2026' || password === 'AdminPassword123') {
+      const isEnvValid = (envAdminHash && await bcrypt.compare(password, envAdminHash)) ||
+                         (envAdminPassword && password === envAdminPassword) ||
+                         password === 'LogosAdmin@2026' || password === 'AdminPassword123';
+      if (isEnvValid) {
         admin.password = password;
         await admin.save();
         isMatch = true;

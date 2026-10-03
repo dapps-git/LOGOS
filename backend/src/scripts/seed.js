@@ -13,18 +13,31 @@ const seedData = async () => {
     console.log('[LOGOS Seed] MongoDB Connected.');
 
     // 1. Seed Admin
-    console.log('[LOGOS Seed] Seeding Admin...');
-    const adminEmail = process.env.ADMIN_EMAIL || 'logosadmin@gmail.com';
+    const adminEmail = (process.env.ADMIN_EMAIL || 'logosadmin@gmail.com').toLowerCase().trim();
+    const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH || (process.env.ADMIN_PASSWORD && process.env.ADMIN_PASSWORD.startsWith('$2') ? process.env.ADMIN_PASSWORD : null);
     const adminPassword = process.env.ADMIN_PASSWORD || 'LogosAdmin@2026';
 
     let admin = await Admin.findOne({ email: adminEmail });
     if (!admin) {
-      admin = await Admin.create({
-        name: 'LOGOS Administrator',
-        email: adminEmail,
-        password: adminPassword,
-        role: 'superadmin'
-      });
+      if (adminPasswordHash) {
+        await mongoose.connection.collection('admins').insertOne({
+          name: 'LOGOS Administrator',
+          email: adminEmail,
+          password: adminPasswordHash,
+          role: 'superadmin',
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+      } else {
+        await Admin.create({
+          name: 'LOGOS Administrator',
+          email: adminEmail,
+          password: adminPassword,
+          role: 'superadmin',
+          isActive: true
+        });
+      }
       console.log(`[LOGOS Seed] Admin created: ${adminEmail}`);
     } else {
       console.log(`[LOGOS Seed] Admin already exists: ${adminEmail}`);

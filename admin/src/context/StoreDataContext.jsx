@@ -175,6 +175,31 @@ export const StoreDataProvider = ({ children }) => {
       const orderData = await apiClient('/orders/admin/all');
       if (Array.isArray(orderData?.orders)) {
         setOrders(orderData.orders);
+
+        // Derive and sync live return requests from actual store orders
+        const returnOrders = orderData.orders.filter(
+          (o) => o.orderStatus === 'Return Requested' || o.orderStatus === 'Return Accepted' || o.orderStatus === 'Return Rejected' || o.returnRequest?.reason
+        );
+        if (returnOrders.length > 0) {
+          const derivedReturns = returnOrders.map((o) => ({
+            _id: o._id,
+            orderId: o._id,
+            orderNumber: o.orderNumber,
+            customerName: o.customer?.name || o.shippingAddress?.fullName || 'Customer',
+            customerEmail: o.customer?.email || 'N/A',
+            phone: o.shippingAddress?.phone || o.customer?.phone || '',
+            reason: o.returnRequest?.reason || 'Return requested by customer',
+            status: o.orderStatus === 'Return Accepted' ? 'Approved' : (o.orderStatus === 'Return Rejected' ? 'Rejected' : 'Return Requested'),
+            requestedAt: o.returnRequest?.requestedAt || o.updatedAt || o.createdAt,
+            totalAmount: o.finalTotal || o.totalAmount || 0,
+            items: o.items || []
+          }));
+          setReturnsList((prev) => {
+            const existingIds = new Set(derivedReturns.map((d) => d._id));
+            const retained = prev.filter((p) => !existingIds.has(p._id));
+            return [...derivedReturns, ...retained];
+          });
+        }
       }
     } catch {}
 
@@ -346,7 +371,17 @@ export const StoreDataProvider = ({ children }) => {
   };
 
   // Return Actions
-  const updateReturnStatus = (id, newStatus) => {
+  const updateReturnStatus = async (id, newStatus, note) => {
+    try {
+      const mappedOrderStatus = newStatus === 'Approved' ? 'Return Accepted' : (newStatus === 'Rejected' ? 'Return Rejected' : newStatus);
+      await apiClient(`/orders/admin/${id}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: mappedOrderStatus, note: note || `Return status: ${newStatus}` })
+      });
+      setOrders((prev) =>
+        prev.map((o) => (o._id === id ? { ...o, orderStatus: mappedOrderStatus } : o))
+      );
+    } catch {}
     setReturnsList((prev) => prev.map((r) => (r._id === id ? { ...r, status: newStatus } : r)));
   };
 

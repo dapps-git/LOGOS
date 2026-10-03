@@ -7,7 +7,9 @@ const {
   getAllOrdersAdmin,
   updateOrderStatusAdmin,
   updatePaymentStatusAdmin,
-  cancelOrder
+  cancelOrder,
+  requestReturn,
+  reviewReturnAdmin
 } = require('../controllers/orderController');
 const { protectCustomer, optionalAuth } = require('../middleware/authMiddleware');
 const { protectAdmin } = require('../middleware/adminMiddleware');
@@ -16,11 +18,14 @@ const { protectAdmin } = require('../middleware/adminMiddleware');
 router.get('/admin/all', protectAdmin, getAllOrdersAdmin);
 router.put('/admin/:id/status', protectAdmin, updateOrderStatusAdmin);
 router.put('/admin/:id/payment', protectAdmin, updatePaymentStatusAdmin);
+router.put('/admin/:id/return-review', protectAdmin, reviewReturnAdmin);
 
 // Customer & Guest Orders
 router.post('/', optionalAuth, createOrder);
 router.get('/my-orders', protectCustomer, getMyOrders);
 router.get('/:id', optionalAuth, getOrderById);
-router.put('/:id/cancel', protectCustomer, cancelOrder);
+router.put('/:id/cancel', optionalAuth, cancelOrder);
+router.post('/:id/return', optionalAuth, requestReturn);
 
 module.exports = router;
+

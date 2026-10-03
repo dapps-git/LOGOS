@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, use } from 'react';
 import Link from 'next/link';
-import { apiGetOrderById, apiCancelOrder } from '../../../lib/api';
+import { apiGetOrderById, apiCancelOrder, apiRequestReturn } from '../../../lib/api';
 import Navbar from '../../../components/Navbar';
 import Footer from '../../../components/Footer';
 
@@ -12,36 +12,70 @@ export default function OrderTrackingPage({ params }) {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Cancellation State
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReasonType, setCancelReasonType] = useState('Ordered by mistake');
+  const [cancelReasonNote, setCancelReasonNote] = useState('');
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
+  const [cancelMsg, setCancelMsg] = useState('');
+
+  // Return State
   const [showReturnModal, setShowReturnModal] = useState(false);
-  const [returnReason, setReturnReason] = useState('');
+  const [returnReasonType, setReturnReasonType] = useState('Book received in damaged condition');
+  const [returnDescription, setReturnDescription] = useState('');
   const [returnSubmitting, setReturnSubmitting] = useState(false);
-  const [returnSuccessMsg, setReturnSuccessMsg] = useState('');
+  const [returnMsg, setReturnMsg] = useState('');
+
+  const loadOrder = async () => {
+    try {
+      const data = await apiGetOrderById(orderId);
+      setOrder(data);
+    } catch (err) {
+      setError(err.message || 'Could not load order details');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function load() {
-      try {
-        const data = await apiGetOrderById(orderId);
-        setOrder(data);
-      } catch (err) {
-        setError(err.message || 'Could not load order details');
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
+    loadOrder();
   }, [orderId]);
+
+  const handleCancelSubmit = async (e) => {
+    e.preventDefault();
+    setCancelSubmitting(true);
+    const finalReason = [cancelReasonType, cancelReasonNote.trim()].filter(Boolean).join(' - ');
+    try {
+      await apiCancelOrder(orderId, finalReason);
+      setCancelMsg('Order cancelled successfully. Inventory restored.');
+      setTimeout(() => {
+        setShowCancelModal(false);
+        setCancelMsg('');
+        loadOrder();
+      }, 1500);
+    } catch (err) {
+      alert(err.message || 'Failed to cancel order');
+    } finally {
+      setCancelSubmitting(false);
+    }
+  };
 
   const handleReturnSubmit = async (e) => {
     e.preventDefault();
-    if (!returnReason.trim()) return;
+    if (!returnDescription.trim()) {
+      alert('Please provide a detailed explanation for your return request.');
+      return;
+    }
     setReturnSubmitting(true);
     try {
-      await apiCancelOrder(orderId, returnReason);
-      setReturnSuccessMsg('Return / Refund request submitted successfully! Our support team will review within 24 hours.');
+      await apiRequestReturn(orderId, returnReasonType, returnDescription.trim());
+      setReturnMsg('Return request submitted successfully! It is now under admin review.');
       setTimeout(() => {
         setShowReturnModal(false);
-        setReturnSuccessMsg('');
-      }, 3000);
+        setReturnMsg('');
+        loadOrder();
+      }, 1800);
     } catch (err) {
       alert(err.message || 'Failed to submit return request');
     } finally {
@@ -288,9 +322,9 @@ export default function OrderTrackingPage({ params }) {
                     <h4 className="text-xs font-semibold text-slate-800">Delivery Address</h4>
                     <p className="text-xs font-normal text-slate-700 mt-1">{order.shippingAddress.fullName}</p>
                     <p className="text-[11px] text-slate-500 leading-relaxed mt-0.5">
-                      {order.shippingAddress.streetAddress}, {order.shippingAddress.city}, {order.shippingAddress.state} - {order.shippingAddress.postalCode}
+                      {order.shippingAddress.streetAddress}, {order.shippingAddress.postOffice ? `${order.shippingAddress.postOffice} P.O., ` : ''}{order.shippingAddress.city}, {order.shippingAddress.state || 'Kerala'} - <span className="font-mono font-bold text-slate-800">{order.shippingAddress.postalCode}</span>
                     </p>
-                    <p className="text-[11px] text-slate-400 mt-1">Phone: {order.shippingAddress.phone}</p>
+                    <p className="text-[11px] text-slate-400 mt-1 font-mono">Phone: {order.shippingAddress.phone}</p>
                   </div>
                 </div>
 
@@ -308,70 +342,272 @@ export default function OrderTrackingPage({ params }) {
               </div>
             )}
 
-            {/* 5. Return / Refund Request Section */}
-            {status !== 'cancelled' && (
-              <div className="pt-2 text-center">
-                <button
-                  type="button"
-                  onClick={() => setShowReturnModal(true)}
-                  className="text-xs text-slate-500 hover:text-rose-600 transition-colors underline"
-                >
-                  Need to Return, Replace or Cancel this order?
-                </button>
+            {/* 5. Status Feedback & Action Banners */}
+            {/* Case A: Return Requested (Waiting Admin Approval) */}
+            {status === 'return requested' && (
+              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-1.5">
+                <div className="flex items-center gap-2 font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  <span>Return Request Under Review</span>
+                </div>
+                <p className="text-[11px] text-amber-800/90 leading-relaxed">
+                  Your return request has been submitted to the admin team.
+                  {order.returnRequest?.reason && (
+                    <span className="block mt-1 font-medium italic">Reason: &ldquo;{order.returnRequest.reason}&rdquo;</span>
+                  )}
+                  Returns are only accepted after admin verification. You will be notified once reviewed.
+                </p>
               </div>
             )}
 
-            {/* 6. Need Help Button */}
-            <div className="pt-2">
+            {/* Case B: Return Accepted */}
+            {(status === 'return accepted' || status === 'returned') && (
+              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs space-y-1.5">
+                <div className="flex items-center gap-2 font-semibold text-emerald-800">
+                  <span>✓</span>
+                  <span>Return Request Accepted by Admin</span>
+                </div>
+                <p className="text-[11px] text-emerald-700/90 leading-relaxed">
+                  Your return has been approved. Our courier partner will contact you for pickup, and refund/replacement will be processed.
+                  {order.returnRequest?.adminNote && (
+                    <span className="block mt-1 font-medium">Admin Note: {order.returnRequest.adminNote}</span>
+                  )}
+                </p>
+              </div>
+            )}
+
+            {/* Case C: Return Rejected */}
+            {status === 'return rejected' && (
+              <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs space-y-1.5">
+                <div className="flex items-center gap-2 font-semibold text-rose-800">
+                  <span>✕</span>
+                  <span>Return Request Declined</span>
+                </div>
+                <p className="text-[11px] text-rose-700/90 leading-relaxed">
+                  Your return request could not be accepted.
+                  <span className="block mt-1 font-medium">
+                    Reason: {order.returnRequest?.adminNote || 'Does not meet return & replacement policy criteria.'}
+                  </span>
+                </p>
+              </div>
+            )}
+
+            {/* Case D: Cancelled Order */}
+            {status === 'cancelled' && (
+              <div className="p-4 rounded-2xl bg-slate-100 border border-slate-200 text-slate-700 text-xs space-y-1">
+                <p className="font-semibold text-rose-600 flex items-center gap-1.5">
+                  <span>✕</span> Order Cancelled
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  {order.cancellationReason || order.statusHistory?.find(h => h.status === 'Cancelled')?.note || 'This order was cancelled. Inventory was restored.'}
+                </p>
+              </div>
+            )}
+
+            {/* Case E: Shipped / Out for Delivery (No Cancellation Allowed Banner) */}
+            {['shipped', 'out for delivery'].includes(status) && (
+              <div className="p-3.5 rounded-2xl bg-blue-50/70 border border-blue-100 text-blue-900 text-xs flex items-center gap-2.5">
+                <span className="text-base">📦</span>
+                <p className="text-[11px] text-blue-800 leading-snug">
+                  <strong className="font-semibold">Dispatched:</strong> Cancellation is no longer available as your parcel has been handed over to courier.
+                </p>
+              </div>
+            )}
+
+            {/* Action Buttons: Cancel (when placed/pending/confirmed/processing) OR Return (when delivered) */}
+            <div className="pt-2 flex flex-col gap-2.5">
+              {/* Cancellation Button (Before Dispatch) */}
+              {['pending', 'confirmed', 'processing'].includes(status) && (
+                <button
+                  type="button"
+                  onClick={() => setShowCancelModal(true)}
+                  className="w-full py-3 px-4 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 hover:border-rose-300 rounded-full text-xs font-semibold tracking-wide transition-all shadow-2xs flex items-center justify-center gap-1.5"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  <span>Cancel Order</span>
+                </button>
+              )}
+
+              {/* Return Button (Only when Delivered) */}
+              {status === 'delivered' && (
+                <button
+                  type="button"
+                  onClick={() => setShowReturnModal(true)}
+                  className="w-full py-3 px-4 bg-white hover:bg-amber-50 text-amber-800 border border-amber-300 hover:border-amber-400 rounded-full text-xs font-semibold tracking-wide transition-all shadow-2xs flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span>Request Return / Replacement</span>
+                </button>
+              )}
+
+              {/* Need Help Button */}
               <a
                 href="https://wa.me/919876543210?text=Hi%20LOGOS%20Support,%20I%20need%20help%20with%20my%20order"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full py-3.5 px-6 bg-[#1044A5] hover:bg-[#0c3986] text-white rounded-full text-xs sm:text-sm font-semibold tracking-wide transition-all shadow-md shadow-blue-900/15 flex items-center justify-center gap-2"
+                className="w-full py-3 px-6 bg-[#1044A5] hover:bg-[#0c3986] text-white rounded-full text-xs sm:text-sm font-semibold tracking-wide transition-all shadow-md shadow-blue-900/15 flex items-center justify-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
                 </svg>
-                <span>Need Help?</span>
+                <span>Need Help with Order?</span>
               </a>
             </div>
           </div>
         )}
 
-        {/* Return / Refund Modal */}
-        {showReturnModal && (
-          <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+        {/* 6. Cancel Order Modal */}
+        {showCancelModal && (
+          <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
             <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-                <h3 className="text-sm font-semibold text-slate-900">Return &amp; Refund Request</h3>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center font-bold text-sm">
+                    ✕
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">Cancel Order</h3>
+                    <p className="text-[11px] text-slate-400">Order #{orderNum}</p>
+                  </div>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setShowReturnModal(false)}
-                  className="text-slate-400 hover:text-slate-600 text-base"
+                  onClick={() => setShowCancelModal(false)}
+                  className="w-7 h-7 rounded-full bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center"
                 >
                   ✕
                 </button>
               </div>
 
-              {returnSuccessMsg ? (
+              {cancelMsg ? (
                 <div className="p-4 bg-emerald-50 rounded-2xl text-xs text-emerald-700 font-medium text-center">
-                  ✓ {returnSuccessMsg}
+                  ✓ {cancelMsg}
+                </div>
+              ) : (
+                <form onSubmit={handleCancelSubmit} className="space-y-4 text-xs">
+                  <div className="p-3 bg-rose-50/60 rounded-xl border border-rose-100 text-rose-800 text-[11px] leading-relaxed">
+                    ⚠️ Are you sure you want to cancel? If paid online, your refund will be returned to your original payment method.
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      Reason for Cancellation <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={cancelReasonType}
+                      onChange={(e) => setCancelReasonType(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-[#FAFBFD] border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                    >
+                      <option value="Ordered by mistake">Ordered by mistake</option>
+                      <option value="Need to change delivery address or phone">Need to change delivery address or phone</option>
+                      <option value="Expected delivery time is too late">Expected delivery time is too late</option>
+                      <option value="Found a better price elsewhere">Found a better price elsewhere</option>
+                      <option value="Changed mind / book no longer needed">Changed mind / book no longer needed</option>
+                      <option value="Other reason">Other reason</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      Additional Notes (Optional)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={cancelReasonNote}
+                      onChange={(e) => setCancelReasonNote(e.target.value)}
+                      placeholder="Add details for the admin team..."
+                      className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                    />
+                  </div>
+
+                  <div className="pt-2 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowCancelModal(false)}
+                      className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition-colors"
+                    >
+                      Keep Order
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={cancelSubmitting}
+                      className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-semibold transition-colors disabled:opacity-50 shadow-xs"
+                    >
+                      {cancelSubmitting ? 'Cancelling...' : 'Confirm Cancellation'}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 7. Return & Replacement Request Modal */}
+        {showReturnModal && (
+          <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-700 flex items-center justify-center font-bold text-sm">
+                    🔄
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">Return &amp; Replacement</h3>
+                    <p className="text-[11px] text-slate-400">Requires admin review and approval</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowReturnModal(false)}
+                  className="w-7 h-7 rounded-full bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center text-xs"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {returnMsg ? (
+                <div className="p-4 bg-emerald-50 rounded-2xl text-xs text-emerald-800 font-medium text-center space-y-1">
+                  <p className="font-bold text-emerald-900">✓ Return Request Submitted</p>
+                  <p className="text-[11px] text-emerald-700">{returnMsg}</p>
                 </div>
               ) : (
                 <form onSubmit={handleReturnSubmit} className="space-y-4 text-xs">
-                  <p className="text-slate-500 leading-relaxed">
-                    Please specify the reason for return/refund (e.g. damaged copy, wrong edition, changed mind).
-                  </p>
+                  <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-amber-900 text-[11px] leading-relaxed">
+                    ℹ️ Return requests are reviewed by LOGOS admin. Once accepted and reviewed, our courier will collect the package.
+                  </div>
 
                   <div>
-                    <label className="block text-[11px] font-medium text-slate-700 mb-1">Reason for Return</label>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      Reason for Return <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={returnReasonType}
+                      onChange={(e) => setReturnReasonType(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-[#FAFBFD] border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 cursor-pointer"
+                    >
+                      <option value="Book received in damaged condition / torn pages">Book received in damaged condition / torn pages</option>
+                      <option value="Binding defect or missing pages">Binding defect or missing pages</option>
+                      <option value="Received wrong book / incorrect edition">Received wrong book / incorrect edition</option>
+                      <option value="Poor print quality / illegible text">Poor print quality / illegible text</option>
+                      <option value="Quality defect / other issue">Quality defect / other issue</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      Detailed Reason / Description <span className="text-rose-500">*</span>
+                    </label>
                     <textarea
                       required
                       rows={3}
-                      value={returnReason}
-                      onChange={(e) => setReturnReason(e.target.value)}
-                      placeholder="Describe the issue with the book..."
-                      className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20"
+                      value={returnDescription}
+                      onChange={(e) => setReturnDescription(e.target.value)}
+                      placeholder="Please explain the issue in detail so our admin team can verify and accept your return..."
+                      className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 text-xs"
                     />
                   </div>
 
@@ -379,16 +615,16 @@ export default function OrderTrackingPage({ params }) {
                     <button
                       type="button"
                       onClick={() => setShowReturnModal(false)}
-                      className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-medium"
+                      className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition-colors"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={returnSubmitting}
-                      className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-medium disabled:opacity-50"
+                      className="flex-1 py-2.5 bg-[#1044A5] hover:bg-[#0c3986] text-white rounded-xl font-semibold transition-colors disabled:opacity-50 shadow-xs"
                     >
-                      {returnSubmitting ? 'Submitting...' : 'Submit Request'}
+                      {returnSubmitting ? 'Submitting...' : 'Submit Return Request'}
                     </button>
                   </div>
                 </form>

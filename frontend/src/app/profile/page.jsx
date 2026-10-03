@@ -39,11 +39,20 @@ export default function ProfilePage() {
     fullName: '',
     phone: '',
     streetAddress: '',
+    postOffice: '',
     city: '',
     state: 'Kerala',
     postalCode: '',
     country: 'India'
   });
+  const [addrFormError, setAddrFormError] = useState('');
+
+  const INDIAN_STATES = [
+    'Kerala', 'Tamil Nadu', 'Karnataka', 'Maharashtra', 'Delhi', 'Andhra Pradesh', 'Telangana',
+    'Gujarat', 'West Bengal', 'Uttar Pradesh', 'Rajasthan', 'Madhya Pradesh', 'Punjab',
+    'Haryana', 'Bihar', 'Odisha', 'Assam', 'Goa', 'Himachal Pradesh', 'Jammu and Kashmir',
+    'Jharkhand', 'Uttarakhand', 'Chhattisgarh', 'Puducherry', 'Chandigarh'
+  ];
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -89,20 +98,56 @@ export default function ProfilePage() {
 
   const handleAddNewAddress = async (e) => {
     e.preventDefault();
+    setAddrFormError('');
+
+    if (!newAddr.fullName.trim()) {
+      setAddrFormError('Full name is required');
+      return;
+    }
+    const cleanPhone = String(newAddr.phone).replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      setAddrFormError('Valid 10-digit mobile number is required');
+      return;
+    }
+    if (!newAddr.streetAddress.trim()) {
+      setAddrFormError('Street address / House name is required');
+      return;
+    }
+    if (!newAddr.postOffice.trim()) {
+      setAddrFormError('Post Office is required');
+      return;
+    }
+    if (!newAddr.city.trim()) {
+      setAddrFormError('City / District is required');
+      return;
+    }
+    const cleanPin = String(newAddr.postalCode).replace(/\D/g, '');
+    if (cleanPin.length !== 6) {
+      setAddrFormError('PIN Code must be exactly 6 digits');
+      return;
+    }
+
     try {
-      await addAddress(newAddr);
+      const sanitized = {
+        ...newAddr,
+        phone: cleanPhone.slice(-10),
+        postalCode: cleanPin.slice(0, 6),
+        country: 'India'
+      };
+      await addAddress(sanitized);
       setShowAddressModal(false);
       setNewAddr({
         fullName: user?.name || '',
         phone: user?.phone || '',
         streetAddress: '',
+        postOffice: '',
         city: '',
         state: 'Kerala',
         postalCode: '',
         country: 'India'
       });
     } catch (err) {
-      alert(err.message || 'Failed to save address');
+      setAddrFormError(err.message || 'Failed to save address');
     }
   };
 
@@ -497,72 +542,143 @@ export default function ProfilePage() {
 
       {/* Address Form Modal */}
       {showAddressModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150 my-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-              <h3 className="text-sm font-semibold text-slate-900">Add New Delivery Address</h3>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Add Delivery Address</h3>
+                <p className="text-[11px] text-slate-400">All fields are required</p>
+              </div>
               <button
                 type="button"
-                onClick={() => setShowAddressModal(false)}
-                className="text-slate-400 hover:text-slate-600 text-base"
+                onClick={() => {
+                  setShowAddressModal(false);
+                  setAddrFormError('');
+                }}
+                className="w-7 h-7 rounded-full bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center text-xs"
               >
                 ✕
               </button>
             </div>
 
+            {addrFormError && (
+              <div className="mb-3 p-2.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl">
+                {addrFormError}
+              </div>
+            )}
+
             <form onSubmit={handleAddNewAddress} className="space-y-3 text-xs">
               <div>
-                <label className="block text-[11px] font-medium text-slate-700 mb-1">Full Name</label>
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                  Full Name <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
                   required
+                  placeholder="e.g. Aifa Sana"
                   value={newAddr.fullName}
                   onChange={(e) => setNewAddr({ ...newAddr, fullName: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl"
+                  className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-medium text-slate-700 mb-1">Phone Number</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-semibold text-slate-700">
+                    Mobile Number <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {String(newAddr.phone).replace(/\D/g, '').length === 10 ? '✓ 10 Digits' : `${String(newAddr.phone).replace(/\D/g, '').length}/10`}
+                  </span>
+                </div>
                 <input
                   type="tel"
                   required
+                  maxLength={10}
+                  placeholder="10-digit number"
                   value={newAddr.phone}
-                  onChange={(e) => setNewAddr({ ...newAddr, phone: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl"
+                  onChange={(e) => setNewAddr({ ...newAddr, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                  className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-medium text-slate-700 mb-1">Street Address</label>
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                  Street Address / House Name <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
                   required
+                  placeholder="House Name / Street"
                   value={newAddr.streetAddress}
                   onChange={(e) => setNewAddr({ ...newAddr, streetAddress: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl"
+                  className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-700 mb-1">City</label>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    Post Office (P.O.) <span className="text-rose-500">*</span>
+                  </label>
                   <input
                     type="text"
                     required
-                    value={newAddr.city}
-                    onChange={(e) => setNewAddr({ ...newAddr, city: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl"
+                    placeholder="e.g. Othukkungal P.O."
+                    value={newAddr.postOffice}
+                    onChange={(e) => setNewAddr({ ...newAddr, postOffice: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-700 mb-1">Postal Code</label>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    City / District <span className="text-rose-500">*</span>
+                  </label>
                   <input
                     type="text"
                     required
+                    placeholder="e.g. Kottakkal"
+                    value={newAddr.city}
+                    onChange={(e) => setNewAddr({ ...newAddr, city: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    State <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={newAddr.state || 'Kerala'}
+                    onChange={(e) => setNewAddr({ ...newAddr, state: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20"
+                  >
+                    {INDIAN_STATES.map((st) => (
+                      <option key={st} value={st}>
+                        {st}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[11px] font-semibold text-slate-700">
+                      PIN Code <span className="text-rose-500">*</span>
+                    </label>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {String(newAddr.postalCode).replace(/\D/g, '').length === 6 ? '✓ 6 Digits' : `${String(newAddr.postalCode).replace(/\D/g, '').length}/6`}
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    placeholder="676528"
                     value={newAddr.postalCode}
-                    onChange={(e) => setNewAddr({ ...newAddr, postalCode: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl"
+                    onChange={(e) => setNewAddr({ ...newAddr, postalCode: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                    className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20"
                   />
                 </div>
               </div>
@@ -570,14 +686,17 @@ export default function ProfilePage() {
               <div className="pt-3 flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowAddressModal(false)}
-                  className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-medium"
+                  onClick={() => {
+                    setShowAddressModal(false);
+                    setAddrFormError('');
+                  }}
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-[#1044A5] text-white rounded-xl font-medium"
+                  className="flex-1 py-2.5 bg-[#1044A5] hover:bg-[#0c3986] text-white rounded-xl font-semibold transition-colors shadow-xs"
                 >
                   Save Address
                 </button>

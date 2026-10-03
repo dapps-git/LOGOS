@@ -347,9 +347,21 @@ export async function apiCancelOrder(orderId, reason = '') {
   const res = await fetch(`${API_BASE}/orders/${orderId}/cancel`, {
     method: 'PUT',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ cancellationReason: reason })
+    body: JSON.stringify({ cancellationReason: reason, reason })
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to cancel order');
   return data;
 }
+
+export async function apiRequestReturn(orderId, reason, description = '') {
+  const res = await fetch(`${API_BASE}/orders/${orderId}/return`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ reason, description })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to submit return request');
+  return data;
+}
+

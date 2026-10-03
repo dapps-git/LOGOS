@@ -87,7 +87,7 @@ export default function OrdersPage() {
           </div>
 
           <div className="flex items-center gap-1 p-1 bg-slate-100 border border-slate-200 rounded-md text-xs font-semibold overflow-x-auto w-full sm:w-auto">
-            {['ALL', 'Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'].map((st) => (
+            {['ALL', 'Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled', 'Return Requested', 'Return Accepted'].map((st) => (
               <button
                 key={st}
                 type="button"
@@ -191,13 +191,22 @@ export default function OrdersPage() {
                           <select
                             value={order.orderStatus || 'Pending'}
                             onChange={(e) => handleStatusChange(order._id, e.target.value)}
-                            className="text-[11px] font-bold px-2 py-1 bg-slate-50 border border-slate-300 rounded-sm text-slate-800 focus:outline-hidden cursor-pointer"
+                            className={`text-[11px] font-bold px-2 py-1 border rounded-sm focus:outline-hidden cursor-pointer ${
+                              order.orderStatus === 'Return Requested'
+                                ? 'bg-amber-50 border-amber-300 text-amber-900 font-extrabold'
+                                : order.orderStatus === 'Cancelled'
+                                ? 'bg-rose-50 border-rose-200 text-rose-800'
+                                : 'bg-slate-50 border-slate-300 text-slate-800'
+                            }`}
                           >
                             <option value="Pending">Pending</option>
                             <option value="Processing">Processing</option>
                             <option value="Shipped">Shipped</option>
                             <option value="Delivered">Delivered</option>
                             <option value="Cancelled">Cancelled</option>
+                            <option value="Return Requested">Return Requested</option>
+                            <option value="Return Accepted">Return Accepted</option>
+                            <option value="Return Rejected">Return Rejected</option>
                           </select>
                         </td>
 
@@ -261,11 +270,85 @@ export default function OrdersPage() {
                   </p>
                   <p className="text-slate-700">{selectedOrder.shippingAddress?.streetAddress || 'Address'}</p>
                   <p className="text-slate-700">
-                    {selectedOrder.shippingAddress?.city || ''}, {selectedOrder.shippingAddress?.state || ''} {selectedOrder.shippingAddress?.postalCode ? `- ${selectedOrder.shippingAddress.postalCode}` : ''}
+                    {selectedOrder.shippingAddress?.postOffice ? `${selectedOrder.shippingAddress.postOffice} P.O., ` : ''}{selectedOrder.shippingAddress?.city || ''}, {selectedOrder.shippingAddress?.state || ''} {selectedOrder.shippingAddress?.postalCode ? `- ${selectedOrder.shippingAddress.postalCode}` : ''}
                   </p>
                   <p className="text-slate-700 font-semibold mt-1">Payment: {selectedOrder.paymentMethod || 'COD'}</p>
                 </div>
               </div>
+
+              {/* Cancellation Reason Note Banner */}
+              {Boolean(selectedOrder.cancellationReason || selectedOrder.notes?.includes('Cancellation') || selectedOrder.orderStatus === 'Cancelled') && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-md text-rose-900">
+                  <p className="font-bold flex items-center gap-1.5 uppercase text-[10px] tracking-wider text-rose-700">
+                    ⚠️ Order Cancellation Note
+                  </p>
+                  <p className="mt-1 font-medium text-xs">
+                    {selectedOrder.cancellationReason || selectedOrder.notes || 'Order was cancelled by customer.'}
+                  </p>
+                </div>
+              )}
+
+              {/* Customer Return Request Review Card */}
+              {Boolean(selectedOrder.returnRequest?.reason || selectedOrder.orderStatus === 'Return Requested' || selectedOrder.orderStatus === 'Return Accepted') && (
+                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-md text-amber-950 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="font-bold flex items-center gap-1.5 uppercase text-[10px] tracking-wider text-amber-800">
+                      🔄 Customer Return Request
+                    </p>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      selectedOrder.orderStatus === 'Return Accepted'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : selectedOrder.orderStatus === 'Return Rejected'
+                        ? 'bg-rose-100 text-rose-800'
+                        : 'bg-amber-200 text-amber-900'
+                    }`}>
+                      {selectedOrder.orderStatus}
+                    </span>
+                  </div>
+                  <div className="bg-white p-2.5 rounded border border-amber-100 text-xs text-slate-800 space-y-1">
+                    <p><strong className="text-slate-600">Customer Reason:</strong> {selectedOrder.returnRequest?.reason || 'Return requested by customer'}</p>
+                    {selectedOrder.returnRequest?.adminNote && (
+                      <p><strong className="text-slate-600">Admin Review Note:</strong> {selectedOrder.returnRequest.adminNote}</p>
+                    )}
+                  </div>
+                  {/* Action Buttons: Approve / Reject Return */}
+                  {selectedOrder.orderStatus === 'Return Requested' && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          updateOrderStatus(selectedOrder._id, 'Return Accepted', 'Return approved by admin');
+                          setSelectedOrder({
+                            ...selectedOrder,
+                            orderStatus: 'Return Accepted',
+                            returnRequest: { ...selectedOrder.returnRequest, status: 'Approved', adminNote: 'Approved by admin' }
+                          });
+                          showToast('Return approved & inventory restored', 'success');
+                        }}
+                        className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded text-xs transition-colors shadow-2xs"
+                      >
+                        ✓ Approve Return
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const note = window.prompt('Enter reason for declining return:') || 'Does not meet return criteria';
+                          updateOrderStatus(selectedOrder._id, 'Return Rejected', note);
+                          setSelectedOrder({
+                            ...selectedOrder,
+                            orderStatus: 'Return Rejected',
+                            returnRequest: { ...selectedOrder.returnRequest, status: 'Rejected', adminNote: note }
+                          });
+                          showToast('Return request declined', 'info');
+                        }}
+                        className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded text-xs transition-colors shadow-2xs"
+                      >
+                        ✕ Reject Return
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Items List */}
               <div>
