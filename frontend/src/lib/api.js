@@ -365,3 +365,17 @@ export async function apiRequestReturn(orderId, reason, description = '') {
   return data;
 }
 
+export async function fetchTestimonials() {
+  try {
+    const res = await fetch(`${API_BASE}/reviews/testimonials`, {
+      next: { revalidate: 30 }
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.reviews || [];
+  } catch (err) {
+    console.warn('[LOGOS API] fetchTestimonials fallback:', err.message);
+    return [];
+  }
+}
+

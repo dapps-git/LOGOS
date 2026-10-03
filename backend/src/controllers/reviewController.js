@@ -130,9 +130,97 @@ const getAllReviewsAdmin = async (req, res) => {
   }
 };
 
+// @desc    Get Public Testimonials for Homepage
+// @route   GET /api/reviews/testimonials
+// @access  Public
+const getPublicTestimonials = async (req, res) => {
+  try {
+    const reviews = await Review.find({ isApproved: true })
+      .populate('book', 'title author images slug')
+      .sort({ isTestimonial: -1, createdAt: -1 })
+      .limit(12);
+
+    return res.json({
+      success: true,
+      count: reviews.length,
+      reviews
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Create Review / Testimonial by Admin
+// @route   POST /api/reviews/admin/create
+// @access  Private (Admin)
+const createReviewAdmin = async (req, res) => {
+  try {
+    const { customerName, rating, comment, title, avatar, bookId, isApproved, isTestimonial } = req.body;
+
+    if (!customerName || !comment) {
+      return res.status(400).json({ success: false, message: 'Reviewer name and comment are required' });
+    }
+
+    const review = await Review.create({
+      customerName: customerName.trim(),
+      rating: Number(rating) || 5,
+      comment: comment.trim(),
+      title: title ? title.trim() : '',
+      avatar: avatar || '/testimonial_avatar.png',
+      book: bookId || null,
+      isApproved: isApproved !== undefined ? Boolean(isApproved) : true,
+      isTestimonial: isTestimonial !== undefined ? Boolean(isTestimonial) : true,
+      isVerifiedPurchase: true,
+      addedBy: 'admin'
+    });
+
+    if (bookId) {
+      await updateBookRating(bookId);
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: 'Review created successfully',
+      review
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Toggle Review Approval (Admin)
+// @route   PUT /api/reviews/admin/:id/approve
+// @access  Private (Admin)
+const toggleApproveReviewAdmin = async (req, res) => {
+  try {
+    const review = await Review.findById(req.params.id);
+    if (!review) {
+      return res.status(404).json({ success: false, message: 'Review not found' });
+    }
+
+    review.isApproved = !review.isApproved;
+    await review.save();
+
+    if (review.book) {
+      await updateBookRating(review.book);
+    }
+
+    return res.json({
+      success: true,
+      message: `Review is now ${review.isApproved ? 'approved' : 'hidden'}`,
+      review
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getBookReviews,
   addReview,
   deleteReview,
-  getAllReviewsAdmin
+  getAllReviewsAdmin,
+  getPublicTestimonials,
+  createReviewAdmin,
+  toggleApproveReviewAdmin
 };

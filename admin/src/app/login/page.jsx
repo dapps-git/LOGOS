@@ -11,8 +11,8 @@ export default function LoginPage() {
   const { login, loading } = useAuth();
   const { showToast } = useToast();
 
-  const [email, setEmail] = useState('logosadmin@gmail.com');
-  const [password, setPassword] = useState('LogosAdmin@2026');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -24,12 +24,6 @@ export default function LoginPage() {
     } catch (err) {
       showToast(err.message || 'Invalid admin credentials', 'error');
     }
-  };
-
-  const handleFillCredentials = (fillEmail, fillPass) => {
-    setEmail(fillEmail);
-    setPassword(fillPass);
-    showToast('Credentials filled. Click Sign In to continue.', 'info');
   };
 
   return (
@@ -152,32 +146,6 @@ export default function LoginPage() {
                 )}
               </button>
             </form>
-          </div>
-
-          {/* Verified Admin Credentials Info Card */}
-          <div className="mt-6 p-3.5 rounded-2xl bg-slate-50/80 border border-slate-200/80 text-[11px] text-slate-700 space-y-1.5">
-            <div className="flex items-center justify-between pb-1 border-b border-slate-200/70">
-              <span className="font-medium text-slate-800 flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                Default Credentials
-              </span>
-              <button
-                type="button"
-                onClick={() => handleFillCredentials('logosadmin@gmail.com', 'LogosAdmin@2026')}
-                className="text-[10px] text-[#1E3A8A] font-medium hover:underline flex items-center gap-1"
-              >
-                <CheckCircle className="w-3 h-3 text-emerald-600" />
-                Auto-fill
-              </button>
-            </div>
-            <div className="space-y-0.5 font-mono text-[11px]">
-              <p className="text-slate-500 font-light">
-                Email: <span className="text-slate-800 font-medium select-all">logosadmin@gmail.com</span>
-              </p>
-              <p className="text-slate-500 font-light">
-                Pass: <span className="text-slate-800 font-medium select-all">LogosAdmin@2026</span>
-              </p>
-            </div>
           </div>
         </div>
       </div>

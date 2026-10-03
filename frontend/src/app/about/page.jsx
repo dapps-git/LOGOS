@@ -124,24 +124,9 @@ export default function AboutUsPage() {
 
         {/* 2. Message from the Director (Dark Warm Terracotta Section matching Screenshot) */}
         <div className="w-full my-12 bg-[#4E2412] text-white py-14 px-4 sm:px-8 shadow-inner">
-          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12 items-center">
-            {/* Director Photo on Left */}
-            <div className="md:col-span-4 lg:col-span-3 flex justify-center md:justify-start">
-              <div className="w-48 sm:w-56 md:w-full max-w-[240px] aspect-square rounded-2xl overflow-hidden shadow-2xl border-2 border-[#D4A373]/30">
-                <img
-                  src="/director-tejaswini.jpg"
-                  alt="Tejaswini Ajith - Director, Logos Books"
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.onerror = null;
-                    e.currentTarget.src = '/banner.png';
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Director Quote & Details on Right */}
-            <div className="md:col-span-8 lg:col-span-9 space-y-4">
+          <div className="max-w-4xl mx-auto space-y-4">
+            {/* Director Quote & Details */}
+            <div className="space-y-4">
               <div>
                 <span className="text-[11px] font-semibold tracking-widest uppercase text-[#D4A373] block mb-1">
                   MESSAGE FROM THE DIRECTOR

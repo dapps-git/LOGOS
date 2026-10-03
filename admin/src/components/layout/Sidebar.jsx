@@ -16,6 +16,7 @@ import {
   Settings,
   Ticket,
   Gift,
+  Star,
   LogOut
 } from 'lucide-react';
 import { useStoreData } from '@/context/StoreDataContext';
@@ -48,6 +49,7 @@ export const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
     { name: 'Referrals & Rewards', href: '/referrals', icon: Gift },
     { name: 'Returns & Refunds', href: '/returns', icon: RotateCcw, badge: pendingReturnsCount > 0 ? pendingReturnsCount : null, badgeColor: 'bg-blue-50 text-blue-800 border border-blue-200' },
     { name: 'Invoices', href: '/invoices', icon: FileText },
+    { name: 'Reviews', href: '/reviews', icon: Star },
     { name: 'Customers', href: '/customers', icon: Users },
     { name: 'Reports', href: '/reports', icon: BarChart3 },
     { name: 'Settings', href: '/settings', icon: Settings },

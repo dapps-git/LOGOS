@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Star, ArrowRight, Heart } from 'lucide-react';
+import { Star, Heart } from 'lucide-react';
 import { fetchNewArrivals } from '@/lib/api';
 import { useWishlist } from '@/context/WishlistContext';
 
@@ -90,14 +90,6 @@ export const NewArrivals = () => {
             New Arrivals
           </h2>
         </div>
-
-        <Link
-          href="/products?sort=new"
-          className="p-1.5 text-slate-700 hover:text-slate-950 hover:bg-slate-100 rounded-full transition-all flex-shrink-0 group mb-0.5"
-          title="View all new books"
-        >
-          <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
-        </Link>
       </div>
 
       {/* Book Cards Grid */}

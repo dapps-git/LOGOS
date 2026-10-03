@@ -2,7 +2,6 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
 
 const AUTHORS = [
   {
@@ -48,14 +47,6 @@ export const FeaturedAuthors = () => {
             Featured Authors
           </h2>
         </div>
-
-        <Link
-          href="/authors"
-          className="p-1.5 text-slate-700 hover:text-slate-950 hover:bg-slate-100 rounded-full transition-all flex-shrink-0 group mb-0.5"
-          title="Meet all the authors"
-        >
-          <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
-        </Link>
       </div>
 
       {/* 4 Authors Grid */}

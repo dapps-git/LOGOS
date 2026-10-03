@@ -185,22 +185,22 @@ export const ProductDetail = ({ book }) => {
               </p>
             </div>
 
-            {/* CTA Buttons Row */}
-            <div className="flex flex-wrap items-center gap-4 pt-4">
+            {/* CTA Buttons Row - In mobile view placed in one line */}
+            <div className="flex flex-row items-center gap-2.5 sm:gap-4 pt-4 w-full">
               <button
                 type="button"
                 onClick={handleAddToCart}
-                className="inline-flex items-center justify-center gap-2 border border-[#1E3A8A] text-[#1E3A8A] hover:bg-blue-50 px-7 py-3 rounded-full font-medium text-xs sm:text-sm transition-all active:scale-95 shadow-sm"
+                className="flex-1 min-w-0 inline-flex items-center justify-center gap-1.5 sm:gap-2 border border-[#1E3A8A] text-[#1E3A8A] hover:bg-blue-50 py-3 px-2 sm:px-7 rounded-full font-medium text-xs sm:text-sm transition-all active:scale-95 shadow-xs whitespace-nowrap"
               >
                 {addedToCart ? (
                   <>
-                    <Check className="w-4 h-4 text-emerald-600" />
-                    <span className="text-emerald-700">Added to Cart!</span>
+                    <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 flex-shrink-0" />
+                    <span className="text-emerald-700 truncate">Added!</span>
                   </>
                 ) : (
                   <>
-                    <ShoppingCart className="w-4 h-4" />
-                    <span>Add to Cart</span>
+                    <ShoppingCart className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                    <span className="truncate">Add to Cart</span>
                   </>
                 )}
               </button>
@@ -208,10 +208,10 @@ export const ProductDetail = ({ book }) => {
               <button
                 type="button"
                 onClick={handleBuyNow}
-                className="inline-flex items-center justify-center gap-2 bg-[#1E3A8A] hover:bg-[#152e72] text-white px-8 py-3 rounded-full font-medium text-xs sm:text-sm transition-all shadow-md shadow-blue-900/10 active:scale-95"
+                className="flex-1 min-w-0 inline-flex items-center justify-center gap-1.5 sm:gap-2 bg-[#1E3A8A] hover:bg-[#152e72] text-white py-3 px-2 sm:px-8 rounded-full font-medium text-xs sm:text-sm transition-all shadow-md shadow-blue-900/10 active:scale-95 whitespace-nowrap"
               >
-                <Zap className="w-4 h-4" />
-                <span>Buy Now</span>
+                <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                <span className="truncate">Buy Now</span>
               </button>
             </div>
           </div>

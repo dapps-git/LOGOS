@@ -9,7 +9,7 @@ export const Footer = () => {
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-10 lg:gap-14 pb-12">
           {/* Brand Column */}
-          <div className="md:col-span-6 space-y-4">
+          <div className="md:col-span-8 space-y-4">
             <Link href="/" className="inline-block transition-transform hover:scale-105">
               <img
                 src="/logo.png"
@@ -71,7 +71,7 @@ export const Footer = () => {
           </div>
 
           {/* About Column */}
-          <div className="md:col-span-2 space-y-3">
+          <div className="md:col-span-4 space-y-3 md:pl-8">
             <h3 className="text-xs font-bold tracking-wider uppercase text-sky-400">
               About Logos
             </h3>
@@ -94,64 +94,6 @@ export const Footer = () => {
               <li>
                 <Link href="/about#contact" className="hover:text-white transition-colors">
                   Contact Us
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Books Links */}
-          <div className="md:col-span-2 space-y-3">
-            <h3 className="text-xs font-bold tracking-wider uppercase text-sky-400">
-              Books
-            </h3>
-            <ul className="space-y-2.5 text-xs sm:text-sm text-slate-300">
-              <li>
-                <Link href="/authors" className="hover:text-white transition-colors">
-                  Authors
-                </Link>
-              </li>
-              <li>
-                <Link href="/categories" className="hover:text-white transition-colors">
-                  Category
-                </Link>
-              </li>
-              <li>
-                <Link href="/age-groups" className="hover:text-white transition-colors">
-                  Age
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Policies Links */}
-          <div className="md:col-span-2 space-y-3">
-            <h3 className="text-xs font-bold tracking-wider uppercase text-sky-400">
-              Policies
-            </h3>
-            <ul className="space-y-2.5 text-xs sm:text-sm text-slate-300">
-              <li>
-                <Link href="/policies/terms" className="hover:text-white transition-colors">
-                  Terms &amp; Conditions
-                </Link>
-              </li>
-              <li>
-                <Link href="/policies/privacy" className="hover:text-white transition-colors">
-                  Privacy policy
-                </Link>
-              </li>
-              <li>
-                <Link href="/policies/returns" className="hover:text-white transition-colors">
-                  Return &amp; Refund
-                </Link>
-              </li>
-              <li>
-                <Link href="/policies/shipping" className="hover:text-white transition-colors">
-                  Shipping &amp; Delivery
-                </Link>
-              </li>
-              <li>
-                <Link href="/faq" className="hover:text-white transition-colors">
-                  FAQ
                 </Link>
               </li>
             </ul>

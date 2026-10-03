@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Star } from 'lucide-react';
+import { fetchTestimonials } from '@/lib/api';
 
-const REVIEWS = [
+const DEFAULT_REVIEWS = [
   {
     id: 'rev-1',
     author: 'Joseph',
@@ -28,6 +29,25 @@ const REVIEWS = [
 ];
 
 export const Testimonials = () => {
+  const [reviews, setReviews] = useState(DEFAULT_REVIEWS);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchTestimonials().then((data) => {
+      if (isMounted && Array.isArray(data) && data.length > 0) {
+        const mapped = data.map((r, i) => ({
+          id: r._id || `rev-${i}`,
+          author: r.customerName || (r.customer && r.customer.name) || 'Reader',
+          rating: r.rating || 5,
+          avatar: r.avatar || (r.customer && r.customer.avatar) || '/testimonial_avatar.png',
+          text: r.comment || r.title || ''
+        }));
+        setReviews(mapped);
+      }
+    });
+    return () => { isMounted = false; };
+  }, []);
+
   return (
     <section className="py-12 sm:py-16 px-4 sm:px-8 max-w-6xl mx-auto">
       {/* Section Header with Divider */}
@@ -41,9 +61,9 @@ export const Testimonials = () => {
         <div className="w-full border-b border-slate-200 mt-4" />
       </div>
 
-      {/* 3 Review Cards */}
+      {/* Dynamic Review Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {REVIEWS.map((review, idx) => (
+        {reviews.map((review, idx) => (
           <div
             key={`${review.id}-${idx}`}
             className="border border-slate-300/80 rounded-2xl p-6 sm:p-7 bg-white shadow-xs flex flex-col justify-between space-y-4 hover:border-slate-400 transition-colors"
