@@ -15,14 +15,21 @@ export const FeaturedAuthors = () => {
         const live = await fetchAuthors();
         if (isMounted) {
           if (Array.isArray(live) && live.length > 0) {
-            setAuthors(
-              live.map((a, idx) => ({
-                id: a._id || `auth-${idx}`,
-                name: a.name || a,
-                image: a.image || a.photo || '/placeholder-author.png',
-                href: `/products?author=${encodeURIComponent(a.name || a)}`
-              }))
+            const authorsWithPhotos = live.filter(
+              (a) => a && a.photo && typeof a.photo === 'string' && a.photo.trim() !== '' && !a.photo.includes('placeholder')
             );
+            if (authorsWithPhotos.length > 0) {
+              setAuthors(
+                authorsWithPhotos.slice(0, 8).map((a, idx) => ({
+                  id: a._id || `auth-${idx}`,
+                  name: a.name || a.author || a,
+                  image: a.photo,
+                  href: `/products?author=${encodeURIComponent(a.name || a.author || a)}`
+                }))
+              );
+            } else {
+              setAuthors([]);
+            }
           } else {
             setAuthors([]);
           }

@@ -13,16 +13,19 @@ export const AuthorBestBooks = () => {
     let isMounted = true;
     const loadAuthorBestBooks = async () => {
       try {
-        const liveBooks = await fetchBooks({ limit: 4 });
+        const liveBooks = await fetchBooks({ isAuthorSpotlight: true });
         if (isMounted) {
-          if (Array.isArray(liveBooks) && liveBooks.length >= 2) {
+          const valid = Array.isArray(liveBooks)
+            ? liveBooks.filter((b) => b && b.images && b.images.length > 0 && !b.images[0].includes('placeholder'))
+            : [];
+          if (valid.length >= 2) {
             setBooks(
-              liveBooks.slice(0, 2).map((b) => ({
+              valid.slice(0, 2).map((b) => ({
                 id: b._id,
                 title: b.title || b.name,
                 rating: b.rating ? String(b.rating) : '5.0',
                 description: b.description,
-                image: (b.images && b.images[0]) || '/placeholder-book.png',
+                image: (b.images && b.images[0]) || '/book-placeholder.svg',
                 slug: b.slug || b._id
               }))
             );

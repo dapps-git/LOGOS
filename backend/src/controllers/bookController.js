@@ -477,7 +477,7 @@ const bulkImportBooks = async (req, res) => {
         }
 
         if (imagesList.length === 0) {
-          imagesList = ['/book1.jpg'];
+          imagesList = [];
         }
 
         const rawLanguages = b.languages || b.Languages || b.language || b.Language || ['Malayalam'];

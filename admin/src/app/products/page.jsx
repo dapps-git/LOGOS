@@ -168,7 +168,7 @@ export default function ProductsPage() {
                   </tr>
                 ) : (
                   filteredBooks.map((book) => {
-                    const cover = book.coverImage || book.image || (book.images && book.images[0]) || '/book1.jpg';
+                    const cover = book.coverImage || book.image || (book.images && book.images[0]) || '/book-placeholder.svg';
                     const photosCount = (book.images?.length) || (book.coverImage ? 1 : 0);
 
                     return (
@@ -182,7 +182,7 @@ export default function ProductsPage() {
                                 alt={book.title || book.name}
                                 onError={(e) => {
                                   e.currentTarget.onerror = null;
-                                  e.currentTarget.src = '/book1.jpg';
+                                  e.currentTarget.src = '/book-placeholder.svg';
                                 }}
                                 className="w-10 h-14 object-cover border border-slate-200 rounded-lg shadow-2xs bg-slate-50"
                               />

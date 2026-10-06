@@ -773,7 +773,7 @@ function ProductsContent() {
                     const author = book.author || 'LOGOS Publications';
                     const price = Number(book.discountPrice || book.salePrice || book.price || 299);
                     const originalPrice = Number(book.price || (price + 50));
-                    const image = book.coverImage || book.image || (book.images && book.images[0]) || '/book1.jpg';
+                    const image = book.coverImage || book.image || (book.images && book.images[0]) || '/book-placeholder.svg';
                     const inWishlist = isBookInWishlist(bookId);
                     const discountPercent = originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
                     const rating = book.rating ? Number(book.rating).toFixed(1) : '4.6';
@@ -792,7 +792,7 @@ function ProductsContent() {
                               alt={title}
                               onError={(e) => {
                                 e.currentTarget.onerror = null;
-                                e.currentTarget.src = '/book1.jpg';
+                                e.currentTarget.src = '/book-placeholder.svg';
                               }}
                               className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
                             />
@@ -884,7 +884,7 @@ function ProductsContent() {
                     const author = book.author || 'LOGOS Publications';
                     const price = Number(book.discountPrice || book.salePrice || book.price || 299);
                     const originalPrice = Number(book.price || (price + 50));
-                    const image = book.coverImage || book.image || (book.images && book.images[0]) || '/book1.jpg';
+                    const image = book.coverImage || book.image || (book.images && book.images[0]) || '/book-placeholder.svg';
                     const inWishlist = isBookInWishlist(bookId);
                     const discountPercent = originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
                     const rating = book.rating ? Number(book.rating).toFixed(1) : '4.6';
@@ -903,7 +903,7 @@ function ProductsContent() {
                               alt={title}
                               onError={(e) => {
                                 e.currentTarget.onerror = null;
-                                e.currentTarget.src = '/book1.jpg';
+                                e.currentTarget.src = '/book-placeholder.svg';
                               }}
                               className="w-full h-full object-cover object-center"
                             />

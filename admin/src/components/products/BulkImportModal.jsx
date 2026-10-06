@@ -163,7 +163,7 @@ export const BulkImportModal = ({ isOpen, onClose }) => {
               });
             }
 
-            if (images.length === 0) images.push('/book1.jpg');
+            // If no image provided, leave empty array
 
             const rawLanguages = row.Languages || row.languages || row.Language || 'Malayalam';
             const languages = String(rawLanguages).split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
@@ -206,7 +206,7 @@ export const BulkImportModal = ({ isOpen, onClose }) => {
               }
             });
 
-            if (images.length === 0) images.push('/book1.jpg');
+            // If no image provided, leave empty array
 
             const sku = String(cols[0] || `LGS-BK-${idx + 1}`);
             const title = String(cols[1] || `Book ${idx + 1}`);
