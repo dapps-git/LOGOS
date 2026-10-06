@@ -48,7 +48,7 @@ export const HeroBanner = () => {
       <img
         src={bannerImage}
         alt={bannerAlt}
-        className="w-full h-[440px] sm:h-[540px] md:h-screen md:min-h-[600px] object-cover object-[86%_25%] md:object-center select-none block transition-opacity duration-500"
+        className="w-full h-auto block select-none transition-opacity duration-500"
       />
 
       {banners.length > 1 && (

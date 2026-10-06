@@ -22,212 +22,7 @@ import {
   BookOpen
 } from 'lucide-react';
 
-const FALLBACK_CATALOG = [
-  {
-    _id: 'prod-1',
-    title: 'Oru Deshathinte Katha',
-    titleMalayalam: 'ഒരു ദേശത്തിന്റെ കഥ',
-    author: 'M. Mukundan',
-    theme: 'Novel',
-    genre: 'Novel',
-    category: 'Novel',
-    languages: ['Malayalam'],
-    price: 349.0,
-    discountPrice: 299.0,
-    rating: 4.6,
-    reviewsCount: 128,
-    coverImage: '/book1.jpg',
-    slug: 'oru-deshathinte-katha',
-    isBestSeller: true
-  },
-  {
-    _id: 'prod-2',
-    title: 'Malayalam Kavithakal',
-    titleMalayalam: 'മലയാള കവിതകൾ',
-    author: 'Vayalar Ramavarma',
-    theme: 'Poetry',
-    genre: 'Poetry',
-    category: 'Poetry',
-    languages: ['Malayalam'],
-    price: 299.0,
-    discountPrice: 249.0,
-    rating: 4.5,
-    reviewsCount: 96,
-    coverImage: '/book2.png',
-    slug: 'malayalam-kavithakal',
-    isBestSeller: true
-  },
-  {
-    _id: 'prod-3',
-    title: 'Thirakkatha',
-    titleMalayalam: 'തിരക്കഥ',
-    author: 'S. K. Pottekkatt',
-    theme: 'Cinema & Politics',
-    genre: 'Cinema & Politics',
-    category: 'Cinema & Politics',
-    languages: ['Malayalam'],
-    price: 319.0,
-    discountPrice: 279.0,
-    rating: 4.7,
-    reviewsCount: 142,
-    coverImage: '/book3.png',
-    slug: 'thirakkatha',
-    isBestSeller: true
-  },
-  {
-    _id: 'prod-4',
-    title: 'Train to Malabar',
-    titleMalayalam: 'ട്രെയിൻ ടു മലബാർ',
-    author: 'V. K. Nair',
-    theme: 'Novel',
-    genre: 'Novel',
-    category: 'Novel',
-    languages: ['Malayalam', 'English'],
-    price: 399.0,
-    discountPrice: 360.0,
-    rating: 4.4,
-    reviewsCount: 87,
-    coverImage: '/book4.png',
-    slug: 'train-to-malabar',
-    isNewArrival: true
-  },
-  {
-    _id: 'prod-5',
-    title: 'Randaamoozham',
-    titleMalayalam: 'രണ്ടാമൂഴം',
-    author: 'M. T. Vasudevan Nair',
-    theme: 'Novel',
-    genre: 'Novel',
-    category: 'Novel',
-    languages: ['Malayalam'],
-    price: 399.0,
-    discountPrice: 339.0,
-    rating: 4.8,
-    reviewsCount: 203,
-    coverImage: '/book5.png',
-    slug: 'randaamoozham',
-    isBestSeller: true
-  },
-  {
-    _id: 'prod-6',
-    title: 'Gandhiji',
-    titleMalayalam: 'ഗാന്ധിജി',
-    author: 'Raghavan',
-    theme: 'Biography',
-    genre: 'Biography',
-    category: 'Biography',
-    languages: ['Malayalam'],
-    price: 299.0,
-    discountPrice: 245.0,
-    rating: 4.5,
-    reviewsCount: 110,
-    coverImage: '/handpicked1.png',
-    slug: 'gandhiji-biography',
-    isNewArrival: true
-  },
-  {
-    _id: 'prod-7',
-    title: 'Swarna Kadhakal',
-    titleMalayalam: 'സ്വർണ്ണ കഥകൾ',
-    author: 'O. V. Vijayan',
-    theme: 'Books',
-    genre: 'Books',
-    category: 'Books',
-    languages: ['Malayalam'],
-    price: 349.0,
-    discountPrice: 299.0,
-    rating: 4.6,
-    reviewsCount: 95,
-    coverImage: '/handpicked2.png',
-    slug: 'swarna-kadhakal',
-    isBestSeller: true
-  },
-  {
-    _id: 'prod-8',
-    title: 'Aadujeevitham',
-    titleMalayalam: 'ആടുജീവിതം',
-    author: 'Benyamin',
-    theme: 'Novel',
-    genre: 'Novel',
-    category: 'Novel',
-    languages: ['Malayalam', 'English'],
-    price: 449.0,
-    discountPrice: 399.0,
-    rating: 4.7,
-    reviewsCount: 176,
-    coverImage: '/handpicked3.png',
-    slug: 'aadujeevitham',
-    isBestSeller: true
-  },
-  {
-    _id: 'prod-9',
-    title: 'പരാജിതനായകർ',
-    titleMalayalam: 'പരാജിതനായകർ',
-    author: 'ടി. അനീഷ്',
-    theme: 'Cinema & Politics',
-    genre: 'Cinema & Politics',
-    category: 'Cinema & Politics',
-    languages: ['Malayalam'],
-    price: 450.0,
-    discountPrice: 380.0,
-    rating: 4.8,
-    reviewsCount: 140,
-    coverImage: '/featured_parajitha.png',
-    slug: 'parajithanayakar',
-    isFeatured: true
-  },
-  {
-    _id: 'prod-10',
-    title: 'ഘടോൽക്കചൻ',
-    titleMalayalam: 'ഘടോൽക്കചൻ',
-    author: 'രാജേഷ് കെ.ആർ',
-    theme: 'Novel',
-    genre: 'Novel',
-    category: 'Novel',
-    languages: ['Malayalam'],
-    price: 350.0,
-    discountPrice: 290.0,
-    rating: 4.9,
-    reviewsCount: 65,
-    coverImage: '/author_best1.png',
-    slug: 'ghadolkachan',
-    isFeatured: true
-  },
-  {
-    _id: 'prod-11',
-    title: 'ഘടോൽക്കചൻ - രാക്ഷസപർവ്വം',
-    titleMalayalam: 'ഘടോൽക്കചൻ - രാക്ഷസപർവ്വം',
-    author: 'രാജേഷ് കെ.ആർ',
-    theme: 'Novel',
-    genre: 'Novel',
-    category: 'Novel',
-    languages: ['Malayalam'],
-    price: 380.0,
-    discountPrice: 320.0,
-    rating: 4.7,
-    reviewsCount: 72,
-    coverImage: '/author_best2.png',
-    slug: 'ghadolkachan-rakshasaparvam',
-    isNewArrival: true
-  },
-  {
-    _id: 'prod-12',
-    title: 'കമ്മ്യൂണിസ്റ്റ് ഹീറോ',
-    titleMalayalam: 'കമ്മ്യൂണിസ്റ്റ് ഹീറോ',
-    author: 'പി.ടി. പ്രദീഷ്',
-    theme: 'Humour',
-    genre: 'Humour',
-    category: 'Humour',
-    languages: ['Malayalam'],
-    price: 160.0,
-    discountPrice: 94.0,
-    rating: 4.6,
-    reviewsCount: 54,
-    coverImage: '/bestseller1.png',
-    slug: 'communist-hero',
-    isBestSeller: true
-  }
-];
+const FALLBACK_CATALOG = [];
 
 const PRICE_RANGES = [
   { label: 'All Prices', min: 0, max: Infinity },
@@ -254,7 +49,7 @@ function ProductsContent() {
   const { toggleWishlist, isBookInWishlist } = useWishlist();
   const { addToCart } = useCart();
 
-  const [rawBooks, setRawBooks] = useState(FALLBACK_CATALOG);
+  const [rawBooks, setRawBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
@@ -271,14 +66,8 @@ function ProductsContent() {
       try {
         setLoading(true);
         const live = await fetchBooks();
-        if (Array.isArray(live) && live.length > 0) {
-          const map = new Map();
-          // Put live books first, then supplement with demo fallback books
-          [...live, ...FALLBACK_CATALOG].forEach((b) => {
-            const key = b.slug || b._id || b.title;
-            if (!map.has(key)) map.set(key, b);
-          });
-          setRawBooks(Array.from(map.values()));
+        if (Array.isArray(live)) {
+          setRawBooks(live);
         }
       } catch (err) {
         console.warn('[ProductsPage] fallback to local catalog:', err);
