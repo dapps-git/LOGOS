@@ -4,35 +4,10 @@ const Customer = require('../models/Customer');
 const Coupon = require('../models/Coupon');
 const Referral = require('../models/Referral');
 const Cart = require('../models/Cart');
-
-// @desc    Process Referrer Reward Credit of ₹100 upon purchase
-const creditReferrerOnPurchase = async (customerId, orderId, orderAmount) => {
-  try {
-    const referral = await Referral.findOne({
-      referredUser: customerId,
-      status: 'registered'
-    });
-
-    if (referral) {
-      // Award ₹100 to referrer
-      const referrer = await Customer.findById(referral.referrer);
-      if (referrer) {
-        referrer.referralRewardBalance = (referrer.referralRewardBalance || 0) + (referral.referrerRewardAmount || 100);
-        referrer.referralRewardsEarned = (referrer.referralRewardsEarned || 0) + (referral.referrerRewardAmount || 100);
-        referrer.successfulReferralsCount = (referrer.successfulReferralsCount || 0) + 1;
-        await referrer.save();
-
-        referral.status = 'rewarded';
-        referral.orderId = orderId;
-        referral.orderAmount = orderAmount;
-        referral.rewardedAt = new Date();
-        await referral.save();
-      }
-    }
-  } catch (err) {
-    console.error('[Referral Reward Error]', err.message);
-  }
-};
+const {
+  evaluateCustomerReferralEligibility,
+  processReferralRewardOnCompletion
+} = require('../utils/referralService');
 
 // @desc    Create a new book order
 // @route   POST /api/orders
@@ -76,21 +51,19 @@ const createOrder = async (req, res) => {
     shippingAddress.state = shippingAddress.state || 'Kerala';
     shippingAddress.postOffice = shippingAddress.postOffice || '';
 
-    let customer = null;
-    if (req.customer) {
-      customer = await Customer.findById(req.customer._id);
-    } else {
-      // Guest customer lookup or auto-creation
-      const guestEmail = (customerInfo?.email || shippingAddress?.email || `${shippingAddress.phone}@guest.logos.in`).toLowerCase().trim();
-      customer = await Customer.findOne({ email: guestEmail });
-      if (!customer) {
-        customer = await Customer.create({
-          name: customerInfo?.name || shippingAddress.fullName || 'Guest Customer',
-          email: guestEmail,
-          phone: customerInfo?.phone || shippingAddress.phone || '',
-          addresses: [shippingAddress]
-        });
-      }
+    if (!req.customer) {
+      return res.status(401).json({
+        success: false,
+        message: 'You must be logged in to place an order. Please sign in or create an account.'
+      });
+    }
+
+    const customer = await Customer.findById(req.customer._id);
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Customer account not found. Please log in again.'
+      });
     }
 
     // Verify items, compute subtotal & check stock
@@ -141,13 +114,14 @@ const createOrder = async (req, res) => {
       }
     }
 
-    // 2. Check & apply Coupon Discount (if not using referral discount on 1st order)
-    if (couponCode && referralDiscount === 0) {
-      const coupon = await Coupon.findOne({ code: couponCode.trim().toUpperCase(), isActive: true });
+    // 2. Check & apply Coupon Discount (supports combining with 15% referral discount, order >= 1000)
+    const effectiveCouponCode = couponCode || req.body.appliedCoupon;
+    if (effectiveCouponCode && subtotal >= 1000) {
+      const coupon = await Coupon.findOne({ code: String(effectiveCouponCode).trim().toUpperCase(), isActive: true });
       if (coupon) {
         if (coupon.isWelcomeCoupon && customer.isWelcomeOfferUsed) {
-          // ignore or error
-        } else if (subtotal >= coupon.minOrderValue) {
+          // ignore already used welcome coupon
+        } else if (subtotal >= (coupon.minOrderValue || 0)) {
           if (coupon.discountType === 'percentage') {
             couponDiscount = (subtotal * coupon.discountValue) / 100;
             if (coupon.maxDiscount && couponDiscount > coupon.maxDiscount) {
@@ -156,7 +130,7 @@ const createOrder = async (req, res) => {
           } else {
             couponDiscount = coupon.discountValue;
           }
-          couponDiscount = Math.round(Math.min(couponDiscount, subtotal));
+          couponDiscount = Math.round(Math.min(couponDiscount, Math.max(0, subtotal - referralDiscount)));
           appliedCouponName = coupon.code;
 
           // Increment coupon usage
@@ -178,10 +152,13 @@ const createOrder = async (req, res) => {
       customer.referralRewardBalance -= walletDeduction;
     }
 
-    const totalDiscount = referralDiscount + couponDiscount + walletDeduction;
-    const finalTotal = Math.max(0, subtotal - totalDiscount);
+    const totalDiscount = Math.min(subtotal, referralDiscount + couponDiscount + walletDeduction);
 
     const normalizedPaymentMethod = (paymentMethod || 'COD').toString().toUpperCase() === 'COD' ? 'COD' : 'Online';
+    // Shipping fee: COD is FREE if subtotal >= 1000, otherwise 2% of product price. Online/Prepaid is FREE (0)
+    const shippingFee = normalizedPaymentMethod === 'COD' ? (subtotal >= 1000 ? 0 : Math.round(subtotal * 0.02)) : 0;
+    const finalTotal = Math.max(0, subtotal - totalDiscount + shippingFee);
+
     const generatedOrderNumber = `LGS-${Date.now().toString().slice(-8)}-${Math.floor(100 + Math.random() * 900)}`;
 
     // Create Order
@@ -193,7 +170,7 @@ const createOrder = async (req, res) => {
       paymentMethod: normalizedPaymentMethod,
       paymentStatus: normalizedPaymentMethod === 'COD' ? 'Pending' : 'Paid',
       subtotal,
-      shippingFee: 0,
+      shippingFee,
       discount: totalDiscount,
       referralDiscount,
       couponDiscount,
@@ -220,8 +197,13 @@ const createOrder = async (req, res) => {
     // Save updated customer states
     await customer.save();
 
-    // Trigger ₹100 reward to referrer
-    await creditReferrerOnPurchase(customer._id, order._id, finalTotal);
+    // Referral Handling:
+    // Online Payment: If paid online immediately, trigger reward to referrer and eligibility for customer.
+    // COD: DO NOT trigger yet; will be processed upon successful delivery.
+    if (normalizedPaymentMethod === 'Online') {
+      await processReferralRewardOnCompletion(order);
+      await evaluateCustomerReferralEligibility(customer._id, order._id);
+    }
 
     // Clear Customer Cart
     await Cart.findOneAndUpdate({ customer: customer._id }, { $set: { items: [] } });
@@ -381,6 +363,12 @@ const updateOrderStatusAdmin = async (req, res) => {
     }
 
     await order.save();
+
+    // Trigger Referral Rewards and Eligibility on delivery
+    if ((status || '').toLowerCase() === 'delivered') {
+      await processReferralRewardOnCompletion(order);
+      await evaluateCustomerReferralEligibility(order.customer, order._id);
+    }
 
     return res.json({
       success: true,
@@ -613,8 +601,319 @@ const reviewReturnAdmin = async (req, res) => {
   }
 };
 
+// @desc    Initialize Razorpay order
+// @route   POST /api/orders/razorpay/create
+// @access  Private (Customer)
+const createRazorpayOrder = async (req, res) => {
+  try {
+    const { getRazorpayKeys, getRazorpayInstance } = require('../utils/razorpay');
+    const { items, orderItems, shippingAddress, couponCode, applyReferralDiscount, useWalletBalance } = req.body;
+
+    if (!req.customer) {
+      return res.status(401).json({ success: false, message: 'You must be logged in to proceed with online payment.' });
+    }
+
+    const rawItems = items || orderItems;
+    if (!rawItems || !Array.isArray(rawItems) || rawItems.length === 0) {
+      return res.status(400).json({ success: false, message: 'No items in order' });
+    }
+
+    const customer = await Customer.findById(req.customer._id);
+    if (!customer) {
+      return res.status(404).json({ success: false, message: 'Customer not found' });
+    }
+
+    let subtotal = 0;
+    for (const item of rawItems) {
+      const bookKey = item.bookId || item.book || item._id || item.id;
+      let book = null;
+      if (bookKey) {
+        try { book = await Book.findById(bookKey); } catch { book = null; }
+      }
+      if (!book && item.title) {
+        book = await Book.findOne({ title: item.title });
+      }
+      const qty = parseInt(item.quantity || 1, 10);
+      const unitPrice = book ? ((book.discountPrice && book.discountPrice < book.price) ? book.discountPrice : book.price) : Number(item.price || 299);
+      subtotal += unitPrice * qty;
+    }
+
+    let referralDiscount = 0;
+    let couponDiscount = 0;
+
+    // Referral 15% discount
+    if (applyReferralDiscount || (customer.isReferred && !customer.referralDiscountUsed)) {
+      if (!customer.referralDiscountUsed) {
+        referralDiscount = Math.round((subtotal * 15) / 100);
+      }
+    }
+
+    // Coupon discount (supports combining with referral discount)
+    const effectiveCouponCode = couponCode || req.body.appliedCoupon;
+    if (effectiveCouponCode && subtotal >= 1000) {
+      const coupon = await Coupon.findOne({ code: String(effectiveCouponCode).trim().toUpperCase(), isActive: true });
+      if (coupon && (!coupon.isWelcomeCoupon || !customer.isWelcomeOfferUsed)) {
+        if (subtotal >= (coupon.minOrderValue || 0)) {
+          if (coupon.discountType === 'percentage') {
+            couponDiscount = (subtotal * coupon.discountValue) / 100;
+            if (coupon.maxDiscount && couponDiscount > coupon.maxDiscount) couponDiscount = coupon.maxDiscount;
+          } else {
+            couponDiscount = coupon.discountValue;
+          }
+          couponDiscount = Math.round(Math.min(couponDiscount, Math.max(0, subtotal - referralDiscount)));
+        }
+      }
+    }
+
+    let walletDeduction = 0;
+    if (useWalletBalance && customer.referralRewardBalance > 0) {
+      const remainingBeforeWallet = Math.max(0, subtotal - referralDiscount - couponDiscount);
+      walletDeduction = Math.min(customer.referralRewardBalance, remainingBeforeWallet);
+    }
+
+    const totalDiscount = referralDiscount + couponDiscount + walletDeduction;
+    // Online payment gives FREE shipping
+    const shippingFee = 0;
+    const finalTotal = Math.max(1, subtotal - totalDiscount + shippingFee);
+
+    const { keyId, keySecret } = getRazorpayKeys();
+    const razorpay = getRazorpayInstance();
+
+    if (!razorpay || !keyId || !keySecret) {
+      return res.status(500).json({
+        success: false,
+        message: 'Razorpay payment gateway is not properly configured.'
+      });
+    }
+
+    const receipt = `rcpt_${Date.now().toString().slice(-8)}_${Math.floor(Math.random() * 1000)}`;
+    const amountInPaise = Math.round(finalTotal * 100);
+
+    const razorpayOrder = await razorpay.orders.create({
+      amount: amountInPaise,
+      currency: 'INR',
+      receipt,
+      notes: {
+        customerId: customer._id.toString(),
+        customerEmail: customer.email,
+        customerName: customer.name,
+        customerPhone: shippingAddress?.phone || customer.phone || '',
+        itemCount: rawItems.length.toString()
+      }
+    });
+
+    return res.json({
+      success: true,
+      orderId: razorpayOrder.id,
+      amount: razorpayOrder.amount,
+      currency: razorpayOrder.currency,
+      keyId,
+      verifiedTotal: finalTotal,
+      prefill: {
+        name: customer.name || shippingAddress?.fullName || 'Customer',
+        email: customer.email,
+        contact: shippingAddress?.phone || customer.phone || ''
+      }
+    });
+  } catch (error) {
+    console.error('Razorpay create order error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to initialize Razorpay order' });
+  }
+};
+
+// @desc    Verify Razorpay payment signature & finalize order
+// @route   POST /api/orders/razorpay/verify
+// @access  Private (Customer)
+const verifyRazorpayPayment = async (req, res) => {
+  try {
+    const { verifyRazorpaySignature, getRazorpayInstance } = require('../utils/razorpay');
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      items,
+      orderItems,
+      shippingAddress,
+      couponCode,
+      applyReferralDiscount,
+      useWalletBalance,
+      notes
+    } = req.body;
+
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ success: false, message: 'Missing Razorpay payment verification credentials' });
+    }
+
+    const isValid = verifyRazorpaySignature({
+      orderId: razorpay_order_id,
+      paymentId: razorpay_payment_id,
+      signature: razorpay_signature
+    });
+
+    if (!isValid) {
+      return res.status(400).json({ success: false, message: 'Invalid payment signature. Verification failed.' });
+    }
+
+    // Check idempotency: order already created?
+    const existingOrder = await Order.findOne({
+      $or: [
+        { razorpayPaymentId: razorpay_payment_id },
+        { razorpayOrderId: razorpay_order_id }
+      ]
+    });
+    if (existingOrder) {
+      return res.json({ success: true, order: existingOrder });
+    }
+
+    if (!req.customer) {
+      return res.status(401).json({ success: false, message: 'User authentication required' });
+    }
+
+    const customer = await Customer.findById(req.customer._id);
+    if (!customer) {
+      return res.status(404).json({ success: false, message: 'Customer record not found' });
+    }
+
+    const rawItems = items || orderItems;
+    let subtotal = 0;
+    const validatedItems = [];
+
+    for (const item of rawItems) {
+      const bookKey = item.bookId || item.book || item._id || item.id;
+      let book = null;
+      if (bookKey) {
+        try { book = await Book.findById(bookKey); } catch { book = null; }
+      }
+      if (!book && item.title) {
+        book = await Book.findOne({ title: item.title });
+      }
+
+      const qty = parseInt(item.quantity || 1, 10);
+      const unitPrice = book ? ((book.discountPrice && book.discountPrice < book.price) ? book.discountPrice : book.price) : Number(item.price || 299);
+      const itemSubtotal = unitPrice * qty;
+      subtotal += itemSubtotal;
+
+      validatedItems.push({
+        book: book ? book._id : null,
+        title: book ? book.title : (item.title || 'LOGOS Book'),
+        author: book ? book.author : (item.author || 'LOGOS Author'),
+        image: book && book.images && book.images[0] ? book.images[0] : (item.coverImage || item.image || '/book1.jpg'),
+        price: unitPrice,
+        quantity: qty,
+        subtotal: itemSubtotal
+      });
+    }
+
+    let referralDiscount = 0;
+    let couponDiscount = 0;
+    let appliedCouponName = null;
+    let isReferralOrder = false;
+
+    if (applyReferralDiscount || (customer.isReferred && !customer.referralDiscountUsed)) {
+      if (!customer.referralDiscountUsed) {
+        referralDiscount = Math.round((subtotal * 15) / 100);
+        isReferralOrder = true;
+        customer.referralDiscountUsed = true;
+      }
+    }
+
+    const effectiveCouponCode = couponCode || req.body.appliedCoupon;
+    if (effectiveCouponCode && subtotal >= 1000) {
+      const coupon = await Coupon.findOne({ code: String(effectiveCouponCode).trim().toUpperCase(), isActive: true });
+      if (coupon && (!coupon.isWelcomeCoupon || !customer.isWelcomeOfferUsed)) {
+        if (subtotal >= (coupon.minOrderValue || 0)) {
+          if (coupon.discountType === 'percentage') {
+            couponDiscount = (subtotal * coupon.discountValue) / 100;
+            if (coupon.maxDiscount && couponDiscount > coupon.maxDiscount) couponDiscount = coupon.maxDiscount;
+          } else {
+            couponDiscount = coupon.discountValue;
+          }
+          couponDiscount = Math.round(Math.min(couponDiscount, Math.max(0, subtotal - referralDiscount)));
+          appliedCouponName = coupon.code;
+
+          coupon.usedCount = (coupon.usedCount || 0) + 1;
+          coupon.usedBy.push(customer._id);
+          await coupon.save();
+
+          if (coupon.isWelcomeCoupon) {
+            customer.isWelcomeOfferUsed = true;
+          }
+        }
+      }
+    }
+
+    let walletDeduction = 0;
+    if (useWalletBalance && customer.referralRewardBalance > 0) {
+      const remainingBeforeWallet = Math.max(0, subtotal - referralDiscount - couponDiscount);
+      walletDeduction = Math.min(customer.referralRewardBalance, remainingBeforeWallet);
+      customer.referralRewardBalance -= walletDeduction;
+    }
+
+    const totalDiscount = Math.min(subtotal, referralDiscount + couponDiscount + walletDeduction);
+    const shippingFee = 0; // FREE for online
+    const finalTotal = Math.max(1, subtotal - totalDiscount + shippingFee);
+
+    const generatedOrderNumber = `LGS-${Date.now().toString().slice(-8)}-${Math.floor(100 + Math.random() * 900)}`;
+
+    const order = await Order.create({
+      orderNumber: generatedOrderNumber,
+      customer: customer._id,
+      items: validatedItems,
+      shippingAddress,
+      paymentMethod: 'Online',
+      paymentStatus: 'Paid',
+      razorpayOrderId: razorpay_order_id,
+      razorpayPaymentId: razorpay_payment_id,
+      razorpaySignature: razorpay_signature,
+      paymentDetails: {
+        transactionId: razorpay_payment_id,
+        paidAt: new Date(),
+        gateway: 'Razorpay'
+      },
+      subtotal,
+      shippingFee,
+      discount: totalDiscount,
+      referralDiscount,
+      couponDiscount,
+      appliedCoupon: appliedCouponName,
+      isReferralOrder,
+      totalAmount: finalTotal,
+      finalTotal,
+      orderStatus: 'Confirmed',
+      statusHistory: [{
+        status: 'Confirmed',
+        timestamp: new Date(),
+        note: `Payment verified via Razorpay. Payment ID: ${razorpay_payment_id}`
+      }],
+      notes
+    });
+
+    for (const item of validatedItems) {
+      if (item.book) {
+        await Book.findByIdAndUpdate(item.book, { $inc: { stock: -item.quantity } });
+      }
+    }
+
+    await customer.save();
+    await processReferralRewardOnCompletion(order);
+    await evaluateCustomerReferralEligibility(customer._id, order._id);
+    await Cart.findOneAndUpdate({ customer: customer._id }, { $set: { items: [] } });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Payment verified and order created successfully',
+      order
+    });
+  } catch (error) {
+    console.error('Razorpay payment verification error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Payment verification failed' });
+  }
+};
+
 module.exports = {
   createOrder,
+  createRazorpayOrder,
+  verifyRazorpayPayment,
   getMyOrders,
   getOrderById,
   getAllOrdersAdmin,

@@ -53,13 +53,13 @@ export const StatCard = ({
   const style = variantStyles[variant] || variantStyles.blue;
 
   return (
-    <div className={`p-5 rounded-2xl border ${style.cardBg} ${style.borderColor} shadow-xs hover:shadow-md transition-all duration-200 ${className}`}>
+    <div className={`p-5 rounded-lg border ${style.cardBg} ${style.borderColor} shadow-xs hover:shadow-md transition-all duration-200 ${className}`}>
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <p className="text-[11px] font-normal uppercase tracking-wider text-slate-400">{title}</p>
-          <h3 className="text-2xl sm:text-3xl font-medium tracking-tight text-slate-900">{value}</h3>
+          <h3 suppressHydrationWarning className="text-2xl sm:text-3xl font-medium tracking-tight text-slate-900">{value}</h3>
         </div>
-        <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${style.iconBg} ${style.iconColor} border ${style.borderColor} shadow-2xs`}>
+        <div className={`w-11 h-11 rounded-md flex items-center justify-center ${style.iconBg} ${style.iconColor} border ${style.borderColor} shadow-2xs`}>
           <Icon className="w-5 h-5" />
         </div>
       </div>

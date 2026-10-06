@@ -11,10 +11,12 @@ import {
   initialMockCustomers
 } from '../api/mockData';
 import { apiClient } from '../api/client';
+import { useAuth } from './AuthContext';
 
 const StoreDataContext = createContext(null);
 
 export const StoreDataProvider = ({ children }) => {
+  const { token } = useAuth();
   // Helper to remove legacy dummy mock objects from localStorage
   const sanitizeList = (list) => {
     if (!Array.isArray(list)) return [];
@@ -84,7 +86,14 @@ export const StoreDataProvider = ({ children }) => {
         } catch {}
       }
     }
-    return initialMockReferrals;
+  });
+
+  const [referralStats, setReferralStats] = useState({
+    totalLinksGenerated: 0,
+    totalReferrals: 0,
+    successfulReferrals: 0,
+    pendingReferrals: 0,
+    totalRewardsIssued: 0
   });
 
   const [returnsList, setReturnsList] = useState(() => {
@@ -214,6 +223,13 @@ export const StoreDataProvider = ({ children }) => {
       const referralData = await apiClient('/referrals/admin/all');
       if (Array.isArray(referralData?.referrals)) {
         setReferrals(referralData.referrals);
+        setReferralStats({
+          totalLinksGenerated: referralData.totalLinksGenerated || 0,
+          totalReferrals: referralData.totalReferrals || referralData.referrals.length,
+          successfulReferrals: referralData.successfulReferrals || 0,
+          pendingReferrals: referralData.pendingReferrals || 0,
+          totalRewardsIssued: referralData.totalRewardsIssued || 0
+        });
       }
     } catch {}
 
@@ -226,8 +242,9 @@ export const StoreDataProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    fetchAllData();
-  }, []);
+    if (token) fetchAllData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   // --- Actions ---
   const addBook = async (newBook) => {
@@ -357,17 +374,37 @@ export const StoreDataProvider = ({ children }) => {
   };
 
   // Coupon Actions
-  const addCoupon = (newCoupon) => {
-    const couponWithId = {
-      ...newCoupon,
-      _id: `cpn-${Date.now().toString().slice(-6)}`,
-      usedCount: 0
-    };
-    setCoupons((prev) => [couponWithId, ...prev]);
+  const addCoupon = async (newCoupon) => {
+    const backendRes = await apiClient('/coupons', {
+      method: 'POST',
+      body: JSON.stringify(newCoupon)
+    });
+    if (!backendRes?.coupon) {
+      throw new Error('Coupon could not be saved');
+    }
+    setCoupons((prev) => [backendRes.coupon, ...prev.filter(c => c._id !== backendRes.coupon._id)]);
+    return backendRes.coupon;
   };
 
-  const deleteCoupon = (id) => {
-    setCoupons((prev) => prev.filter((c) => c._id !== id));
+  const deleteCoupon = async (id) => {
+    // Optimistic removal from UI state
+    setCoupons((prev) => prev.filter((c) => c._id !== id && c.id !== id && c.code !== id));
+
+    try {
+      await apiClient(`/coupons/${id}`, {
+        method: 'DELETE'
+      });
+    } catch (err) {
+      console.error('[StoreDataContext] Failed to delete coupon from backend:', err.message);
+      // Re-fetch to ensure sync with database
+      try {
+        const couponData = await apiClient('/coupons/admin/all');
+        if (Array.isArray(couponData?.coupons)) {
+          setCoupons(couponData.coupons);
+        }
+      } catch {}
+      throw err;
+    }
   };
 
   // Return Actions
@@ -393,6 +430,7 @@ export const StoreDataProvider = ({ children }) => {
         orders,
         coupons,
         referrals,
+        referralStats,
         returnsList,
         customers,
         addBook,

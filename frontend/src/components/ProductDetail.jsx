@@ -5,11 +5,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Star, ShoppingCart, Zap, Check, Heart } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { useWishlist } from '../context/WishlistContext';
 
 export const ProductDetail = ({ book }) => {
   const router = useRouter();
   const { addToCart } = useCart();
+  const { user } = useAuth();
   const { toggleWishlist, isBookInWishlist } = useWishlist();
 
   const bookId = book?._id || book?.id || 'book-demo';
@@ -33,6 +35,10 @@ export const ProductDetail = ({ book }) => {
   };
 
   const handleBuyNow = async () => {
+    if (!user) {
+      router.push('/auth/login?redirect=/checkout');
+      return;
+    }
     if (book) {
       await addToCart(book, 1);
       router.push('/checkout');
@@ -57,12 +63,12 @@ export const ProductDetail = ({ book }) => {
       </nav>
 
       {/* Main Product Card Container */}
-      <div className="border border-slate-200/80 rounded-3xl p-6 sm:p-10 bg-white shadow-xs">
+      <div className="border border-slate-200/80 rounded-xl p-6 sm:p-10 bg-white shadow-xs">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
           {/* Left Column: Gallery & Mockups */}
           <div className="lg:col-span-5 flex flex-col items-center">
             {/* Main Stage Image */}
-            <div className="relative w-full aspect-square sm:aspect-4/3 flex items-center justify-center bg-slate-50 rounded-2xl overflow-hidden p-3 border border-slate-100">
+            <div className="relative w-full aspect-square sm:aspect-4/3 flex items-center justify-center bg-slate-50 rounded-lg overflow-hidden p-3 border border-slate-100">
               <img
                 src={selectedImage}
                 alt={book?.title || 'Book Cover'}
@@ -91,7 +97,7 @@ export const ProductDetail = ({ book }) => {
                     key={idx}
                     type="button"
                     onClick={() => setSelectedImage(thumb)}
-                    className={`w-16 sm:w-20 aspect-3/4 rounded-xl overflow-hidden border-2 transition-all p-1 bg-white hover:scale-105 ${
+                    className={`w-16 sm:w-20 aspect-3/4 rounded-lg overflow-hidden border-2 transition-all p-1 bg-white hover:scale-105 ${
                       selectedImage === thumb
                         ? 'border-[#1E3A8A] shadow-md'
                         : 'border-slate-200 hover:border-slate-300 opacity-80 hover:opacity-100'
@@ -190,7 +196,7 @@ export const ProductDetail = ({ book }) => {
               <button
                 type="button"
                 onClick={handleAddToCart}
-                className="flex-1 min-w-0 inline-flex items-center justify-center gap-1.5 sm:gap-2 border border-[#1E3A8A] text-[#1E3A8A] hover:bg-blue-50 py-3 px-2 sm:px-7 rounded-full font-medium text-xs sm:text-sm transition-all active:scale-95 shadow-xs whitespace-nowrap"
+                className="flex-1 min-w-0 inline-flex items-center justify-center gap-1.5 sm:gap-2 border border-[#1E3A8A] text-[#1E3A8A] hover:bg-blue-50 py-3 px-2 sm:px-7 rounded-lg font-medium text-xs sm:text-sm transition-all active:scale-95 shadow-xs whitespace-nowrap"
               >
                 {addedToCart ? (
                   <>
@@ -208,7 +214,7 @@ export const ProductDetail = ({ book }) => {
               <button
                 type="button"
                 onClick={handleBuyNow}
-                className="flex-1 min-w-0 inline-flex items-center justify-center gap-1.5 sm:gap-2 bg-[#1E3A8A] hover:bg-[#152e72] text-white py-3 px-2 sm:px-8 rounded-full font-medium text-xs sm:text-sm transition-all shadow-md shadow-blue-900/10 active:scale-95 whitespace-nowrap"
+                className="flex-1 min-w-0 inline-flex items-center justify-center gap-1.5 sm:gap-2 bg-[#1E3A8A] hover:bg-[#152e72] text-white py-3 px-2 sm:px-8 rounded-lg font-medium text-xs sm:text-sm transition-all shadow-md shadow-blue-900/10 active:scale-95 whitespace-nowrap"
               >
                 <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
                 <span className="truncate">Buy Now</span>

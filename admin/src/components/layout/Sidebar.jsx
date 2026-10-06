@@ -113,7 +113,7 @@ export const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
                   key={item.name}
                   href={item.href}
                   onClick={handleLinkClick}
-                  className={`group flex items-center justify-between px-3 py-2 text-[12.5px] rounded-xl transition-all border ${
+                  className={`group flex items-center justify-between px-3 py-2 text-[12.5px] rounded-md transition-all border ${
                     isActive
                       ? 'bg-blue-50/85 text-[#1E3A8A] border-blue-200/90 font-semibold shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 border-transparent font-medium'
@@ -144,7 +144,7 @@ export const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
 
           {/* Bottom Info Box with LOGOS Branding & Quick Sign Out */}
           <div className="p-3 border-t border-slate-100 bg-[#F8FAFC]">
-            <div className="flex items-center justify-between p-2.5 bg-white border border-slate-200/80 rounded-xl shadow-2xs">
+            <div className="flex items-center justify-between p-2.5 bg-white border border-slate-200/80 rounded-md shadow-2xs">
               <div className="flex items-center gap-2.5 min-w-0">
                 <img
                   src="/logo.png"

@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Coupon = require('../models/Coupon');
 const Customer = require('../models/Customer');
 
@@ -35,8 +36,16 @@ const validateCoupon = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Coupon usage limit reached' });
     }
 
-    // Min order value
-    if (orderAmount < coupon.minOrderValue) {
+    // Coupons rule: only applicable on orders of ₹1,000 or more
+    if (orderAmount < 1000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Coupons are applicable only on orders above ₹1,000'
+      });
+    }
+
+    // Min order value from admin
+    if (coupon.minOrderValue && orderAmount < coupon.minOrderValue) {
       return res.status(400).json({
         success: false,
         message: `Minimum order value of ₹${coupon.minOrderValue} required for this coupon`
@@ -53,12 +62,6 @@ const validateCoupon = async (req, res) => {
           return res.status(400).json({
             success: false,
             message: 'Welcome offer can only be used once per account'
-          });
-        }
-        if (customer.isReferred && !customer.referralDiscountUsed) {
-          return res.status(400).json({
-            success: false,
-            message: 'Referred users get a 15% referral discount on their first order instead of welcome coupons'
           });
         }
       }
@@ -225,16 +228,25 @@ const updateCoupon = async (req, res) => {
 // @access  Private (Admin)
 const deleteCoupon = async (req, res) => {
   try {
-    const coupon = await Coupon.findById(req.params.id);
+    const { id } = req.params;
+    let coupon = null;
+
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      coupon = await Coupon.findById(id);
+    }
+    if (!coupon) {
+      coupon = await Coupon.findOne({ code: String(id).toUpperCase().trim() });
+    }
+
     if (!coupon) {
       return res.status(404).json({ success: false, message: 'Coupon not found' });
     }
 
-    await Coupon.findByIdAndDelete(req.params.id);
+    await Coupon.findByIdAndDelete(coupon._id);
 
     return res.json({
       success: true,
-      message: 'Coupon deleted successfully'
+      message: `Coupon ${coupon.code} deleted successfully`
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

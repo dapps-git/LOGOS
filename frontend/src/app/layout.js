@@ -16,6 +16,7 @@ export default function RootLayout({ children }) {
           href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Anek+Malayalam:wght@300;400;500;600;700&family=Gayathri:wght@400;700&family=Manjari:wght@400;700&family=Noto+Sans+Malayalam:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap"
           rel="stylesheet"
         />
+        <script src="https://checkout.razorpay.com/v1/checkout.js" async></script>
       </head>
       <body className="min-h-full flex flex-col font-light text-slate-800 bg-[#FAFBFD]">
         <Providers>

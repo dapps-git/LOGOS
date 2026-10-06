@@ -56,12 +56,23 @@ export default function CartPage() {
     if (e) e.preventDefault();
     const code = (codeToApply || couponInput).trim().toUpperCase();
     if (!code) return;
+    if (subtotal < 1000) {
+      setCouponMsg({ success: false, message: 'Coupons are applicable only on orders of ₹1,000 or more.' });
+      return;
+    }
     setApplyingCoupon(true);
     setCouponMsg(null);
     const res = await applyCouponCode(code);
     setCouponMsg(res);
     setApplyingCoupon(false);
   };
+
+  const eligibleCoupons = subtotal >= 1000
+    ? availableCoupons.filter((c) => {
+        const minVal = Number(c.minOrderValue ?? c.minOrderAmount ?? 0);
+        return subtotal >= minVal;
+      })
+    : [];
 
   const handleApplyReferral = async (e) => {
     e.preventDefault();
@@ -87,7 +98,7 @@ export default function CartPage() {
           <div className="flex items-center gap-2.5">
             <Link
               href="/"
-              className="p-1.5 -ml-1.5 text-slate-500 hover:text-slate-900 rounded-full hover:bg-slate-100 transition-colors"
+              className="p-1.5 -ml-1.5 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors"
               title="Back to store"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,7 +107,7 @@ export default function CartPage() {
             </Link>
             <h1 className="text-lg sm:text-xl font-normal text-slate-900 tracking-tight flex items-center gap-2">
               <span>Shopping Cart</span>
-              <span className="text-[11px] font-mono font-medium px-2 py-0.5 bg-blue-50 text-[#1E3A8A] rounded-full">
+              <span className="text-[11px] font-mono font-medium px-2 py-0.5 bg-blue-50 text-[#1E3A8A] rounded-md">
                 {itemCount} {itemCount === 1 ? 'item' : 'items'}
               </span>
             </h1>
@@ -112,8 +123,8 @@ export default function CartPage() {
 
         {items.length === 0 ? (
           /* Empty Cart State */
-          <div className="bg-white rounded-2xl sm:rounded-3xl p-8 sm:p-12 text-center border border-slate-100 shadow-sm max-w-md mx-auto my-8 sm:my-12">
-            <div className="w-14 h-14 bg-blue-50 text-[#1E3A8A] rounded-full flex items-center justify-center mx-auto mb-3.5">
+          <div className="bg-white rounded-xl p-8 sm:p-12 text-center border border-slate-100 shadow-sm max-w-md mx-auto my-8 sm:my-12">
+            <div className="w-14 h-14 bg-blue-50 text-[#1E3A8A] rounded-xl flex items-center justify-center mx-auto mb-3.5">
               <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
               </svg>
@@ -124,7 +135,7 @@ export default function CartPage() {
             </p>
             <Link
               href="/"
-              className="inline-flex items-center justify-center px-6 py-2.5 bg-[#1E3A8A] hover:bg-[#152e72] text-white rounded-full text-xs font-medium tracking-wide transition-all shadow-sm"
+              className="inline-flex items-center justify-center px-6 py-2.5 bg-[#1E3A8A] hover:bg-[#152e72] text-white rounded-lg text-xs font-medium tracking-wide transition-all shadow-sm"
             >
               Discover Books
             </Link>
@@ -146,12 +157,12 @@ export default function CartPage() {
                 return (
                   <div
                     key={bookId}
-                    className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between gap-3.5 sm:gap-6 group"
+                    className="bg-white rounded-xl p-3.5 sm:p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between gap-3.5 sm:gap-6 group"
                   >
                     {/* LEFT: Book Cover Image */}
                     <Link
                       href={`/books/${book.slug || bookId}`}
-                      className="shrink-0 relative w-20 sm:w-24 aspect-3/4 bg-[#f1f3f7] rounded-xl overflow-hidden border border-slate-100/80 shadow-xs"
+                      className="shrink-0 relative w-20 sm:w-24 aspect-3/4 bg-[#f1f3f7] rounded-lg overflow-hidden border border-slate-100/80 shadow-xs"
                     >
                       <img
                         src={image}
@@ -212,7 +223,7 @@ export default function CartPage() {
                         </div>
 
                         {/* Quantity Stepper */}
-                        <div className="flex items-center border border-slate-200 rounded-xl bg-[#FAFBFD] overflow-hidden shadow-xs">
+                        <div className="flex items-center border border-slate-200 rounded-lg bg-[#FAFBFD] overflow-hidden shadow-xs">
                           <button
                             type="button"
                             onClick={() => updateQuantity(bookId, item.quantity - 1)}
@@ -241,7 +252,7 @@ export default function CartPage() {
             {/* Right Column: Coupons & Order Summary */}
             <div className="lg:col-span-4 space-y-4 sm:space-y-5">
               {/* Coupon Box */}
-              <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-sm">
+              <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-100 shadow-sm">
                 <h3 className="text-[11px] font-medium text-slate-700 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
                   <svg className="w-3.5 h-3.5 text-[#1E3A8A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
@@ -250,7 +261,7 @@ export default function CartPage() {
                 </h3>
 
                 {appliedCoupon ? (
-                  <div className="p-2.5 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-between">
+                  <div className="p-2.5 bg-emerald-50 border border-emerald-100 rounded-lg flex items-center justify-between">
                     <div>
                       <span className="text-xs font-mono font-medium text-emerald-800 uppercase">
                         {appliedCoupon.code}
@@ -276,12 +287,12 @@ export default function CartPage() {
                       value={couponInput}
                       onChange={(e) => setCouponInput(e.target.value)}
                       placeholder="e.g. LOGOS10"
-                      className="flex-1 px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl text-xs font-mono uppercase text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20 focus:border-[#1E3A8A] transition-all"
+                      className="flex-1 px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-lg text-xs font-mono uppercase text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20 focus:border-[#1E3A8A] transition-all"
                     />
                     <button
                       type="submit"
                       disabled={applyingCoupon}
-                      className="px-3.5 py-2 bg-[#1E3A8A] hover:bg-[#152e72] text-white text-xs font-medium rounded-xl transition-all shadow-xs disabled:opacity-50"
+                      className="px-3.5 py-2 bg-[#1E3A8A] hover:bg-[#152e72] text-white text-xs font-medium rounded-lg transition-all shadow-xs disabled:opacity-50"
                     >
                       {applyingCoupon ? '...' : 'Apply'}
                     </button>
@@ -294,51 +305,64 @@ export default function CartPage() {
                   </p>
                 )}
 
-                {/* Available Coupons Suggestions */}
-                {!appliedCoupon && availableCoupons.length > 0 && (
+                {/* If subtotal is below ₹1000, show informative unlock note */}
+                {!appliedCoupon && subtotal < 1000 && (
+                  <div className="mt-3 pt-3 border-t border-slate-100">
+                    <div className="p-2.5 bg-amber-50/80 border border-amber-200/60 rounded-lg text-amber-900 text-[11px] leading-relaxed">
+                      <span className="font-semibold text-amber-700">Special Offers: </span>
+                      Coupons unlock on orders above <strong>₹1,000</strong>. Add <strong>₹{1000 - subtotal}</strong> more to your cart to see available discount offers!
+                    </div>
+                  </div>
+                )}
+
+                {/* Available Coupons Suggestions: Only show eligible coupons if subtotal >= 1000 */}
+                {!appliedCoupon && subtotal >= 1000 && eligibleCoupons.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                       Available Offers
                     </p>
                     <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
-                      {availableCoupons.map((coupon) => (
-                        <div
-                          key={coupon._id || coupon.code}
-                          className="flex items-center justify-between p-2 rounded-xl bg-slate-50 hover:bg-blue-50/50 border border-slate-200/80 transition-all text-left"
-                        >
-                          <div className="min-w-0 pr-2">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-mono text-xs font-semibold text-[#1E3A8A] uppercase">
-                                {coupon.code}
-                              </span>
-                              <span className="text-[9px] px-1.5 py-0.2 bg-emerald-100 text-emerald-700 rounded-md font-medium">
-                                {coupon.discountType === 'percentage'
-                                  ? `${coupon.discountValue}% OFF`
-                                  : `₹${coupon.discountValue} OFF`}
-                              </span>
-                            </div>
-                            {coupon.minOrderAmount > 0 && (
-                              <p className="text-[9px] text-slate-400">
-                                Min order: ₹{coupon.minOrderAmount}
-                              </p>
-                            )}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleApplyCoupon(null, coupon.code)}
-                            className="px-2.5 py-1 bg-white hover:bg-[#1E3A8A] hover:text-white border border-slate-200 hover:border-[#1E3A8A] text-[#1E3A8A] text-[10px] font-medium rounded-lg transition-all shadow-2xs shrink-0"
+                      {eligibleCoupons.map((coupon) => {
+                        const minVal = Number(coupon.minOrderValue ?? coupon.minOrderAmount ?? 0);
+                        return (
+                          <div
+                            key={coupon._id || coupon.code}
+                            className="flex items-center justify-between p-2 rounded-lg bg-slate-50 hover:bg-blue-50/50 border border-slate-200/80 transition-all text-left"
                           >
-                            Apply
-                          </button>
-                        </div>
-                      ))}
+                            <div className="min-w-0 pr-2">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-mono text-xs font-semibold text-[#1E3A8A] uppercase">
+                                  {coupon.code}
+                                </span>
+                                <span className="text-[9px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-md font-medium">
+                                  {coupon.discountType === 'percentage'
+                                    ? `${coupon.discountValue}% OFF`
+                                    : `₹${coupon.discountValue} OFF`}
+                                </span>
+                              </div>
+                              {minVal > 0 && (
+                                <p className="text-[9px] text-slate-400">
+                                  Min order: ₹{minVal}
+                                </p>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleApplyCoupon(null, coupon.code)}
+                              className="px-2.5 py-1 bg-white hover:bg-[#1E3A8A] hover:text-white border border-slate-200 hover:border-[#1E3A8A] text-[#1E3A8A] text-[10px] font-medium rounded-md transition-all shadow-2xs shrink-0"
+                            >
+                              Apply
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
               </div>
 
               {/* Order Summary Card */}
-              <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 border border-slate-100 shadow-lg shadow-slate-200/50">
+              <div className="bg-white rounded-xl p-5 sm:p-6 border border-slate-100 shadow-md shadow-slate-200/40">
                 <h2 className="text-sm sm:text-base font-normal text-slate-900 mb-3 pb-2.5 border-b border-slate-100">
                   Order Summary
                 </h2>
@@ -388,7 +412,7 @@ export default function CartPage() {
                 </div>
 
                 {totalSavings > 0 && (
-                  <div className="mt-3 p-2 bg-emerald-50 rounded-xl text-center">
+                  <div className="mt-3 p-2 bg-emerald-50 rounded-lg text-center">
                     <span className="text-[11px] font-medium text-emerald-700">
                       ✨ You save ₹{totalSavings} on this order!
                     </span>
@@ -397,10 +421,16 @@ export default function CartPage() {
 
                 <button
                   type="button"
-                  onClick={() => router.push('/checkout')}
-                  className="w-full mt-4 sm:mt-5 py-3.5 px-5 bg-[#1E3A8A] hover:bg-[#152e72] text-white rounded-xl text-xs sm:text-sm font-medium tracking-wide transition-all shadow-md shadow-blue-900/15 hover:shadow-lg flex items-center justify-center gap-2 active:scale-95"
+                  onClick={() => {
+                    if (!user) {
+                      router.push('/auth/login?redirect=/checkout');
+                    } else {
+                      router.push('/checkout');
+                    }
+                  }}
+                  className="w-full mt-4 sm:mt-5 py-3.5 px-5 bg-[#1E3A8A] hover:bg-[#152e72] text-white rounded-lg text-xs sm:text-sm font-medium tracking-wide transition-all shadow-md shadow-blue-900/15 hover:shadow-lg flex items-center justify-center gap-2 active:scale-95"
                 >
-                  <span>Proceed to Checkout</span>
+                  <span>{user ? 'Proceed to Checkout' : 'Login to Checkout'}</span>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                   </svg>

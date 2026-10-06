@@ -19,6 +19,9 @@ export const apiClient = async (endpoint, options = {}) => {
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
+      if (res.status === 401 && token && typeof window !== 'undefined' && !endpoint.includes('/login')) {
+        window.dispatchEvent(new Event('logos-admin-unauthorized'));
+      }
       throw new Error(data.message || `Request failed with status ${res.status}`);
     }
 

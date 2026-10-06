@@ -87,7 +87,7 @@ export default function OrdersPage() {
           </div>
 
           <div className="flex items-center gap-1 p-1 bg-slate-100 border border-slate-200 rounded-md text-xs font-semibold overflow-x-auto w-full sm:w-auto">
-            {['ALL', 'Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled', 'Return Requested', 'Return Accepted'].map((st) => (
+            {['ALL', 'Pending', 'Processing', 'Shipped', 'Out for Delivery', 'Delivered', 'Cancelled', 'Return Requested', 'Return Accepted'].map((st) => (
               <button
                 key={st}
                 type="button"
@@ -202,6 +202,7 @@ export default function OrdersPage() {
                             <option value="Pending">Pending</option>
                             <option value="Processing">Processing</option>
                             <option value="Shipped">Shipped</option>
+                            <option value="Out for Delivery">Out for Delivery</option>
                             <option value="Delivered">Delivered</option>
                             <option value="Cancelled">Cancelled</option>
                             <option value="Return Requested">Return Requested</option>

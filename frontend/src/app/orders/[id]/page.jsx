@@ -91,8 +91,20 @@ export default function OrderTrackingPage({ params }) {
   const isPlaced = true;
   const isPaymentConfirmed = order?.paymentStatus?.toLowerCase() === 'paid' || order?.paymentMethod === 'COD' || true;
   const isProcessing = ['processing', 'shipped', 'out for delivery', 'delivered'].includes(status);
-  const isOutForDelivery = ['shipped', 'out for delivery', 'delivered'].includes(status);
+  const isShipped = ['shipped', 'out for delivery', 'delivered'].includes(status);
+  const isOutForDelivery = ['out for delivery', 'delivered'].includes(status);
   const isDelivered = status === 'delivered';
+  const isCancelled = status === 'cancelled';
+  const cancelEntry = order?.statusHistory?.find((h) => (h.status || '').toLowerCase() === 'cancelled');
+  const cancelledAtStr = (cancelEntry?.timestamp || order?.cancelledAt || order?.updatedAt)
+    ? new Date(cancelEntry?.timestamp || order?.cancelledAt || order?.updatedAt).toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    : '';
 
   const orderDateStr = order?.createdAt
     ? new Date(order.createdAt).toLocaleDateString('en-IN', {
@@ -168,19 +180,28 @@ export default function OrderTrackingPage({ params }) {
             </div>
 
             {/* 2. Order Card with Status Pill */}
-            <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm space-y-4">
+            <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div>
                   <span className="text-[10px] text-slate-400 block font-normal">Order ID</span>
                   <span className="text-xs sm:text-sm font-mono font-bold text-slate-900">{orderNum}</span>
                 </div>
 
-                <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-[#1044A5] rounded-full text-xs font-medium">
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                  </svg>
-                  <span className="capitalize">{order.orderStatus || 'Out for Delivery'}</span>
-                </div>
+                {isCancelled ? (
+                  <div className="flex items-center gap-1.5 px-3 py-1 bg-rose-50 text-rose-600 border border-rose-200 rounded-md text-xs font-semibold">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    <span>Cancelled</span>
+                  </div>
+                ) : (
+                  <div className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium ${isDelivered ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-[#1044A5]'}`}>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                    </svg>
+                    <span className="capitalize">{order.orderStatus || 'Processing'}</span>
+                  </div>
+                )}
               </div>
 
               {/* Book Item Info */}
@@ -219,7 +240,7 @@ export default function OrderTrackingPage({ params }) {
             </div>
 
             {/* 3. Vertical Tracking Timeline */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-6">
+            <div className="bg-white rounded-xl p-6 border border-slate-100 shadow-sm space-y-6">
               {/* Step 1: Order Placed */}
               <div className="flex items-start gap-4 relative">
                 {/* Connecting line */}
@@ -238,7 +259,7 @@ export default function OrderTrackingPage({ params }) {
 
               {/* Step 2: Payment Confirmed */}
               <div className="flex items-start gap-4 relative">
-                <div className={`absolute left-3.5 top-7 bottom-0 w-[2px] ${isProcessing ? 'bg-blue-600' : 'bg-slate-200'}`} style={{ height: 'calc(100% + 8px)' }} />
+                <div className={`absolute left-3.5 top-7 bottom-0 w-[2px] ${isCancelled ? 'bg-rose-300' : isProcessing ? 'bg-blue-600' : 'bg-slate-200'}`} style={{ height: 'calc(100% + 8px)' }} />
 
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 z-10 shadow-xs ${isPaymentConfirmed ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -253,9 +274,27 @@ export default function OrderTrackingPage({ params }) {
                 </div>
               </div>
 
+              {isCancelled ? (
+                /* Cancelled Step (replaces remaining steps) */
+                <div className="flex items-start gap-4 relative">
+                  <div className="w-7 h-7 rounded-full bg-rose-600 text-white flex items-center justify-center shrink-0 z-10 shadow-xs">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-semibold text-rose-600">Order Cancelled</h4>
+                    {cancelledAtStr && <p className="text-[11px] text-slate-400 mt-0.5">{cancelledAtStr}</p>}
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      {order?.paymentMethod === 'COD' ? 'No payment was collected.' : 'Refund will be processed to your original payment method.'}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+              <>
               {/* Step 3: Processing */}
               <div className="flex items-start gap-4 relative">
-                <div className={`absolute left-3.5 top-7 bottom-0 w-[2px] ${isOutForDelivery ? 'bg-blue-600' : 'bg-slate-200'}`} style={{ height: 'calc(100% + 8px)' }} />
+                <div className={`absolute left-3.5 top-7 bottom-0 w-[2px] ${isShipped ? 'bg-blue-600' : 'bg-slate-200'}`} style={{ height: 'calc(100% + 8px)' }} />
 
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 z-10 shadow-xs ${isProcessing ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -270,29 +309,43 @@ export default function OrderTrackingPage({ params }) {
                 </div>
               </div>
 
-              {/* Step 4: Out for Delivery */}
+              {/* Step 4: Shipped */}
+              <div className="flex items-start gap-4 relative">
+                <div className={`absolute left-3.5 top-7 bottom-0 w-[2px] ${isOutForDelivery ? 'bg-blue-600' : 'bg-slate-200'}`} style={{ height: 'calc(100% + 8px)' }} />
+
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 z-10 shadow-xs ${isShipped ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1m-6 0a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+                  </svg>
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-xs font-semibold text-slate-900">Shipped</h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {isShipped ? (order?.trackingNumber ? `Handed to courier (ID: ${order.trackingNumber})` : 'Dispatched with logistics partner') : 'Awaiting courier handover'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 5: Out for Delivery */}
               <div className="flex items-start gap-4 relative">
                 <div className={`absolute left-3.5 top-7 bottom-0 w-[2px] ${isDelivered ? 'bg-blue-600' : 'bg-slate-200'}`} style={{ height: 'calc(100% + 8px)' }} />
 
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 z-10 shadow-xs ${isOutForDelivery ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                   </svg>
                 </div>
                 <div className="min-w-0">
                   <h4 className="text-xs font-semibold text-slate-900">Out for Delivery</h4>
-                  {isOutForDelivery && (
-                    <>
-                      <p className="text-[11px] text-blue-600 font-medium mt-0.5">Your order is on the way!</p>
-                      {order?.trackingNumber && (
-                        <p className="text-[10px] text-slate-400 font-mono mt-0.5">Tracking #: {order.trackingNumber}</p>
-                      )}
-                    </>
+                  {isOutForDelivery ? (
+                    <p className="text-[11px] text-blue-600 font-medium mt-0.5">Courier is out for delivery today</p>
+                  ) : (
+                    <p className="text-[11px] text-slate-400 mt-0.5">Pending arrival at local distribution facility</p>
                   )}
                 </div>
               </div>
 
-              {/* Step 5: Delivered */}
+              {/* Step 6: Delivered */}
               <div className="flex items-start gap-4 relative">
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 z-10 ${isDelivered ? 'bg-emerald-600 text-white' : 'bg-white border-2 border-slate-300 text-slate-400'}`}>
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -302,15 +355,17 @@ export default function OrderTrackingPage({ params }) {
                 <div className="min-w-0">
                   <h4 className="text-xs font-semibold text-slate-900">Delivered</h4>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    {isDelivered ? 'Delivered safely to your address' : 'Expected within 3-5 business days'}
+                    {isDelivered ? 'Delivered safely to recipient' : 'Expected within 3-5 business days'}
                   </p>
                 </div>
               </div>
+              </>
+              )}
             </div>
 
             {/* 4. Delivery Address Card */}
             {order.shippingAddress && (
-              <div className="p-4 sm:p-5 rounded-3xl bg-[#F0F5FF] flex items-start justify-between gap-3 text-left">
+              <div className="p-4 sm:p-5 rounded-xl bg-[#F0F5FF] flex items-start justify-between gap-3 text-left">
                 <div className="flex items-start gap-3 min-w-0">
                   <div className="w-8 h-8 rounded-full bg-[#1044A5] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -421,7 +476,7 @@ export default function OrderTrackingPage({ params }) {
                 <button
                   type="button"
                   onClick={() => setShowCancelModal(true)}
-                  className="w-full py-3 px-4 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 hover:border-rose-300 rounded-full text-xs font-semibold tracking-wide transition-all shadow-2xs flex items-center justify-center gap-1.5"
+                  className="w-full py-3 px-4 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 hover:border-rose-300 rounded-lg text-xs font-semibold tracking-wide transition-all shadow-2xs flex items-center justify-center gap-1.5"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -435,7 +490,7 @@ export default function OrderTrackingPage({ params }) {
                 <button
                   type="button"
                   onClick={() => setShowReturnModal(true)}
-                  className="w-full py-3 px-4 bg-white hover:bg-amber-50 text-amber-800 border border-amber-300 hover:border-amber-400 rounded-full text-xs font-semibold tracking-wide transition-all shadow-2xs flex items-center justify-center gap-2"
+                  className="w-full py-3 px-4 bg-white hover:bg-amber-50 text-amber-800 border border-amber-300 hover:border-amber-400 rounded-lg text-xs font-semibold tracking-wide transition-all shadow-2xs flex items-center justify-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -449,7 +504,7 @@ export default function OrderTrackingPage({ params }) {
                 href="https://wa.me/919876543210?text=Hi%20LOGOS%20Support,%20I%20need%20help%20with%20my%20order"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full py-3 px-6 bg-[#1044A5] hover:bg-[#0c3986] text-white rounded-full text-xs sm:text-sm font-semibold tracking-wide transition-all shadow-md shadow-blue-900/15 flex items-center justify-center gap-2"
+                className="w-full py-3 px-6 bg-[#1044A5] hover:bg-[#0c3986] text-white rounded-lg text-xs sm:text-sm font-semibold tracking-wide transition-all shadow-md shadow-blue-900/15 flex items-center justify-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -463,7 +518,7 @@ export default function OrderTrackingPage({ params }) {
         {/* 6. Cancel Order Modal */}
         {showCancelModal && (
           <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center font-bold text-sm">
@@ -500,7 +555,7 @@ export default function OrderTrackingPage({ params }) {
                     <select
                       value={cancelReasonType}
                       onChange={(e) => setCancelReasonType(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-[#FAFBFD] border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                      className="w-full px-3 py-2.5 bg-[#FAFBFD] border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
                     >
                       <option value="Ordered by mistake">Ordered by mistake</option>
                       <option value="Need to change delivery address or phone">Need to change delivery address or phone</option>
@@ -520,7 +575,7 @@ export default function OrderTrackingPage({ params }) {
                       value={cancelReasonNote}
                       onChange={(e) => setCancelReasonNote(e.target.value)}
                       placeholder="Add details for the admin team..."
-                      className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                      className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500/20"
                     />
                   </div>
 
@@ -528,14 +583,14 @@ export default function OrderTrackingPage({ params }) {
                     <button
                       type="button"
                       onClick={() => setShowCancelModal(false)}
-                      className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition-colors"
+                      className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold transition-colors"
                     >
                       Keep Order
                     </button>
                     <button
                       type="submit"
                       disabled={cancelSubmitting}
-                      className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-semibold transition-colors disabled:opacity-50 shadow-xs"
+                      className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 shadow-xs"
                     >
                       {cancelSubmitting ? 'Cancelling...' : 'Confirm Cancellation'}
                     </button>
@@ -549,7 +604,7 @@ export default function OrderTrackingPage({ params }) {
         {/* 7. Return & Replacement Request Modal */}
         {showReturnModal && (
           <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-700 flex items-center justify-center font-bold text-sm">
@@ -587,7 +642,7 @@ export default function OrderTrackingPage({ params }) {
                     <select
                       value={returnReasonType}
                       onChange={(e) => setReturnReasonType(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-[#FAFBFD] border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 cursor-pointer"
+                      className="w-full px-3 py-2.5 bg-[#FAFBFD] border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 cursor-pointer"
                     >
                       <option value="Book received in damaged condition / torn pages">Book received in damaged condition / torn pages</option>
                       <option value="Binding defect or missing pages">Binding defect or missing pages</option>
@@ -607,7 +662,7 @@ export default function OrderTrackingPage({ params }) {
                       value={returnDescription}
                       onChange={(e) => setReturnDescription(e.target.value)}
                       placeholder="Please explain the issue in detail so our admin team can verify and accept your return..."
-                      className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 text-xs"
+                      className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 text-xs"
                     />
                   </div>
 
@@ -615,14 +670,14 @@ export default function OrderTrackingPage({ params }) {
                     <button
                       type="button"
                       onClick={() => setShowReturnModal(false)}
-                      className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition-colors"
+                      className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold transition-colors"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={returnSubmitting}
-                      className="flex-1 py-2.5 bg-[#1044A5] hover:bg-[#0c3986] text-white rounded-xl font-semibold transition-colors disabled:opacity-50 shadow-xs"
+                      className="flex-1 py-2.5 bg-[#1044A5] hover:bg-[#0c3986] text-white rounded-lg font-semibold transition-colors disabled:opacity-50 shadow-xs"
                     >
                       {returnSubmitting ? 'Submitting...' : 'Submit Return Request'}
                     </button>

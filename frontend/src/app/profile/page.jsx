@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Gift, Copy, Check, Share2, Sparkles, AlertCircle, ArrowUpRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   apiGetMyOrders,
@@ -13,12 +14,19 @@ import {
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 
-export default function ProfilePage() {
+function ProfileContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading: authLoading, logout, updateProfile, addAddress, deleteAddress } = useAuth();
 
-  const [activeTab, setActiveTab] = useState('orders'); // 'orders', 'profile', 'addresses'
+  const [activeTab, setActiveTab] = useState('orders'); // 'orders', 'profile', 'addresses', 'referrals'
   
+  // Referral State
+  const [referralSummary, setReferralSummary] = useState(null);
+  const [referralLoading, setReferralLoading] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+
   // Orders State
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
@@ -70,15 +78,27 @@ export default function ProfilePage() {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (searchParams.get('tab') === 'referrals') {
+      setActiveTab('referrals');
+    }
+  }, [searchParams]);
+
   const loadData = async () => {
     setOrdersLoading(true);
+    setReferralLoading(true);
     try {
-      const ordersData = await apiGetMyOrders().catch(() => []);
+      const [ordersData, refData] = await Promise.all([
+        apiGetMyOrders().catch(() => []),
+        apiGetMyReferralSummary().catch(() => null)
+      ]);
       setOrders(ordersData || []);
+      setReferralSummary(refData);
     } catch (err) {
-      console.warn('Error loading orders:', err);
+      console.warn('Error loading orders/referrals:', err);
     } finally {
       setOrdersLoading(false);
+      setReferralLoading(false);
     }
   };
 
@@ -262,6 +282,25 @@ export default function ProfilePage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
             <span>Delivery</span>
+          </button>
+
+          {/* Tab 4: Referrals & Rewards */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('referrals')}
+            className={`px-5 py-2.5 rounded-full text-xs font-medium flex items-center gap-2 transition-all whitespace-nowrap ${
+              activeTab === 'referrals'
+                ? 'bg-[#1044A5] text-white shadow-xs'
+                : 'bg-[#EEF5FF] text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Gift className="w-3.5 h-3.5" />
+            <span>Referrals &amp; Rewards</span>
+            {user?.referralRewardBalance > 0 && (
+              <span className="bg-emerald-500 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full">
+                ₹{user.referralRewardBalance}
+              </span>
+            )}
           </button>
         </div>
 
@@ -538,6 +577,197 @@ export default function ProfilePage() {
             )}
           </div>
         )}
+
+        {/* TAB 4: REFERRALS & REWARDS */}
+        {activeTab === 'referrals' && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-bold text-slate-800 tracking-tight">Referral &amp; Rewards Program</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Invite fellow book lovers. Friends get 15% OFF their first purchase, and you earn ₹100 reward on your next order!
+              </p>
+            </div>
+
+            {/* Program KPI Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs">
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Wallet Balance</span>
+                <p className="text-xl font-bold font-mono text-emerald-700 mt-1">
+                  ₹{referralSummary?.rewardBalance || user?.referralRewardBalance || 0}
+                </p>
+                <span className="text-[10px] text-emerald-600 font-medium">Use on upcoming purchase</span>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs">
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total Earned</span>
+                <p className="text-xl font-bold font-mono text-slate-800 mt-1">
+                  ₹{referralSummary?.totalEarned || user?.referralRewardsEarned || 0}
+                </p>
+                <span className="text-[10px] text-slate-400">All-time referral rewards</span>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs">
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Successful Orders</span>
+                <p className="text-xl font-bold font-mono text-blue-700 mt-1">
+                  {referralSummary?.successfulReferralsCount || 0}
+                </p>
+                <span className="text-[10px] text-blue-600">Friends purchased</span>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs">
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Friend Benefit</span>
+                <p className="text-xl font-bold font-mono text-indigo-700 mt-1">15% OFF</p>
+                <span className="text-[10px] text-indigo-600">+ ₹150 welcome coupon</span>
+              </div>
+            </div>
+
+            {/* Referral Link & Code Section */}
+            {referralSummary?.referralEligible ? (
+              <div className="bg-gradient-to-br from-blue-900 to-[#1044A5] text-white p-6 rounded-3xl shadow-lg space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-amber-300" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-blue-100">
+                      Your Unique Referral Code
+                    </span>
+                  </div>
+                  <span className="bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    Active &amp; Eligible
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                  {/* Code Card */}
+                  <div className="w-full sm:w-auto bg-white/10 backdrop-blur-md px-5 py-2.5 rounded-xl border border-white/20 flex items-center justify-between gap-3">
+                    <span className="font-mono text-lg font-bold tracking-widest text-amber-300">
+                      {referralSummary.referralCode}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(referralSummary.referralCode);
+                        setCopiedCode(true);
+                        setTimeout(() => setCopiedCode(false), 2000);
+                      }}
+                      className="text-xs text-white/80 hover:text-white flex items-center gap-1 font-medium bg-white/10 px-2 py-1 rounded"
+                    >
+                      {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedCode ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+
+                  {/* Share Link Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const link = referralSummary.referralLink || `${window.location.origin}/register?ref=${referralSummary.referralCode}`;
+                      navigator.clipboard.writeText(link);
+                      setCopiedLink(true);
+                      setTimeout(() => setCopiedLink(false), 2000);
+                    }}
+                    className="w-full sm:w-auto flex-1 py-3 px-4 bg-white text-[#1044A5] hover:bg-blue-50 font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm"
+                  >
+                    {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedLink ? 'Link Copied to Clipboard!' : 'Copy Referral Link'}</span>
+                  </button>
+
+                  {/* WhatsApp Share Button */}
+                  <a
+                    href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
+                      `Hey! Read great books from LOGOS Bookstore. Use my referral link to get 15% OFF your first order: ${referralSummary.referralLink || `${typeof window !== 'undefined' ? window.location.origin : ''}/register?ref=${referralSummary.referralCode}`}`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full sm:w-auto py-3 px-4 bg-[#25D366] hover:bg-[#20ba59] text-white font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    <span>Share on WhatsApp</span>
+                  </a>
+                </div>
+
+                <p className="text-[11px] text-blue-100/90 leading-relaxed">
+                  Share this link with your friends. Once they register and complete their qualifying order, you receive ₹100 credited directly to your referral reward balance!
+                </p>
+              </div>
+            ) : (
+              /* Not Yet Eligible State */
+              <div className="bg-white rounded-3xl p-6 border border-amber-200 bg-amber-50/40 space-y-3">
+                <div className="flex items-center gap-2.5 text-amber-800 font-semibold text-sm">
+                  <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+                  <span>Referral Link Unlocks on Your First Qualifying Order (₹999+)</span>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  To keep our referral community genuine, referral links are generated after completing your first qualifying purchase of ₹999 or more.
+                </p>
+                <div className="bg-white p-3.5 rounded-xl border border-amber-200/60 text-xs text-slate-600 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="w-4 h-4 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold flex items-center justify-center">1</span>
+                    <span><strong>Online Payment:</strong> Your referral link is generated as soon as your first order of ₹999+ is paid online.</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-4 h-4 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold flex items-center justify-center">2</span>
+                    <span><strong>Cash on Delivery (COD):</strong> Your referral link unlocks as soon as your order is delivered.</span>
+                  </div>
+                </div>
+                <Link
+                  href="/products"
+                  className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-[#1044A5] text-white text-xs font-semibold rounded-xl hover:bg-[#0c3986] transition-colors"
+                >
+                  <span>Explore Books</span>
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            )}
+
+            {/* Friends Invited Activity List */}
+            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-100 shadow-sm space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <h3 className="text-sm font-bold text-slate-800">Invited Friends Activity</h3>
+                <span className="text-xs text-slate-400 font-medium">
+                  {referralSummary?.referrals?.length || 0} Friends Invited
+                </span>
+              </div>
+
+              {!referralSummary?.referrals || referralSummary.referrals.length === 0 ? (
+                <div className="py-8 text-center text-slate-400 text-xs">
+                  <Gift className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                  <p>You haven&apos;t invited any friends yet.</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Share your link to start earning ₹100 on every friend&apos;s purchase!</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {referralSummary.referrals.map((ref) => {
+                    const isRewarded = ref.status === 'rewarded';
+                    return (
+                      <div key={ref._id} className="py-3 flex items-center justify-between text-xs">
+                        <div>
+                          <p className="font-semibold text-slate-800">{ref.referredUser?.name || 'Friend'}</p>
+                          <p className="text-[10px] text-slate-400">
+                            Joined on {new Date(ref.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                            isRewarded
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : 'bg-amber-50 text-amber-700 border border-amber-200'
+                          }`}>
+                            {isRewarded ? '+₹100 Rewarded' : 'Pending 1st Order'}
+                          </span>
+                          {ref.orderId && (
+                            <p className="text-[10px] text-slate-400 mt-0.5">
+                              Order #{ref.orderId.orderNumber || 'Verified'}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Address Form Modal */}
@@ -710,3 +940,12 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center"><div className="w-8 h-8 border-3 border-[#1044A5]/30 border-t-[#1044A5] rounded-full animate-spin" /></div>}>
+      <ProfileContent />
+    </Suspense>
+  );
+}
+

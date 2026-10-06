@@ -15,7 +15,10 @@ export const Navbar = () => {
   const { itemCount } = useCart();
   const { count: wishlistCount } = useWishlist();
 
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
+    setMounted(true);
     const handleClickOutside = (event) => {
       if (userDropdownRef.current && !userDropdownRef.current.contains(event.target)) {
         setUserDropdownOpen(false);
@@ -27,31 +30,9 @@ export const Navbar = () => {
 
   const navLinks = [
     { name: 'Home', href: '/' },
-    { name: 'Products', href: '/products', hasDropdown: false },
-    { name: 'About Us', href: '/about', hasDropdown: false },
-    {
-      name: 'Book',
-      href: '/#new-arrivals',
-      hasDropdown: true,
-      items: ['New Arrivals', 'Bestsellers', 'Featured Collections', 'Malayalam Classics']
-    },
-    {
-      name: 'Category',
-      href: '/#collections',
-      hasDropdown: true,
-      items: ['Novels & Fiction', 'Philosophy', 'Science & Culture', 'Poetry', 'History']
-    },
-    {
-      name: 'Author',
-      href: '/#featured-authors',
-      hasDropdown: true,
-      items: ['V. T. Pratheesh', 'Ernest Hemingway', 'Ajish Gangadharan', 'Jisa John', 'K. Raghunathan']
-    },
-    {
-      name: 'Combo Offer',
-      href: '/#combo-offer',
-      hasDropdown: false
-    }
+    { name: 'Books', href: '/products' },
+    { name: 'About Us', href: '/about' },
+    { name: 'Contact Us', href: '/contact' }
   ];
 
   return (
@@ -112,7 +93,7 @@ export const Navbar = () => {
             title="Wishlist"
           >
             <Heart className="w-4 h-4" />
-            {wishlistCount > 0 && (
+            {mounted && wishlistCount > 0 && (
               <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-rose-500 text-white text-[10px] font-mono font-medium rounded-full flex items-center justify-center">
                 {wishlistCount}
               </span>
@@ -126,7 +107,7 @@ export const Navbar = () => {
             title="Shopping Cart"
           >
             <ShoppingBag className="w-4 h-4" />
-            {itemCount > 0 && (
+            {mounted && itemCount > 0 && (
               <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-[#1E3A8A] text-white text-[10px] font-mono font-medium rounded-full flex items-center justify-center">
                 {itemCount}
               </span>
@@ -178,7 +159,7 @@ export const Navbar = () => {
                       <span>Orders & Tracking</span>
                     </Link>
                     <Link
-                      href="/profile"
+                      href="/profile?tab=referrals"
                       onClick={() => setUserDropdownOpen(false)}
                       className="flex items-center gap-2 px-3 py-2 text-xs font-normal text-slate-700 hover:text-[#1E3A8A] hover:bg-blue-50/80 rounded-md transition-colors"
                     >

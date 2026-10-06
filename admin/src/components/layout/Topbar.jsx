@@ -38,7 +38,7 @@ export const Topbar = ({ onMenuClick }) => {
         <button
           type="button"
           onClick={onMenuClick}
-          className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 lg:hidden border border-slate-200 rounded-xl"
+          className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 lg:hidden border border-slate-200 rounded-md"
         >
           <Menu className="w-5 h-5" />
         </button>
@@ -58,14 +58,14 @@ export const Topbar = ({ onMenuClick }) => {
           <button
             type="button"
             onClick={() => setNotificationsOpen(!notificationsOpen)}
-            className="relative p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200/80 rounded-xl transition-colors"
+            className="relative p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200/80 rounded-md transition-colors"
           >
             <Bell className="w-4 h-4" />
             <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#1E3A8A] ring-2 ring-white" />
           </button>
 
           {notificationsOpen && (
-            <div className="absolute right-0 mt-1.5 w-80 bg-white shadow-xl border border-slate-200 rounded-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
+            <div className="absolute right-0 mt-1.5 w-80 bg-white shadow-xl border border-slate-200 rounded-lg p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
               <div className="flex items-center justify-between pb-2 border-b border-slate-100 px-1">
                 <span className="text-xs font-semibold text-slate-900">Notifications</span>
                 <span className="text-[10px] font-mono font-medium text-[#1E3A8A] bg-blue-50 px-2 py-0.5 border border-blue-100 rounded-full">
@@ -76,7 +76,7 @@ export const Topbar = ({ onMenuClick }) => {
                 {notifications.map((n) => (
                   <div
                     key={n.id}
-                    className="p-2 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-slate-100"
+                    className="p-2 hover:bg-slate-50 rounded-md transition-colors cursor-pointer border border-transparent hover:border-slate-100"
                   >
                     <p className="text-xs font-normal text-slate-800 leading-tight">{n.title}</p>
                     <span className="text-[10px] text-slate-400 font-light mt-0.5 block">{n.time}</span>
@@ -90,7 +90,7 @@ export const Topbar = ({ onMenuClick }) => {
         {/* Action Shortcut / QR Icon */}
         <Link
           href="/invoices"
-          className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200/80 rounded-xl transition-colors hidden sm:flex"
+          className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200/80 rounded-md transition-colors hidden sm:flex"
           title="Quick Invoices & Tax Receipts"
         >
           <QrCode className="w-4 h-4" />
@@ -104,9 +104,9 @@ export const Topbar = ({ onMenuClick }) => {
           <button
             type="button"
             onClick={() => setProfileOpen(!profileOpen)}
-            className="flex items-center gap-2.5 p-1.5 hover:bg-slate-50 border border-slate-200/80 rounded-xl transition-colors"
+            className="flex items-center gap-2.5 p-1.5 hover:bg-slate-50 border border-slate-200/80 rounded-md transition-colors"
           >
-            <div className="w-7 h-7 rounded-full bg-blue-100 text-[#1E3A8A] text-xs font-medium flex items-center justify-center border border-blue-200">
+            <div className="w-7 h-7 rounded-md bg-blue-100 text-[#1E3A8A] text-xs font-bold flex items-center justify-center border border-blue-200">
               {mounted && admin?.name ? admin.name.charAt(0).toUpperCase() : 'A'}
             </div>
             <div className="hidden sm:block text-left">
@@ -121,7 +121,7 @@ export const Topbar = ({ onMenuClick }) => {
           </button>
 
           {profileOpen && (
-            <div className="absolute right-0 mt-1.5 w-56 bg-white shadow-xl border border-slate-200 rounded-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+            <div className="absolute right-0 mt-1.5 w-56 bg-white shadow-xl border border-slate-200 rounded-lg p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
               <div className="px-3 py-2 border-b border-slate-100 mb-1">
                 <p className="text-xs font-medium text-slate-900 truncate">{mounted ? (admin?.name || 'Admin') : 'Admin'}</p>
                 <p className="text-[11px] text-slate-400 font-light truncate">{mounted ? (admin?.email || 'logosadmin@gmail.com') : 'logosadmin@gmail.com'}</p>
@@ -130,7 +130,7 @@ export const Topbar = ({ onMenuClick }) => {
               <Link
                 href="/settings"
                 onClick={() => setProfileOpen(false)}
-                className="flex items-center gap-2.5 px-3 py-2 text-xs font-light text-slate-700 hover:bg-blue-50/60 hover:text-[#1E3A8A] rounded-xl transition-colors"
+                className="flex items-center gap-2.5 px-3 py-2 text-xs font-light text-slate-700 hover:bg-blue-50/60 hover:text-[#1E3A8A] rounded-md transition-colors"
               >
                 <ShieldCheck className="w-4 h-4 text-[#1E3A8A]" />
                 Store Settings
@@ -139,7 +139,7 @@ export const Topbar = ({ onMenuClick }) => {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-light text-rose-600 hover:bg-rose-50 rounded-xl transition-colors text-left"
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-light text-rose-600 hover:bg-rose-50 rounded-md transition-colors text-left"
               >
                 <LogOut className="w-4 h-4" />
                 Sign Out

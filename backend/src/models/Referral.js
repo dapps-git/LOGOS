@@ -29,8 +29,19 @@ const referralSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['registered', 'rewarded', 'cancelled'],
+    enum: ['registered', 'pending', 'purchased', 'delivered', 'rewarded', 'cancelled'],
     default: 'registered'
+  },
+  referredDiscountApplied: {
+    type: Boolean,
+    default: false
+  },
+  rewardIssued: {
+    type: Boolean,
+    default: false
+  },
+  rewardIssuedAt: {
+    type: Date
   },
   orderId: {
     type: mongoose.Schema.Types.ObjectId,

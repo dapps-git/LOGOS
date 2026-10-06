@@ -22,33 +22,69 @@ const registerCustomer = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please provide name, email, and password' });
     }
 
-    const customerExists = await Customer.findOne({ email: email.toLowerCase().trim() });
-    if (customerExists) {
-      return res.status(400).json({ success: false, message: 'An account with this email already exists' });
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // 1. Email Uniqueness Check
+    const emailExists = await Customer.findOne({ email: normalizedEmail });
+    if (emailExists) {
+      return res.status(400).json({ success: false, message: 'This email address is already registered.' });
+    }
+
+    // 2. Mobile Phone Number Validation & Uniqueness Check
+    let cleanPhone = '';
+    if (phone) {
+      cleanPhone = String(phone).replace(/\D/g, '').slice(-10);
+      if (cleanPhone.length < 10) {
+        return res.status(400).json({ success: false, message: 'Please provide a valid 10-digit mobile number' });
+      }
+
+      const phoneExists = await Customer.findOne({
+        $or: [
+          { phone: cleanPhone },
+          { phone: `+91${cleanPhone}` },
+          { phone: `91${cleanPhone}` }
+        ]
+      });
+      if (phoneExists) {
+        return res.status(400).json({ success: false, message: 'This mobile number is already registered.' });
+      }
     }
 
     let referredByCustomer = null;
     let isReferred = false;
 
-    // Check referral code if provided
-    if (referralCode) {
-      const referrer = await Customer.findOne({ referralCode: referralCode.trim().toUpperCase() });
-      if (referrer) {
-        referredByCustomer = referrer._id;
-        isReferred = true;
+    // 3. Referral Code Validation & Self-Referral Prevention
+    if (referralCode && typeof referralCode === 'string' && referralCode.trim()) {
+      const code = referralCode.trim().toUpperCase();
+      const referrer = await Customer.findOne({ referralCode: code });
+      if (!referrer) {
+        return res.status(400).json({ success: false, message: 'Invalid referral code provided.' });
       }
+
+      // Check self-referral by email or phone
+      const referrerEmail = (referrer.email || '').toLowerCase().trim();
+      const referrerPhone = String(referrer.phone || '').replace(/\D/g, '').slice(-10);
+
+      if (referrerEmail === normalizedEmail || (cleanPhone && referrerPhone && referrerPhone === cleanPhone)) {
+        return res.status(400).json({ success: false, message: 'You cannot use your own referral code.' });
+      }
+
+      referredByCustomer = referrer._id;
+      isReferred = true;
     }
 
     const customer = await Customer.create({
       name: name.trim(),
-      email: email.toLowerCase().trim(),
+      email: normalizedEmail,
       password,
-      phone: phone || '',
+      phone: cleanPhone || '',
       referredBy: referredByCustomer,
-      isReferred: isReferred
+      isReferred: isReferred,
+      referralEligible: false,
+      firstPurchaseCompleted: false
     });
 
-    // Create pending referral record if referred
+    // Create referral tracking record
     if (isReferred && referredByCustomer) {
       await Referral.create({
         referrer: referredByCustomer,
@@ -72,12 +108,22 @@ const registerCustomer = async (req, res) => {
         email: customer.email,
         phone: customer.phone,
         referralCode: customer.referralCode,
+        referralEligible: customer.referralEligible,
         isReferred: customer.isReferred,
         referralDiscountUsed: customer.referralDiscountUsed,
         referralRewardBalance: customer.referralRewardBalance
       }
     });
   } catch (error) {
+    if (error.code === 11000) {
+      if (error.keyPattern && error.keyPattern.phone) {
+        return res.status(400).json({ success: false, message: 'This mobile number is already registered.' });
+      }
+      if (error.keyPattern && error.keyPattern.email) {
+        return res.status(400).json({ success: false, message: 'This email address is already registered.' });
+      }
+      return res.status(400).json({ success: false, message: 'An account with these details already exists.' });
+    }
     return res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -143,9 +189,10 @@ const googleAuth = async (req, res) => {
       let referredByCustomer = null;
       let isReferred = false;
 
-      if (referralCode) {
-        const referrer = await Customer.findOne({ referralCode: referralCode.trim().toUpperCase() });
-        if (referrer) {
+      if (referralCode && typeof referralCode === 'string' && referralCode.trim()) {
+        const code = referralCode.trim().toUpperCase();
+        const referrer = await Customer.findOne({ referralCode: code });
+        if (referrer && referrer.email.toLowerCase().trim() !== email.toLowerCase().trim()) {
           referredByCustomer = referrer._id;
           isReferred = true;
         }
@@ -157,7 +204,9 @@ const googleAuth = async (req, res) => {
         googleId,
         avatar: avatar || '',
         referredBy: referredByCustomer,
-        isReferred: isReferred
+        isReferred: isReferred,
+        referralEligible: false,
+        firstPurchaseCompleted: false
       });
 
       if (isReferred && referredByCustomer) {
@@ -328,17 +377,22 @@ const forgotPassword = async (req, res) => {
     await customer.save();
 
     // Send OTP via Nodemailer
-    await sendEmail({
+    const emailResult = await sendEmail({
       email: customer.email,
       otp,
       subject: 'LOGOS Books - Your Password Reset OTP',
       text: `Your LOGOS Books password reset verification code is: ${otp}. It is valid for 15 minutes.`
     });
 
+    // Only expose the OTP for local testing when no SMTP is configured.
+    // Never returned on a deployed server, otherwise anyone could reset any account.
+    const isLocalRequest = ['localhost', '127.0.0.1', '::1'].includes(req.hostname);
+    const exposeOtp = emailResult?.isDevFallback && process.env.NODE_ENV !== 'production' && isLocalRequest;
+
     return res.json({
       success: true,
       message: 'Password reset OTP has been sent to your email address',
-      otpPreview: process.env.NODE_ENV !== 'production' ? otp : undefined
+      ...(exposeOtp ? { otp } : {})
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -399,13 +453,11 @@ const loginAdmin = async (req, res) => {
 
     // Auto-create or seed admin if logging in with configured admin email
     if (!admin) {
-      if (cleanEmail === envAdminEmail || cleanEmail === 'admin@logos.com' || cleanEmail === 'logosadmin@gmail.com') {
+      if (cleanEmail === envAdminEmail) {
         let isPassValid = false;
         if (envAdminHash && await bcrypt.compare(password, envAdminHash)) {
           isPassValid = true;
         } else if (envAdminPassword && password === envAdminPassword) {
-          isPassValid = true;
-        } else if (password === 'LogosAdmin@2026' || password === 'AdminPassword123') {
           isPassValid = true;
         }
 
@@ -428,10 +480,9 @@ const loginAdmin = async (req, res) => {
     let isMatch = await admin.comparePassword(password);
     
     // If password mismatch, check if it matches the env hash or fallback credentials and update DB
-    if (!isMatch && (cleanEmail === envAdminEmail || cleanEmail === 'logosadmin@gmail.com' || cleanEmail === 'admin@logos.com')) {
+    if (!isMatch && cleanEmail === envAdminEmail) {
       const isEnvValid = (envAdminHash && await bcrypt.compare(password, envAdminHash)) ||
-                         (envAdminPassword && password === envAdminPassword) ||
-                         password === 'LogosAdmin@2026' || password === 'AdminPassword123';
+                         (envAdminPassword && password === envAdminPassword);
       if (isEnvValid) {
         admin.password = password;
         await admin.save();

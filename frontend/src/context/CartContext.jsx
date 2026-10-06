@@ -133,9 +133,9 @@ export function CartProvider({ children }) {
     }
   }
 
-  // Referral Discount (15% for first purchase if applied)
+  // Referral Discount (15% on first purchase for referred users or when applied)
   let referralDiscount = 0;
-  if (appliedReferral && !appliedCoupon) {
+  if (appliedReferral || (user?.isReferred && !user?.referralDiscountUsed)) {
     referralDiscount = Math.round((subtotal * 15) / 100);
   }
 
@@ -147,8 +147,9 @@ export function CartProvider({ children }) {
   }
 
   const shippingFee = subtotal > 499 || subtotal === 0 ? 0 : 40;
-  const grandTotal = Math.max(0, subtotal - couponDiscount - referralDiscount - walletDiscount + shippingFee);
-  const totalSavings = productSavings + couponDiscount + referralDiscount + walletDiscount;
+  const totalDiscounts = Math.min(subtotal, couponDiscount + referralDiscount + walletDiscount);
+  const grandTotal = Math.max(0, subtotal - totalDiscounts + shippingFee);
+  const totalSavings = productSavings + totalDiscounts;
   const itemCount = items.reduce((acc, item) => acc + item.quantity, 0);
 
   const applyCouponCode = async (code) => {
@@ -163,7 +164,6 @@ export function CartProvider({ children }) {
       };
       if (res && (res.success || res.coupon || res.code)) {
         setAppliedCoupon(couponObj);
-        setAppliedReferral(null); // Mutually exclusive or priority
         return { success: true, message: res.message || `Coupon ${code} applied successfully!` };
       }
       return { success: false, message: res.message || 'Invalid coupon code' };
@@ -179,12 +179,11 @@ export function CartProvider({ children }) {
   const applyReferralCode = async (code) => {
     try {
       const res = await apiValidateReferral(code);
-      if (res && res.valid) {
-        setAppliedReferral({ code, discountPercent: 15 });
-        setAppliedCoupon(null);
+      if (res && (res.valid || res.success)) {
+        setAppliedReferral({ code: res.code || code, discountPercent: 15 });
         return { success: true, message: 'Referral code applied! 15% discount activated.' };
       }
-      return { success: false, message: 'Invalid referral code' };
+      return { success: false, message: res.message || 'Invalid referral code' };
     } catch (err) {
       return { success: false, message: err.message || 'Referral could not be applied' };
     }

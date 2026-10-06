@@ -19,6 +19,7 @@ export default function CouponsPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   const [formData, setFormData] = useState({
     code: '',
@@ -39,25 +40,44 @@ export default function CouponsPage() {
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
-  const handleSubmit = (e) => {
+  const handleDeleteCoupon = async (id, code) => {
+    if (!confirm(`Are you sure you want to permanently delete coupon "${code || id}"?`)) {
+      return;
+    }
+    setDeletingId(id);
+    try {
+      await deleteCoupon(id);
+      showToast(`Coupon "${code || id}" deleted successfully!`, 'success');
+    } catch (err) {
+      showToast(err.message || 'Failed to delete coupon', 'error');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.code.trim() || !formData.discountValue) {
       showToast('Coupon code and discount value are required', 'error');
       return;
     }
 
-    addCoupon({
-      ...formData,
-      code: formData.code.trim().toUpperCase(),
-      discountValue: Number(formData.discountValue),
-      minOrderValue: Number(formData.minOrderValue) || 0,
-      maxDiscount: formData.maxDiscount ? Number(formData.maxDiscount) : null,
-      usageLimit: Number(formData.usageLimit) || null,
-      isActive: true
-    });
+    try {
+      await addCoupon({
+        ...formData,
+        code: formData.code.trim().toUpperCase(),
+        discountValue: Number(formData.discountValue),
+        minOrderValue: Number(formData.minOrderValue) || 0,
+        maxDiscount: formData.maxDiscount ? Number(formData.maxDiscount) : null,
+        usageLimit: Number(formData.usageLimit) || null,
+        isActive: true
+      });
 
-    showToast(`Coupon "${formData.code.toUpperCase()}" created successfully!`, 'success');
-    setIsModalOpen(false);
+      showToast(`Coupon "${formData.code.toUpperCase()}" created successfully!`, 'success');
+      setIsModalOpen(false);
+    } catch (err) {
+      showToast(err.message || 'Failed to create coupon', 'error');
+    }
   };
 
   return (
@@ -141,11 +161,16 @@ export default function CouponsPage() {
 
                   <button
                     type="button"
-                    onClick={() => deleteCoupon(coupon._id)}
-                    className="p-1.5 rounded-md text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-slate-200 transition-colors"
+                    disabled={deletingId === (coupon._id || coupon.code)}
+                    onClick={() => handleDeleteCoupon(coupon._id || coupon.id || coupon.code, coupon.code)}
+                    className="p-1.5 rounded-md text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-slate-200 transition-colors disabled:opacity-50"
                     title="Delete Coupon"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    {deletingId === (coupon._id || coupon.code) ? (
+                      <div className="w-4 h-4 border-2 border-rose-600 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>

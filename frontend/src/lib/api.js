@@ -325,6 +325,28 @@ export async function apiCreateOrder(orderPayload) {
   return data;
 }
 
+export async function apiCreateRazorpayOrder(payload) {
+  const res = await fetch(`${API_BASE}/orders/razorpay/create`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to initialize Razorpay payment');
+  return data;
+}
+
+export async function apiVerifyRazorpayPayment(payload) {
+  const res = await fetch(`${API_BASE}/orders/razorpay/verify`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to verify Razorpay payment');
+  return data;
+}
+
 export async function apiGetMyOrders() {
   const res = await fetch(`${API_BASE}/orders/my-orders`, {
     headers: getAuthHeaders()

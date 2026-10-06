@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { StatCard } from '@/components/common/StatCard';
@@ -25,14 +25,19 @@ export default function Dashboard() {
   const { admin } = useAuth();
   const { books = [], orders = [], banners = [], returnsList = [] } = useStoreData();
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Dynamic calculations directly from live store state
-  const totalProductsCount = books.length;
-  const totalOrdersCount = orders.length;
-  const totalRevenue = orders.reduce((sum, o) => sum + (Number(o.finalTotal) || Number(o.totalAmount) || 0), 0);
-  const pendingReturnsCount = returnsList.filter(
+  const totalProductsCount = mounted ? books.length : 0;
+  const totalOrdersCount = mounted ? orders.length : 0;
+  const totalRevenue = mounted ? orders.reduce((sum, o) => sum + (Number(o.finalTotal) || Number(o.totalAmount) || 0), 0) : 0;
+  const pendingReturnsCount = mounted ? returnsList.filter(
     (r) => r.status?.toLowerCase() === 'pending review' || r.status?.toLowerCase() === 'pending'
-  ).length;
+  ).length : 0;
 
   // Top selling books (sorted by salesCount or reviewsCount)
   const topBooks = [...books]

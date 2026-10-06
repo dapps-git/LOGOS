@@ -96,8 +96,8 @@ function OrderPlacedContent() {
 
         {/* 2 Order Meta Pills */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-5">
-          <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-[#F0F5FF] text-left">
-            <div className="w-8 h-8 rounded-xl bg-white text-[#1044A5] flex items-center justify-center shrink-0 shadow-2xs">
+          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-[#F0F5FF] text-left">
+            <div className="w-8 h-8 rounded-lg bg-white text-[#1044A5] flex items-center justify-center shrink-0 shadow-2xs">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
@@ -110,8 +110,8 @@ function OrderPlacedContent() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-[#F0F5FF] text-left">
-            <div className="w-8 h-8 rounded-xl bg-white text-[#1044A5] flex items-center justify-center shrink-0 shadow-2xs">
+          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-[#F0F5FF] text-left">
+            <div className="w-8 h-8 rounded-lg bg-white text-[#1044A5] flex items-center justify-center shrink-0 shadow-2xs">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
@@ -126,7 +126,7 @@ function OrderPlacedContent() {
         </div>
 
         {/* Order Summary Card */}
-        <div className="mt-5 p-4 sm:p-5 rounded-2xl border border-slate-100 bg-white text-left shadow-2xs">
+        <div className="mt-5 p-4 sm:p-5 rounded-xl border border-slate-100 bg-white text-left shadow-2xs">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <h3 className="text-xs sm:text-sm font-semibold text-slate-900">Order Summary</h3>
             <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-50 text-[#1044A5]">
@@ -219,7 +219,7 @@ function OrderPlacedContent() {
 
         {/* Delivery Address Pill */}
         {shippingAddr && (
-          <div className="mt-4 p-3 rounded-2xl bg-[#F0F5FF] text-left flex items-start gap-2.5">
+          <div className="mt-4 p-3 rounded-xl bg-[#F0F5FF] text-left flex items-start gap-2.5">
             <svg className="w-4 h-4 text-[#1044A5] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
             </svg>
@@ -236,7 +236,7 @@ function OrderPlacedContent() {
         <div className="mt-6 space-y-2.5">
           <Link
             href={order ? `/orders/${order._id || orderId}` : (orderId ? `/orders/${orderId}` : '/profile')}
-            className="w-full py-3.5 px-6 bg-[#1044A5] hover:bg-[#0c3986] text-white rounded-full text-xs sm:text-sm font-semibold tracking-wide transition-all shadow-md shadow-blue-900/15 flex items-center justify-center gap-2"
+            className="w-full py-3.5 px-6 bg-[#1044A5] hover:bg-[#0c3986] text-white rounded-lg text-xs sm:text-sm font-semibold tracking-wide transition-all shadow-md shadow-blue-900/15 flex items-center justify-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -247,7 +247,7 @@ function OrderPlacedContent() {
 
           <Link
             href="/"
-            className="w-full py-3 px-6 bg-white hover:bg-slate-50 text-[#1044A5] border border-[#1044A5]/30 hover:border-[#1044A5] rounded-full text-xs sm:text-sm font-semibold tracking-wide transition-all flex items-center justify-center gap-2"
+            className="w-full py-3 px-6 bg-white hover:bg-slate-50 text-[#1044A5] border border-[#1044A5]/30 hover:border-[#1044A5] rounded-lg text-xs sm:text-sm font-semibold tracking-wide transition-all flex items-center justify-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />

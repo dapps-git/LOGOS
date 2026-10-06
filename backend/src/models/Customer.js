@@ -33,7 +33,9 @@ const customerSchema = new mongoose.Schema({
   },
   phone: {
     type: String,
-    trim: true
+    trim: true,
+    sparse: true,
+    index: true
   },
   avatar: {
     type: String
@@ -52,6 +54,19 @@ const customerSchema = new mongoose.Schema({
     uppercase: true,
     trim: true,
     index: true
+  },
+  referralEligible: {
+    type: Boolean,
+    default: false
+  },
+  referralEligibleOrderId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Order',
+    default: null
+  },
+  firstPurchaseCompleted: {
+    type: Boolean,
+    default: false
   },
   referredBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -105,13 +120,7 @@ const customerSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Generate unique referral code if none exists
 customerSchema.pre('save', async function (next) {
-  if (!this.referralCode) {
-    const randomChars = Math.random().toString(36).substring(2, 7).toUpperCase();
-    this.referralCode = `LOGOS-${randomChars}`;
-  }
-
   if (this.isModified('password') && this.password) {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
