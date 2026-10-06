@@ -1,40 +1,45 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-
-const AUTHORS = [
-  {
-    id: 'fa-1',
-    name: 'ഏണസ്റ്റ് ഹെമിങ് വേ',
-    image: '/author_hemingway.png',
-    href: '/authors/ernest-hemingway',
-    font: 'font-sans'
-  },
-  {
-    id: 'fa-2',
-    name: 'വിനീഷ് കെ.എൻ',
-    image: '/author_vineesh.png',
-    href: '/authors/vineesh-kn',
-    font: 'font-sans'
-  },
-  {
-    id: 'fa-3',
-    name: 'Meera Jackson',
-    image: '/author_meera.png',
-    href: '/authors/meera-jackson',
-    font: 'font-serif'
-  },
-  {
-    id: 'fa-4',
-    name: 'Fab Jackson',
-    image: '/author_fab.png',
-    href: '/authors/fab-jackson',
-    font: 'font-serif'
-  }
-];
+import { fetchAuthors } from '@/lib/api';
 
 export const FeaturedAuthors = () => {
+  const [authors, setAuthors] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function load() {
+      try {
+        const live = await fetchAuthors();
+        if (isMounted) {
+          if (Array.isArray(live) && live.length > 0) {
+            setAuthors(
+              live.map((a, idx) => ({
+                id: a._id || `auth-${idx}`,
+                name: a.name || a,
+                image: a.image || a.photo || '/placeholder-author.png',
+                href: `/products?author=${encodeURIComponent(a.name || a)}`
+              }))
+            );
+          } else {
+            setAuthors([]);
+          }
+          setLoading(false);
+        }
+      } catch (e) {
+        if (isMounted) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (!loading && authors.length === 0) return null;
+
   return (
     <section className="py-10 sm:py-14 px-4 sm:px-8 max-w-6xl mx-auto">
       {/* Section Header */}
@@ -49,15 +54,14 @@ export const FeaturedAuthors = () => {
         </div>
       </div>
 
-      {/* 4 Authors Grid */}
+      {/* Authors Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
-        {AUTHORS.map((author) => (
+        {authors.map((author) => (
           <Link
             key={author.id}
             href={author.href}
             className="group flex flex-col items-center text-center space-y-3"
           >
-            {/* Portrait Image Container */}
             <div className="relative aspect-3/4 w-full overflow-hidden bg-slate-100 rounded-xs transition-transform duration-300 group-hover:scale-[1.02]">
               <img
                 src={author.image}
@@ -65,11 +69,7 @@ export const FeaturedAuthors = () => {
                 className="w-full h-full object-cover object-center"
               />
             </div>
-
-            {/* Author Name */}
-            <h3
-              className={`text-xs sm:text-sm font-bold text-slate-900 group-hover:text-[#4361ee] transition-colors leading-snug ${author.font}`}
-            >
+            <h3 className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-[#4361ee] transition-colors leading-snug">
               {author.name}
             </h3>
           </Link>

@@ -5,51 +5,44 @@ import Link from 'next/link';
 import { Star } from 'lucide-react';
 import { fetchBooks } from '@/lib/api';
 
-const DEFAULT_AUTHOR_BOOKS = [
-  {
-    id: 'ab-1',
-    title: 'ഘടോൽക്കചൻ',
-    rating: '5.4',
-    description: 'പാണ്ഡവർക്കായി ധീരമായി പോരാടിയ ഘടോൽക്കചൻ കർണ്ണന്റെ ആയുധത്താൽ വീരമൃത്യു വരിക്കുന്നു.',
-    image: '/author_best1.png',
-    slug: 'ghadolkachan'
-  },
-  {
-    id: 'ab-2',
-    title: 'ഘടോൽക്കചൻ - രാക്ഷസപർവ്വം',
-    rating: '5.4',
-    description: 'ഘടോൽക്കചൻ പാണ്ഡവർക്കായി പോരാടിയ ധീരനായ യോദ്ധാവായിരുന്നു.',
-    image: '/author_best2.png',
-    slug: 'ghadolkachan-rakshasaparvam'
-  }
-];
-
 export const AuthorBestBooks = () => {
-  const [books, setBooks] = useState(DEFAULT_AUTHOR_BOOKS);
+  const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
     const loadAuthorBestBooks = async () => {
       try {
-        const liveBooks = await fetchBooks({ author: 'രാജേഷ് കെ.ആർ' });
-        if (Array.isArray(liveBooks) && liveBooks.length >= 2) {
-          setBooks(
-            liveBooks.slice(0, 2).map((b, idx) => ({
-              id: b._id,
-              title: b.title || b.name,
-              rating: b.rating ? String(b.rating) : '5.4',
-              description: b.description || DEFAULT_AUTHOR_BOOKS[idx]?.description,
-              image: (b.images && b.images[0]) || (idx === 0 ? '/author_best1.png' : '/author_best2.png'),
-              slug: b.slug || b._id
-            }))
-          );
+        const liveBooks = await fetchBooks({ limit: 4 });
+        if (isMounted) {
+          if (Array.isArray(liveBooks) && liveBooks.length >= 2) {
+            setBooks(
+              liveBooks.slice(0, 2).map((b) => ({
+                id: b._id,
+                title: b.title || b.name,
+                rating: b.rating ? String(b.rating) : '5.0',
+                description: b.description,
+                image: (b.images && b.images[0]) || '/placeholder-book.png',
+                slug: b.slug || b._id
+              }))
+            );
+          } else {
+            setBooks([]);
+          }
+          setLoading(false);
         }
       } catch (err) {
-        console.warn('[AuthorBestBooks] Backend fetch fallback:', err);
+        if (isMounted) setLoading(false);
       }
     };
 
     loadAuthorBestBooks();
+    return () => {
+      isMounted = false;
+    };
   }, []);
+
+  if (!loading && books.length < 2) return null;
 
   return (
     <section className="py-10 sm:py-14 px-4 sm:px-8 max-w-6xl mx-auto">

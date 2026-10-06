@@ -5,35 +5,32 @@ import Link from 'next/link';
 import { fetchSpotlightBook } from '@/lib/api';
 
 export const FeaturedBookSpotlight = () => {
-  const [book, setBook] = useState({
-    title: 'പരാജിതനായകർ',
-    author: 'ടി. അനീഷ്',
-    description:
-      'തമിഴ് സിനിമയും രാഷ്ട്രീയവും തമ്മിലുള്ള ആഴത്തിലുള്ള ബന്ധം വ്യക്തമാക്കുന്നതാണ് ഈ പുസ്തകം. എം.ജി.ആർ, ജയലളിത തുടങ്ങിയവർ തമിഴ് രാഷ്ട്രീയത്തിൽ വലിയ വിജയങ്ങൾ കൊയ്തപ്പോൾ, രാഷ്ട്രീയത്തിൽ പരാജയപ്പെടുകയോ അല്ലെങ്കിൽ വലിയ ചലനങ്ങൾ സൃഷ്ടിക്കാൻ കഴിയാതെ പോവുകയോ ചെയ്ത ശിവാജി ഗണേശൻ, വിജയകാന്ത്, കമൽ ഹാസൻ, രജനീകാന്ത് തുടങ്ങിയ താരങ്ങളുടെ രാഷ്ട്രീയ ശ്രമങ്ങളെയും അവരുടെ സിനിമകളെയും ഈ പുസ്തകം വിലയിരുത്തുന്നു. [1, 2]',
-    image: '/featured_parajitha.png',
-    slug: 'parajithanayakar'
-  });
+  const [book, setBook] = useState(null);
 
   useEffect(() => {
+    let isMounted = true;
     const loadFeaturedAuthorBook = async () => {
       try {
         const liveBook = await fetchSpotlightBook();
-        if (liveBook && liveBook.title) {
+        if (isMounted && liveBook && liveBook.title) {
           setBook({
-            title: liveBook.title || 'പരാജിതനായകർ',
-            author: liveBook.author || 'ടി. അനീഷ്',
-            description: liveBook.description || book.description,
-            image: liveBook.image || '/featured_parajitha.png',
-            slug: liveBook.slug || 'parajithanayakar'
+            title: liveBook.title,
+            author: liveBook.author,
+            description: liveBook.description,
+            image: liveBook.image || (liveBook.images && liveBook.images[0]) || '/placeholder-book.png',
+            slug: liveBook.slug || liveBook._id
           });
         }
-      } catch (err) {
-        console.warn('[FeaturedBookSpotlight] Backend fetch fallback:', err);
-      }
+      } catch (err) {}
     };
 
     loadFeaturedAuthorBook();
+    return () => {
+      isMounted = false;
+    };
   }, []);
+
+  if (!book) return null;
 
   return (
     <section className="py-12 sm:py-16 px-4 sm:px-8 max-w-6xl mx-auto">

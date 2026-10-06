@@ -23,8 +23,10 @@ export const StoreDataProvider = ({ children }) => {
     return list.filter((item) => {
       if (!item || typeof item !== 'object') return false;
       const id = String(item._id || item.id || '');
-      // If legacy mock ID like bk-1, ord-1, bnr-1, cpn-1, ref-1
-      if (/^(bk|ord|bnr|cpn|ref|usr|cust)-[1-9]$/.test(id)) return false;
+      // If legacy mock ID like bk-1, ord-1, bnr-1, cpn-1, ref-1, ret-101, ret-102
+      if (/^(bk|ord|bnr|cpn|ref|usr|cust|ret)-/i.test(id)) return false;
+      // Filter out any mock order numbers with GRV-
+      if (typeof item.orderNumber === 'string' && item.orderNumber.startsWith('GRV-')) return false;
       return true;
     });
   };

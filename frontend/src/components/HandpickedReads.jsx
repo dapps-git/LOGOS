@@ -6,73 +6,48 @@ import { Star, Heart } from 'lucide-react';
 import { fetchFeaturedBooks } from '@/lib/api';
 import { useWishlist } from '@/context/WishlistContext';
 
-const DEFAULT_HANDPICKED_BOOKS = [
-  {
-    num: '01',
-    id: 'hp-1',
-    title: 'ദൈവമെന്ന മനുഷ്യൻ',
-    author: 'വിനീഷ് കെ.എൻ',
-    price: 104.00,
-    originalPrice: 180.00,
-    rating: '5.4',
-    image: '/handpicked1.png',
-    href: '/books/daivamanna-manushyan'
-  },
-  {
-    num: '02',
-    id: 'hp-2',
-    title: 'മണിമുഴങ്ങുന്നത് ആർക്കുവേണ്ടി',
-    author: 'ഏണസ്റ്റ് ഹെമിങ് വേ',
-    price: 616.00,
-    originalPrice: 860.00,
-    rating: '5.4',
-    image: '/handpicked2.png',
-    href: '/books/manimuzhangunnathu-aarkkuvendi',
-    prominent: true
-  },
-  {
-    num: '03',
-    id: 'hp-3',
-    title: 'കണക്കിലെ ചിരികൾ',
-    author: 'അമിത് കുമാർ',
-    price: 178.00,
-    originalPrice: 270.00,
-    rating: '5.4',
-    image: '/handpicked3.png',
-    href: '/books/kanakkile-chirikal'
-  }
-];
-
 export const HandpickedReads = () => {
-  const [books, setBooks] = useState(DEFAULT_HANDPICKED_BOOKS);
+  const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
   const { toggleWishlist, isBookInWishlist } = useWishlist();
 
   useEffect(() => {
+    let isMounted = true;
     const loadBooks = async () => {
       try {
         const liveBooks = await fetchFeaturedBooks();
-        if (Array.isArray(liveBooks) && liveBooks.length >= 3) {
-          const formatted = liveBooks.slice(0, 3).map((b, idx) => ({
-            num: `0${idx + 1}`,
-            id: b._id,
-            title: b.title || b.name,
-            author: b.author,
-            price: Number(b.discountPrice || b.price || 0),
-            originalPrice: b.discountPrice ? Number(b.price) : null,
-            rating: b.rating ? String(b.rating) : '5.4',
-            image: (b.images && b.images[0]) || '/handpicked1.png',
-            href: `/books/${b.slug || b._id}`,
-            prominent: idx === 1
-          }));
-          setBooks(formatted);
+        if (isMounted) {
+          if (Array.isArray(liveBooks) && liveBooks.length > 0) {
+            const formatted = liveBooks.slice(0, 3).map((b, idx) => ({
+              num: `0${idx + 1}`,
+              id: b._id,
+              title: b.title || b.name,
+              author: b.author,
+              price: Number(b.discountPrice || b.price || 0),
+              originalPrice: b.discountPrice ? Number(b.price) : null,
+              rating: b.rating ? String(b.rating) : '5.0',
+              image: (b.images && b.images[0]) || '/placeholder-book.png',
+              href: `/books/${b.slug || b._id}`,
+              prominent: idx === 1
+            }));
+            setBooks(formatted);
+          } else {
+            setBooks([]);
+          }
+          setLoading(false);
         }
       } catch (err) {
-        console.warn('[HandpickedReads] Live fetch fallback:', err);
+        if (isMounted) setLoading(false);
       }
     };
 
     loadBooks();
+    return () => {
+      isMounted = false;
+    };
   }, []);
+
+  if (!loading && books.length === 0) return null;
 
   return (
     <section className="py-10 sm:py-14 px-4 sm:px-8 max-w-6xl mx-auto">

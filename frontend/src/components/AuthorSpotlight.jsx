@@ -5,32 +5,31 @@ import Link from 'next/link';
 import { fetchSpotlightAuthor } from '@/lib/api';
 
 export const AuthorSpotlight = () => {
-  const [authorData, setAuthorData] = useState({
-    name: 'രാജേഷ് കെ.ആർ',
-    bio: "പത്തനംതിട്ട സ്വദേശിയായ അധ്യാപകനും എഴുത്തുകാരനുമാണ്. 'ഘടോൽക്കചൻ' അദ്ദേഹത്തിന്റെ ആദ്യ നോവലാണ്. മഹാഭാരതത്തിലെ ഘടോൽക്കചന്റെയും മൗർവിയുടെയും ജീവിതത്തെ വ്യത്യസ്തമായ രീതിയിൽ അവതരിപ്പിക്കുന്നതാണ് ഈ കൃതി. വായനയോടുള്ള ഗൗരവമായ സമീപനം എം.എ. പഠനത്തിനു ശേഷമാണ് അദ്ദേഹത്തിൽ വളർന്നത്. കഥകളെക്കുറിച്ച് കുറിപ്പുകൾ എഴുതുകയും പിന്നീട് തിരക്കഥകൾ രചിക്കുകയും ചെയ്ത അനുഭവം അദ്ദേഹത്തിന്റെ നോവൽരചനയെയും സ്വാധീനിച്ചു.",
-    image: '/author_rajesh.png',
-    featuredBookSlug: 'ghadolkachan'
-  });
+  const [authorData, setAuthorData] = useState(null);
 
   useEffect(() => {
+    let isMounted = true;
     const loadSpotlight = async () => {
       try {
         const spotlight = await fetchSpotlightAuthor();
-        if (spotlight && spotlight.name) {
+        if (isMounted && spotlight && spotlight.name) {
           setAuthorData({
             name: spotlight.name,
-            bio: spotlight.bio || "പത്തനംതിട്ട സ്വദേശിയായ അധ്യാപകനും എഴുത്തുകാരനുമാണ്. 'ഘടോൽക്കചൻ' അദ്ദേഹത്തിന്റെ ആദ്യ നോവലാണ്. മഹാഭാരതത്തിലെ ഘടോൽക്കചന്റെയും മൗർവിയുടെയും ജീവിതത്തെ വ്യത്യസ്തമായ രീതിയിൽ അവതരിപ്പിക്കുന്നതാണ് ഈ കൃതി.",
+            bio: spotlight.bio,
             image: spotlight.photo || spotlight.image || '/author_rajesh.png',
-            featuredBookSlug: spotlight.featuredBookSlug || 'ghadolkachan'
+            featuredBookSlug: spotlight.featuredBookSlug
           });
         }
-      } catch (err) {
-        console.warn('[AuthorSpotlight] Backend fetch fallback:', err);
-      }
+      } catch (err) {}
     };
 
     loadSpotlight();
+    return () => {
+      isMounted = false;
+    };
   }, []);
+
+  if (!authorData) return null;
 
   return (
     <section className="py-12 sm:py-16 px-4 sm:px-8 max-w-6xl mx-auto">

@@ -6,77 +6,46 @@ import { Star, Heart } from 'lucide-react';
 import { fetchBestSellers } from '@/lib/api';
 import { useWishlist } from '@/context/WishlistContext';
 
-const DEFAULT_BESTSELLER_BOOKS = [
-  {
-    id: 'bs-1',
-    title: 'കമ്മ്യൂണിസ്റ്റ് ഹീറോ',
-    author: 'പി.ടി. പ്രദീഷ്',
-    price: 94.00,
-    originalPrice: 160.00,
-    rating: '5.4',
-    image: '/bestseller1.png',
-    href: '/books/communist-hero'
-  },
-  {
-    id: 'bs-2',
-    title: 'കുമ്പളമ്പറമ്പിലെ കുമ്പുളുമൂസുകൾ',
-    author: 'ദാമോദർ രാധാകൃഷ്ണൻ',
-    price: 64.00,
-    originalPrice: 110.00,
-    rating: '5.4',
-    image: '/bestseller2.png',
-    href: '/books/kumbalamparambile-kumbulumusukal'
-  },
-  {
-    id: 'bs-3',
-    title: 'മിലുപ്പ എന്ന കുതിര',
-    author: 'സന്തോഷ് ഏച്ചിക്കാനം',
-    price: 112.00,
-    originalPrice: 180.00,
-    rating: '5.4',
-    image: '/bestseller3.png',
-    href: '/books/miluppa-enna-kuthira'
-  },
-  {
-    id: 'bs-4',
-    title: 'രണ്ടുപക്ഷം',
-    author: 'യു .കെ .കുമാരൻ',
-    price: 80.00,
-    originalPrice: 140.00,
-    rating: '5.4',
-    image: '/bestseller4.png',
-    href: '/books/randupaksham'
-  }
-];
-
 export const Bestsellers = () => {
-  const [books, setBooks] = useState(DEFAULT_BESTSELLER_BOOKS);
+  const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
   const { toggleWishlist, isBookInWishlist } = useWishlist();
 
   useEffect(() => {
+    let isMounted = true;
     const loadBooks = async () => {
       try {
         const liveBooks = await fetchBestSellers();
-        if (Array.isArray(liveBooks) && liveBooks.length > 0) {
-          const formatted = liveBooks.map((b) => ({
-            id: b._id,
-            title: b.title || b.name,
-            author: b.author,
-            price: Number(b.discountPrice || b.price || 0),
-            originalPrice: b.discountPrice ? Number(b.price) : null,
-            rating: b.rating ? String(b.rating) : '5.4',
-            image: (b.images && b.images[0]) || '/bestseller1.png',
-            href: `/books/${b.slug || b._id}`
-          }));
-          setBooks(formatted.slice(0, 8));
+        if (isMounted) {
+          if (Array.isArray(liveBooks) && liveBooks.length > 0) {
+            const formatted = liveBooks.map((b) => ({
+              id: b._id,
+              title: b.title || b.name,
+              author: b.author,
+              price: Number(b.discountPrice || b.price || 0),
+              originalPrice: b.discountPrice ? Number(b.price) : null,
+              rating: b.rating ? String(b.rating) : '5.0',
+              image: (b.images && b.images[0]) || '/placeholder-book.png',
+              href: `/books/${b.slug || b._id}`
+            }));
+            setBooks(formatted.slice(0, 8));
+          } else {
+            setBooks([]);
+          }
+          setLoading(false);
         }
       } catch (err) {
-        console.warn('[Bestsellers] Live fetch fallback:', err);
+        if (isMounted) setLoading(false);
       }
     };
 
     loadBooks();
+    return () => {
+      isMounted = false;
+    };
   }, []);
+
+  if (!loading && books.length === 0) return null;
 
   return (
     <section className="py-10 sm:py-14 px-4 sm:px-8 max-w-6xl mx-auto">
