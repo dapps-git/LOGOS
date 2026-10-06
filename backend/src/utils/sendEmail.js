@@ -8,7 +8,7 @@ const sendEmail = async (options) => {
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
   const port = parseInt(process.env.SMTP_PORT || '587', 10);
   const user = process.env.SMTP_USER || process.env.EMAIL_USER;
-  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
+  const pass = (process.env.SMTP_PASS || process.env.EMAIL_PASS || '').replace(/\s+/g, '');
   const from = process.env.SMTP_FROM || `"LOGOS Books" <${user || 'noreply@logosbooks.in'}>`;
 
   // Default HTML template if OTP is provided
