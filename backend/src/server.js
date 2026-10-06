@@ -37,7 +37,7 @@ const allowedOrigins = [
   process.env.ADMIN_URL
 ].filter(Boolean).map(url => url.replace(/\/$/, ''));
 
-app.use(cors({
+const corsOptions = {
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
     const cleanOrigin = origin.replace(/\/$/, '');
@@ -48,35 +48,49 @@ app.use(cors({
     ) {
       callback(null, true);
     } else {
-      callback(null, true); // Allow during setup/cross-origin calls
+      callback(null, true);
     }
   },
-  credentials: true
-}));
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Body Parsers
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Health Check
-app.get('/api/health', (req, res) => {
+// Health Check (support root, /logos, /api/health, /logos/api/health)
+const healthHandler = (req, res) => {
   res.json({
     status: 'ok',
     app: 'LOGOS Book E-Commerce API',
     timestamp: new Date().toISOString()
   });
-});
+};
 
-// API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/books', bookRoutes);
-app.use('/api/banners', bannerRoutes);
-app.use('/api/referrals', referralRoutes);
-app.use('/api/coupons', couponRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/cart', cartRoutes);
-app.use('/api/wishlist', wishlistRoutes);
-app.use('/api/reviews', reviewRoutes);
+app.get(['/', '/logos', '/api/health', '/logos/api/health'], healthHandler);
+
+// API Routes - mount on both /api and /logos/api for cPanel subpath compatibility
+const routeList = [
+  ['/auth', authRoutes],
+  ['/books', bookRoutes],
+  ['/banners', bannerRoutes],
+  ['/referrals', referralRoutes],
+  ['/coupons', couponRoutes],
+  ['/orders', orderRoutes],
+  ['/cart', cartRoutes],
+  ['/wishlist', wishlistRoutes],
+  ['/reviews', reviewRoutes]
+];
+
+routeList.forEach(([path, router]) => {
+  app.use(`/api${path}`, router);
+  app.use(`/logos/api${path}`, router);
+});
 
 // Error Middleware
 app.use(notFound);
