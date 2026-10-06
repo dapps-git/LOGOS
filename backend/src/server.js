@@ -29,6 +29,8 @@ const allowedOrigins = [
   'http://localhost:5173',
   'https://logos-chi-ten.vercel.app',
   'https://logos-4n4d.vercel.app',
+  'https://logos-2nkc.vercel.app',
+  'https://logos-delta-eight.vercel.app',
   'https://tweaki.pw',
   'https://www.tweaki.pw',
   process.env.CLIENT_URL,
