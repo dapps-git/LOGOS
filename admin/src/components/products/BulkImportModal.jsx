@@ -92,13 +92,23 @@ export const BulkImportModal = ({ isOpen, onClose }) => {
   // Download Sample Excel File (.xlsx)
   const handleDownloadSample = () => {
     try {
-      const worksheet = XLSX.utils.json_to_sheet(SAMPLE_TEMPLATE_ROWS);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Books_Catalog');
-      XLSX.writeFile(workbook, 'LOGOS_Books_Bulk_Import_Template.xlsx');
+      const link = document.createElement('a');
+      link.href = '/LOGOS_Books_Catalog_Template.xlsx';
+      link.download = 'LOGOS_Books_Catalog_Template.xlsx';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       showToast('Sample Excel template downloaded successfully', 'success');
     } catch (err) {
-      showToast('Failed to download template: ' + err.message, 'error');
+      try {
+        const worksheet = XLSX.utils.json_to_sheet(SAMPLE_TEMPLATE_ROWS);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Books_Catalog');
+        XLSX.writeFile(workbook, 'LOGOS_Books_Catalog_Template.xlsx');
+        showToast('Sample Excel template downloaded successfully', 'success');
+      } catch (e) {
+        showToast('Failed to download template: ' + e.message, 'error');
+      }
     }
   };
 
