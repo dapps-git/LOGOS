@@ -15,10 +15,28 @@ export const HandpickedReads = () => {
     let isMounted = true;
     const loadBooks = async () => {
       try {
-        const liveBooks = await fetchFeaturedBooks();
+        const [liveBooks, allBooks] = await Promise.all([
+          fetchFeaturedBooks().catch(() => []),
+          fetchBooks({ limit: 40 }).catch(() => [])
+        ]);
+
         if (isMounted) {
-          if (Array.isArray(liveBooks) && liveBooks.length > 0) {
-            const formatted = liveBooks.slice(0, 3).map((b, idx) => ({
+          const pool = [...(Array.isArray(liveBooks) ? liveBooks : []), ...(Array.isArray(allBooks) ? allBooks : [])];
+          const map = new Map();
+          pool.forEach((b) => {
+            if (b && b._id && !map.has(b._id)) map.set(b._id, b);
+          });
+          const uniqueBooks = Array.from(map.values());
+
+          // Prioritize books with real cover images
+          const sorted = uniqueBooks.sort((a, b) => {
+            const aHas = a.images && a.images.length > 0 && a.images[0] && a.images[0] !== '/book-placeholder.svg' ? 1 : 0;
+            const bHas = b.images && b.images.length > 0 && b.images[0] && b.images[0] !== '/book-placeholder.svg' ? 1 : 0;
+            return bHas - aHas;
+          });
+
+          if (sorted.length > 0) {
+            const formatted = sorted.slice(0, 3).map((b, idx) => ({
               num: `0${idx + 1}`,
               id: b._id,
               title: b.title || b.name,
@@ -26,7 +44,7 @@ export const HandpickedReads = () => {
               price: Number(b.discountPrice || b.price || 0),
               originalPrice: b.discountPrice ? Number(b.price) : null,
               rating: b.rating ? String(b.rating) : '5.0',
-              image: (b.images && b.images[0]) || '/placeholder-book.png',
+              image: (b.images && b.images[0]) || '/book-placeholder.svg',
               href: `/books/${b.slug || b._id}`,
               prominent: idx === 1
             }));

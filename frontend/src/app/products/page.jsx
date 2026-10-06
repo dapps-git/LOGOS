@@ -161,6 +161,13 @@ function ProductsContent() {
       list.sort((a, b) => (b.isBestSeller ? 1 : 0) - (a.isBestSeller ? 1 : 0));
     } else if (sortBy === 'rating') {
       list.sort((a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0));
+    } else {
+      // Default: show books with real cover images first
+      list.sort((a, b) => {
+        const aHas = a.images && a.images.length > 0 && a.images[0] && a.images[0] !== '/book-placeholder.svg' ? 1 : 0;
+        const bHas = b.images && b.images.length > 0 && b.images[0] && b.images[0] !== '/book-placeholder.svg' ? 1 : 0;
+        return bHas - aHas;
+      });
     }
 
     return list;
