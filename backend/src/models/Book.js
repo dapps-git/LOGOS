@@ -141,6 +141,26 @@ const bookSchema = new mongoose.Schema({
     default: false,
     index: true
   },
+  authorPhoto: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  authorBio: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  isFeaturedSpotlight: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  spotlightDescription: {
+    type: String,
+    default: '',
+    trim: true
+  },
   isBestAuthor: {
     type: Boolean,
     default: false,

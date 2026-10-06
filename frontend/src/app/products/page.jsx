@@ -338,7 +338,9 @@ function ProductsContent() {
 
       // Author match
       if (selectedAuthor !== 'ALL' && selectedAuthor !== 'All Authors') {
-        if ((b.author || '').toLowerCase() !== selectedAuthor.toLowerCase()) return false;
+        const cleanA = (b.author || '').trim().toLowerCase();
+        const cleanSel = selectedAuthor.trim().toLowerCase();
+        if (cleanA !== cleanSel && !cleanA.includes(cleanSel) && !cleanSel.includes(cleanA)) return false;
       }
 
       // Price match

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { fetchBookBySlugOrId, fetchBooks } from '@/lib/api';
+import { fetchSpotlightBook } from '@/lib/api';
 
 export const FeaturedBookSpotlight = () => {
   const [book, setBook] = useState({
@@ -17,21 +17,13 @@ export const FeaturedBookSpotlight = () => {
   useEffect(() => {
     const loadFeaturedAuthorBook = async () => {
       try {
-        // Try slug first
-        let liveBook = await fetchBookBySlugOrId('parajithanayakar');
-        if (!liveBook) {
-          const res = await fetchBooks({ search: 'പരാജിതനായകർ' });
-          if (Array.isArray(res) && res.length > 0) {
-            liveBook = res[0];
-          }
-        }
-
-        if (liveBook) {
+        const liveBook = await fetchSpotlightBook();
+        if (liveBook && liveBook.title) {
           setBook({
-            title: liveBook.title || liveBook.name || 'പരാജിതനായകർ',
+            title: liveBook.title || 'പരാജിതനായകർ',
             author: liveBook.author || 'ടി. അനീഷ്',
             description: liveBook.description || book.description,
-            image: (liveBook.images && liveBook.images[0]) || liveBook.coverImage || '/featured_parajitha.png',
+            image: liveBook.image || '/featured_parajitha.png',
             slug: liveBook.slug || 'parajithanayakar'
           });
         }

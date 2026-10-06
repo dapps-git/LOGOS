@@ -223,6 +223,8 @@ const createBook = async (req, res) => {
       title,
       name,
       author,
+      authorPhoto,
+      authorBio,
       publisher,
       edition,
       theme,
@@ -231,6 +233,7 @@ const createBook = async (req, res) => {
       languages,
       pageCount,
       description,
+      spotlightDescription,
       price,
       discountPrice,
       stock,
@@ -242,6 +245,7 @@ const createBook = async (req, res) => {
       isFeatured,
       isHandpicked,
       isAuthorSpotlight,
+      isFeaturedSpotlight,
       isBestAuthor,
       tags
     } = req.body;
@@ -261,10 +265,26 @@ const createBook = async (req, res) => {
       });
     }
 
+    if (isAuthorSpotlight) {
+      await Book.updateMany({ author: { $ne: author.trim() } }, { $set: { isAuthorSpotlight: false } });
+      if (authorPhoto || authorBio) {
+        await Book.updateMany(
+          { author: author.trim() },
+          { $set: { ...(authorPhoto ? { authorPhoto } : {}), ...(authorBio ? { authorBio } : {}) } }
+        );
+      }
+    }
+
+    if (isFeaturedSpotlight) {
+      await Book.updateMany({}, { $set: { isFeaturedSpotlight: false } });
+    }
+
     const book = await Book.create({
       title: bookTitle.trim(),
       name: bookTitle.trim(),
       author: author.trim(),
+      authorPhoto: authorPhoto || '',
+      authorBio: authorBio || '',
       publisher: publisher.trim(),
       edition: edition || '1st Edition',
       theme: theme.trim(),
@@ -273,6 +293,7 @@ const createBook = async (req, res) => {
       languages: Array.isArray(languages) && languages.length > 0 ? languages : ['English'],
       pageCount: Number(pageCount),
       description: description.trim(),
+      spotlightDescription: spotlightDescription ? spotlightDescription.trim() : '',
       price: Number(price),
       discountPrice: discountPrice ? Number(discountPrice) : null,
       stock: Number(stock),
@@ -284,6 +305,7 @@ const createBook = async (req, res) => {
       isFeatured: Boolean(isFeatured),
       isHandpicked: Boolean(isHandpicked),
       isAuthorSpotlight: Boolean(isAuthorSpotlight),
+      isFeaturedSpotlight: Boolean(isFeaturedSpotlight),
       isBestAuthor: Boolean(isBestAuthor),
       tags: Array.isArray(tags) ? tags : []
     });
@@ -311,13 +333,34 @@ const updateBook = async (req, res) => {
     const { images, ...otherFields } = req.body;
 
     if (images !== undefined) {
-      if (!Array.isArray(images) || images.length < 3) {
+      if (!Array.isArray(images) || images.length < 1) {
         return res.status(400).json({
           success: false,
-          message: 'A minimum of 3 photos are required per book'
+          message: 'A minimum of 1 photo is required per book'
         });
       }
       book.images = images;
+    }
+
+    const authorToUse = (otherFields.author || book.author || '').trim();
+
+    if (otherFields.isAuthorSpotlight) {
+      await Book.updateMany({ author: { $ne: authorToUse } }, { $set: { isAuthorSpotlight: false } });
+      if (otherFields.authorPhoto || otherFields.authorBio) {
+        await Book.updateMany(
+          { author: authorToUse },
+          {
+            $set: {
+              ...(otherFields.authorPhoto ? { authorPhoto: otherFields.authorPhoto } : {}),
+              ...(otherFields.authorBio ? { authorBio: otherFields.authorBio } : {})
+            }
+          }
+        );
+      }
+    }
+
+    if (otherFields.isFeaturedSpotlight) {
+      await Book.updateMany({ _id: { $ne: book._id } }, { $set: { isFeaturedSpotlight: false } });
     }
 
     Object.assign(book, otherFields);
@@ -542,6 +585,133 @@ const bulkImportBooks = async (req, res) => {
   }
 };
 
+// @desc    Get current Spotlight Author ("Meet the Author")
+// @route   GET /api/books/spotlight/author
+// @access  Public
+const getSpotlightAuthor = async (req, res) => {
+  try {
+    // 1. Find book with isAuthorSpotlight: true
+    let spotlightBook = await Book.findOne({ isActive: true, isAuthorSpotlight: true }).sort({ updatedAt: -1 });
+
+    // 2. Fallback to book with authorPhoto and authorBio
+    if (!spotlightBook) {
+      spotlightBook = await Book.findOne({
+        isActive: true,
+        authorPhoto: { $exists: true, $ne: '' },
+        authorBio: { $exists: true, $ne: '' }
+      }).sort({ updatedAt: -1 });
+    }
+
+    let authorName = spotlightBook ? spotlightBook.author : 'രാജേഷ് കെ.ആർ';
+    let authorPhoto = (spotlightBook && spotlightBook.authorPhoto) || '/author_rajesh.png';
+    let authorBio = (spotlightBook && spotlightBook.authorBio) || "പത്തനംതിട്ട സ്വദേശിയായ അധ്യാപകനും എഴുത്തുകാരനുമാണ്. 'ഘടോൽക്കചൻ' അദ്ദേഹത്തിന്റെ ആദ്യ നോവലാണ്. മഹാഭാരതത്തിലെ ഘടോൽക്കചന്റെയും മൗർവിയുടെയും ജീവിതത്തെ വ്യത്യസ്തമായ രീതിയിൽ അവതരിപ്പിക്കുന്നതാണ് ഈ കൃതി. വായനയോടുള്ള ഗൗരവമായ സമീപനം എം.എ. പഠനത്തിനു ശേഷമാണ് അദ്ദേഹത്തിൽ വളർന്നത്. കഥകളെക്കുറിച്ച് കുറിപ്പുകൾ എഴുതുകയും പിന്നീട് തിരക്കഥകൾ രചിക്കുകയും ചെയ്ത അനുഭവം അദ്ദേഹത്തിന്റെ നോവൽരചനയെയും സ്വാധീനിച്ചു.";
+
+    // Get list of books under this author
+    const authorBooks = await Book.find({
+      isActive: true,
+      author: { $regex: new RegExp(`^${authorName.trim()}$`, 'i') }
+    }).select('title name slug price discountPrice images coverImage author').limit(8);
+
+    return res.json({
+      success: true,
+      author: {
+        name: authorName,
+        photo: authorPhoto,
+        image: authorPhoto,
+        bio: authorBio,
+        booksCount: authorBooks.length,
+        featuredBookSlug: (spotlightBook && spotlightBook.slug) || (authorBooks[0] && authorBooks[0].slug) || 'ghadolkachan',
+        books: authorBooks
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get current Spotlight Book ("Featured Book Spotlight")
+// @route   GET /api/books/spotlight/book
+// @access  Public
+const getSpotlightBook = async (req, res) => {
+  try {
+    let book = await Book.findOne({ isActive: true, isFeaturedSpotlight: true }).sort({ updatedAt: -1 });
+
+    if (!book) {
+      book = await Book.findOne({ isActive: true, isFeatured: true }).sort({ updatedAt: -1 });
+    }
+
+    if (!book) {
+      book = await Book.findOne({ isActive: true, slug: 'parajithanayakar' });
+    }
+
+    if (book) {
+      return res.json({
+        success: true,
+        book: {
+          id: book._id,
+          title: book.title || book.name,
+          author: book.author,
+          description: book.spotlightDescription || book.description,
+          image: (book.images && book.images[0]) || book.coverImage || '/featured_parajitha.png',
+          slug: book.slug,
+          price: book.price,
+          discountPrice: book.discountPrice
+        }
+      });
+    }
+
+    return res.json({
+      success: true,
+      book: {
+        title: 'പരാജിതനായകർ',
+        author: 'ടി. അനീഷ്',
+        description: 'തമിഴ് സിനിമയും രാഷ്ട്രീയവും തമ്മിലുള്ള ആഴത്തിലുള്ള ബന്ധം വ്യക്തമാക്കുന്നതാണ് ഈ പുസ്തകം. എം.ജി.ആർ, ജയലളിത തുടങ്ങിയവർ തമിഴ് രാഷ്ട്രീയത്തിൽ വലിയ വിജയങ്ങൾ കൊയ്തപ്പോൾ, രാഷ്ട്രീയത്തിൽ പരാജയപ്പെടുകയോ അല്ലെങ്കിൽ വലിയ ചലനങ്ങൾ സൃഷ്ടിക്കാൻ കഴിയാതെ പോവുകയോ ചെയ്ത ശിവാജി ഗണേശൻ, വിജയകാന്ത്, കമൽ ഹാസൻ, രജനീകാന്ത് തുടങ്ങിയ താരങ്ങളുടെ രാഷ്ട്രീയ ശ്രമങ്ങളെയും അവരുടെ സിനിമകളെയും ഈ പുസ്തകം വിലയിരുത്തുന്നു. [1, 2]',
+        image: '/featured_parajitha.png',
+        slug: 'parajithanayakar'
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get all distinct authors with book counts, photo, and bio for mapping
+// @route   GET /api/books/authors/all
+// @access  Public
+const getAuthorsList = async (req, res) => {
+  try {
+    const authors = await Book.aggregate([
+      { $match: { isActive: true, author: { $exists: true, $ne: '' } } },
+      {
+        $group: {
+          _id: '$author',
+          author: { $first: '$author' },
+          photo: { $max: '$authorPhoto' },
+          bio: { $max: '$authorBio' },
+          isSpotlight: { $max: '$isAuthorSpotlight' },
+          booksCount: { $sum: 1 },
+          lastBookSlug: { $first: '$slug' }
+        }
+      },
+      { $sort: { isSpotlight: -1, booksCount: -1, author: 1 } }
+    ]);
+
+    return res.json({
+      success: true,
+      authors: authors.map((a) => ({
+        name: a.author || a._id,
+        photo: a.photo || '',
+        bio: a.bio || '',
+        isSpotlight: Boolean(a.isSpotlight),
+        booksCount: a.booksCount,
+        lastBookSlug: a.lastBookSlug
+      }))
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getBooks,
   getBookByIdOrSlug,
@@ -549,6 +719,9 @@ module.exports = {
   getNewArrivals,
   getFeaturedBooks,
   getFilterOptions,
+  getSpotlightAuthor,
+  getSpotlightBook,
+  getAuthorsList,
   createBook,
   updateBook,
   deleteBook,

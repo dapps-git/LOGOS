@@ -7,6 +7,9 @@ const {
   getNewArrivals,
   getFeaturedBooks,
   getFilterOptions,
+  getSpotlightAuthor,
+  getSpotlightBook,
+  getAuthorsList,
   createBook,
   updateBook,
   deleteBook,
@@ -20,6 +23,9 @@ router.get('/', getBooks);
 router.get('/collections/best-sellers', getBestSellers);
 router.get('/collections/new-arrivals', getNewArrivals);
 router.get('/collections/featured', getFeaturedBooks);
+router.get('/spotlight/author', getSpotlightAuthor);
+router.get('/spotlight/book', getSpotlightBook);
+router.get('/authors/all', getAuthorsList);
 router.get('/filters/options', getFilterOptions);
 router.get('/:idOrSlug', getBookByIdOrSlug);
 

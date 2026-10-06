@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { fetchBooks } from '@/lib/api';
+import { fetchSpotlightAuthor } from '@/lib/api';
 
 export const AuthorSpotlight = () => {
   const [authorData, setAuthorData] = useState({
@@ -13,23 +13,23 @@ export const AuthorSpotlight = () => {
   });
 
   useEffect(() => {
-    const loadAuthorBooks = async () => {
+    const loadSpotlight = async () => {
       try {
-        const books = await fetchBooks({ author: 'രാജേഷ് കെ.ആർ' });
-        if (Array.isArray(books) && books.length > 0) {
-          const mainBook = books[0];
-          setAuthorData((prev) => ({
-            ...prev,
-            name: mainBook.author || 'രാജേഷ് കെ.ആർ',
-            featuredBookSlug: mainBook.slug || 'ghadolkachan'
-          }));
+        const spotlight = await fetchSpotlightAuthor();
+        if (spotlight && spotlight.name) {
+          setAuthorData({
+            name: spotlight.name,
+            bio: spotlight.bio || "പത്തനംതിട്ട സ്വദേശിയായ അധ്യാപകനും എഴുത്തുകാരനുമാണ്. 'ഘടോൽക്കചൻ' അദ്ദേഹത്തിന്റെ ആദ്യ നോവലാണ്. മഹാഭാരതത്തിലെ ഘടോൽക്കചന്റെയും മൗർവിയുടെയും ജീവിതത്തെ വ്യത്യസ്തമായ രീതിയിൽ അവതരിപ്പിക്കുന്നതാണ് ഈ കൃതി.",
+            image: spotlight.photo || spotlight.image || '/author_rajesh.png',
+            featuredBookSlug: spotlight.featuredBookSlug || 'ghadolkachan'
+          });
         }
       } catch (err) {
         console.warn('[AuthorSpotlight] Backend fetch fallback:', err);
       }
     };
 
-    loadAuthorBooks();
+    loadSpotlight();
   }, []);
 
   return (

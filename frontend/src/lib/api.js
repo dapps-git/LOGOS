@@ -387,17 +387,46 @@ export async function apiRequestReturn(orderId, reason, description = '') {
   return data;
 }
 
-export async function fetchTestimonials() {
+export async function fetchSpotlightAuthor() {
   try {
-    const res = await fetch(`${API_BASE}/reviews/testimonials`, {
+    const res = await fetch(`${API_BASE}/books/spotlight/author`, {
+      next: { revalidate: 15 }
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.author || null;
+  } catch (err) {
+    console.warn('[LOGOS API] fetchSpotlightAuthor fallback:', err.message);
+    return null;
+  }
+}
+
+export async function fetchSpotlightBook() {
+  try {
+    const res = await fetch(`${API_BASE}/books/spotlight/book`, {
+      next: { revalidate: 15 }
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.book || null;
+  } catch (err) {
+    console.warn('[LOGOS API] fetchSpotlightBook fallback:', err.message);
+    return null;
+  }
+}
+
+export async function fetchAuthors() {
+  try {
+    const res = await fetch(`${API_BASE}/books/authors/all`, {
       next: { revalidate: 30 }
     });
     if (!res.ok) return [];
     const data = await res.json();
-    return data.reviews || [];
+    return data.authors || [];
   } catch (err) {
-    console.warn('[LOGOS API] fetchTestimonials fallback:', err.message);
+    console.warn('[LOGOS API] fetchAuthors fallback:', err.message);
     return [];
   }
 }
+
 
