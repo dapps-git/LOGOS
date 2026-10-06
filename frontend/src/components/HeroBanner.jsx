@@ -8,23 +8,21 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 export const HeroBanner = () => {
   const [banners, setBanners] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
     async function load() {
       try {
         const data = await fetchBanners();
-        if (isMounted) {
-          const heroBanners = Array.isArray(data)
-            ? data.filter((b) => b.isActive !== false && (b.position === 'hero' || !b.position))
-            : [];
-          setBanners(heroBanners);
-          setLoaded(true);
+        if (isMounted && Array.isArray(data)) {
+          const heroBanners = data.filter(
+            (b) => b.isActive !== false && (b.position === 'hero' || !b.position)
+          );
+          if (heroBanners.length > 0) {
+            setBanners(heroBanners);
+          }
         }
-      } catch (err) {
-        if (isMounted) setLoaded(true);
-      }
+      } catch (err) {}
     }
     load();
     return () => {
@@ -40,22 +38,19 @@ export const HeroBanner = () => {
     return () => clearInterval(interval);
   }, [banners.length]);
 
-  if (!loaded || banners.length === 0) {
-    return null;
-  }
-
-  const current = banners[currentIndex];
+  const currentBanner = banners.length > 0 ? banners[currentIndex] : null;
+  const bannerImage = currentBanner?.image || '/banner.png';
+  const bannerAlt = currentBanner?.title || 'ഋതുക്കളെ തോൽപ്പിച്ച മരം - വി. ടി. പ്രതീഷ്';
+  const bannerLink = currentBanner?.link || null;
 
   const content = (
-    <div className="relative w-full overflow-hidden group">
-      {/* High-res full banner image displaying exact aspect ratio without cropping or text overlay */}
+    <div className="relative w-full overflow-hidden select-none group">
       <img
-        src={current.image}
-        alt={current.title || 'LOGOS Bookstore'}
-        className="w-full h-auto max-h-[85vh] object-cover sm:object-contain select-none block mx-auto transition-opacity duration-500"
+        src={bannerImage}
+        alt={bannerAlt}
+        className="w-full h-[440px] sm:h-[540px] md:h-screen md:min-h-[600px] object-cover object-[86%_25%] md:object-center select-none block transition-opacity duration-500"
       />
 
-      {/* Slide Navigation Controls for Multi-Banners */}
       {banners.length > 1 && (
         <>
           <button
@@ -64,10 +59,10 @@ export const HeroBanner = () => {
               e.stopPropagation();
               setCurrentIndex((prev) => (prev === 0 ? banners.length - 1 : prev - 1));
             }}
-            className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-xs"
+            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/30 hover:bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-xs"
             aria-label="Previous slide"
           >
-            <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+            <ChevronLeft className="w-6 h-6" />
           </button>
           <button
             onClick={(e) => {
@@ -75,13 +70,13 @@ export const HeroBanner = () => {
               e.stopPropagation();
               setCurrentIndex((prev) => (prev + 1) % banners.length);
             }}
-            className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-xs"
+            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/30 hover:bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-xs"
             aria-label="Next slide"
           >
-            <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+            <ChevronRight className="w-6 h-6" />
           </button>
 
-          <div className="absolute bottom-3 sm:bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 sm:gap-2 bg-black/20 backdrop-blur-xs px-2.5 py-1 rounded-full">
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/20 backdrop-blur-xs px-2.5 py-1 rounded-full">
             {banners.map((_, idx) => (
               <button
                 key={idx}
@@ -90,8 +85,8 @@ export const HeroBanner = () => {
                   e.stopPropagation();
                   setCurrentIndex(idx);
                 }}
-                className={`h-1.5 sm:h-2 rounded-full transition-all ${
-                  idx === currentIndex ? 'w-5 sm:w-7 bg-white' : 'w-1.5 sm:w-2 bg-white/50'
+                className={`h-2 rounded-full transition-all ${
+                  idx === currentIndex ? 'w-6 bg-white' : 'w-2 bg-white/50'
                 }`}
                 aria-label={`Go to slide ${idx + 1}`}
               />
@@ -103,9 +98,9 @@ export const HeroBanner = () => {
   );
 
   return (
-    <section className="relative w-full overflow-hidden bg-transparent">
-      {current.link ? (
-        <Link href={current.link} className="block w-full">
+    <section className="relative w-full overflow-hidden bg-white">
+      {bannerLink ? (
+        <Link href={bannerLink} className="block w-full">
           {content}
         </Link>
       ) : (
