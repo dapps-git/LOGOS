@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { useStoreData } from '@/context/StoreDataContext';
+import { apiClient } from '@/api/client';
 
 // Convert Google Drive sharing links to direct image preview URLs
 const transformDriveUrl = (url) => {
@@ -254,18 +255,10 @@ export const BulkImportModal = ({ isOpen, onClose }) => {
 
     setIsUploading(true);
     try {
-      const token = localStorage.getItem('logos_admin_token');
-      const res = await fetch('http://localhost:5001/api/books/bulk-import', {
+      const data = await apiClient('/books/bulk-import', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
         body: JSON.stringify({ books: parsedRows })
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Import failed');
 
       showToast(`🎉 ${data.message || `Successfully imported ${parsedRows.length} books!`}`, 'success');
       await refreshData();

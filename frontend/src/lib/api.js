@@ -1,4 +1,19 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+export const getApiBase = () => {
+  const envUrl = typeof process !== 'undefined' ? process.env?.NEXT_PUBLIC_API_URL : null;
+  if (typeof window !== 'undefined') {
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (envUrl && (!isLocal || !envUrl.includes('localhost'))) {
+      return envUrl.replace(/\/+$/, '');
+    }
+    if (isLocal) {
+      return 'http://localhost:5001/api';
+    }
+    return 'https://tweaki.pw/logos/api';
+  }
+  return (envUrl || 'https://tweaki.pw/logos/api').replace(/\/+$/, '');
+};
+
+const API_BASE = getApiBase();
 
 function getGuestSessionId() {
   if (typeof window === 'undefined') return '';

@@ -1,7 +1,20 @@
-const API_BASE_URL =
-  (typeof process !== 'undefined' && (process.env?.NEXT_PUBLIC_API_URL || process.env?.NEXT_PUBLIC_API_BASE_URL)) || 'http://localhost:5001/api';
+export const getApiBaseUrl = () => {
+  const envUrl = typeof process !== 'undefined' ? (process.env?.NEXT_PUBLIC_API_URL || process.env?.NEXT_PUBLIC_API_BASE_URL) : null;
+  if (typeof window !== 'undefined') {
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (envUrl && (!isLocal || !envUrl.includes('localhost'))) {
+      return envUrl.replace(/\/+$/, '');
+    }
+    if (isLocal) {
+      return 'http://localhost:5001/api';
+    }
+    return 'https://tweaki.pw/logos/api';
+  }
+  return (envUrl || 'https://tweaki.pw/logos/api').replace(/\/+$/, '');
+};
 
 export const apiClient = async (endpoint, options = {}) => {
+  const baseUrl = getApiBaseUrl();
   const token = typeof window !== 'undefined' ? localStorage.getItem('logos_admin_token') : null;
 
   const headers = {
@@ -11,7 +24,7 @@ export const apiClient = async (endpoint, options = {}) => {
   };
 
   try {
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const res = await fetch(`${baseUrl}${endpoint}`, {
       ...options,
       headers
     });
