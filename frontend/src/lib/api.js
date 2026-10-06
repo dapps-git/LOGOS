@@ -2,18 +2,21 @@ export const getApiBase = () => {
   const envUrl = typeof process !== 'undefined' ? process.env?.NEXT_PUBLIC_API_URL : null;
   if (typeof window !== 'undefined') {
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    if (envUrl && (!isLocal || !envUrl.includes('localhost'))) {
-      return envUrl.replace(/\/+$/, '');
-    }
     if (isLocal) {
-      return 'http://localhost:5001/api';
+      return (envUrl && envUrl.includes('localhost')) ? envUrl.replace(/\/+$/, '') : 'http://localhost:5001/api';
+    }
+    // On production (e.g. logos-2nkc.vercel.app), ignore any localhost env variables
+    if (envUrl && !envUrl.includes('localhost')) {
+      return envUrl.replace(/\/+$/, '');
     }
     return 'https://tweaki.pw/logos/api';
   }
-  return (envUrl || 'https://tweaki.pw/logos/api').replace(/\/+$/, '');
+  // Server-side / Build-time
+  if (envUrl && !envUrl.includes('localhost')) {
+    return envUrl.replace(/\/+$/, '');
+  }
+  return 'https://tweaki.pw/logos/api';
 };
-
-const API_BASE = getApiBase();
 
 function getGuestSessionId() {
   if (typeof window === 'undefined') return '';
@@ -41,8 +44,9 @@ function getAuthHeaders() {
 
 export async function fetchBooks(params = {}) {
   try {
-    const query = new URLSearchParams(params).toString();
-    const res = await fetch(`${API_BASE}/books${query ? `?${query}` : ''}`, {
+    const finalParams = { limit: 500, ...params };
+    const query = new URLSearchParams(finalParams).toString();
+    const res = await fetch(`${getApiBase()}/books${query ? `?${query}` : ''}`, {
       next: { revalidate: 60 }
     });
     if (!res.ok) throw new Error(`Failed to fetch books: ${res.status}`);
@@ -56,7 +60,7 @@ export async function fetchBooks(params = {}) {
 
 export async function fetchNewArrivals() {
   try {
-    const res = await fetch(`${API_BASE}/books/collections/new-arrivals`, {
+    const res = await fetch(`${getApiBase()}/books/collections/new-arrivals`, {
       next: { revalidate: 60 }
     });
     if (!res.ok) throw new Error(`Failed to fetch new arrivals: ${res.status}`);
@@ -70,7 +74,7 @@ export async function fetchNewArrivals() {
 
 export async function fetchBestSellers() {
   try {
-    const res = await fetch(`${API_BASE}/books/collections/best-sellers`, {
+    const res = await fetch(`${getApiBase()}/books/collections/best-sellers`, {
       next: { revalidate: 60 }
     });
     if (!res.ok) throw new Error(`Failed to fetch bestsellers: ${res.status}`);
@@ -84,7 +88,7 @@ export async function fetchBestSellers() {
 
 export async function fetchFeaturedBooks() {
   try {
-    const res = await fetch(`${API_BASE}/books/collections/featured`, {
+    const res = await fetch(`${getApiBase()}/books/collections/featured`, {
       next: { revalidate: 60 }
     });
     if (!res.ok) throw new Error(`Failed to fetch featured books: ${res.status}`);
@@ -98,7 +102,7 @@ export async function fetchFeaturedBooks() {
 
 export async function fetchBookBySlugOrId(idOrSlug) {
   try {
-    const res = await fetch(`${API_BASE}/books/${idOrSlug}`, {
+    const res = await fetch(`${getApiBase()}/books/${idOrSlug}`, {
       next: { revalidate: 60 }
     });
     if (!res.ok) throw new Error(`Failed to fetch book: ${res.status}`);
@@ -112,7 +116,7 @@ export async function fetchBookBySlugOrId(idOrSlug) {
 
 export async function fetchBanners() {
   try {
-    const res = await fetch(`${API_BASE}/banners`, {
+    const res = await fetch(`${getApiBase()}/banners`, {
       next: { revalidate: 60 }
     });
     if (!res.ok) throw new Error(`Failed to fetch banners: ${res.status}`);
@@ -126,7 +130,7 @@ export async function fetchBanners() {
 
 // ----------------- Customer Auth APIs -----------------
 export async function customerLogin(email, password) {
-  const res = await fetch(`${API_BASE}/auth/login`, {
+  const res = await fetch(`${getApiBase()}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password })
@@ -137,7 +141,7 @@ export async function customerLogin(email, password) {
 }
 
 export async function customerRegister(payload) {
-  const res = await fetch(`${API_BASE}/auth/register`, {
+  const res = await fetch(`${getApiBase()}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
@@ -148,7 +152,7 @@ export async function customerRegister(payload) {
 }
 
 export async function customerGoogleAuth(payload) {
-  const res = await fetch(`${API_BASE}/auth/google`, {
+  const res = await fetch(`${getApiBase()}/auth/google`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
@@ -159,7 +163,7 @@ export async function customerGoogleAuth(payload) {
 }
 
 export async function customerForgotPassword(email) {
-  const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+  const res = await fetch(`${getApiBase()}/auth/forgot-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email })
@@ -170,7 +174,7 @@ export async function customerForgotPassword(email) {
 }
 
 export async function customerResetPassword(email, otp, newPassword) {
-  const res = await fetch(`${API_BASE}/auth/reset-password`, {
+  const res = await fetch(`${getApiBase()}/auth/reset-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, otp, newPassword })
@@ -181,7 +185,7 @@ export async function customerResetPassword(email, otp, newPassword) {
 }
 
 export async function fetchCustomerProfile() {
-  const res = await fetch(`${API_BASE}/auth/profile`, {
+  const res = await fetch(`${getApiBase()}/auth/profile`, {
     headers: getAuthHeaders()
   });
   const data = await res.json();
@@ -190,7 +194,7 @@ export async function fetchCustomerProfile() {
 }
 
 export async function updateCustomerProfile(payload) {
-  const res = await fetch(`${API_BASE}/auth/profile`, {
+  const res = await fetch(`${getApiBase()}/auth/profile`, {
     method: 'PUT',
     headers: getAuthHeaders(),
     body: JSON.stringify(payload)
@@ -201,7 +205,7 @@ export async function updateCustomerProfile(payload) {
 }
 
 export async function addCustomerAddress(address) {
-  const res = await fetch(`${API_BASE}/auth/address`, {
+  const res = await fetch(`${getApiBase()}/auth/address`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(address)
@@ -212,7 +216,7 @@ export async function addCustomerAddress(address) {
 }
 
 export async function deleteCustomerAddress(addressId) {
-  const res = await fetch(`${API_BASE}/auth/address/${addressId}`, {
+  const res = await fetch(`${getApiBase()}/auth/address/${addressId}`, {
     method: 'DELETE',
     headers: getAuthHeaders()
   });
@@ -224,7 +228,7 @@ export async function deleteCustomerAddress(addressId) {
 // ----------------- Cart APIs -----------------
 export async function fetchCart() {
   const guestId = getGuestSessionId();
-  const res = await fetch(`${API_BASE}/cart?guestId=${guestId}`, {
+  const res = await fetch(`${getApiBase()}/cart?guestId=${guestId}`, {
     headers: getAuthHeaders()
   });
   const data = await res.json();
@@ -233,7 +237,7 @@ export async function fetchCart() {
 
 export async function apiAddToCart(bookId, quantity = 1) {
   const guestId = getGuestSessionId();
-  const res = await fetch(`${API_BASE}/cart/add`, {
+  const res = await fetch(`${getApiBase()}/cart/add`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ bookId, quantity, guestId })
@@ -245,7 +249,7 @@ export async function apiAddToCart(bookId, quantity = 1) {
 
 export async function apiUpdateCart(bookId, quantity) {
   const guestId = getGuestSessionId();
-  const res = await fetch(`${API_BASE}/cart/update`, {
+  const res = await fetch(`${getApiBase()}/cart/update`, {
     method: 'PUT',
     headers: getAuthHeaders(),
     body: JSON.stringify({ bookId, quantity, guestId })
@@ -257,7 +261,7 @@ export async function apiUpdateCart(bookId, quantity) {
 
 export async function apiRemoveFromCart(bookId) {
   const guestId = getGuestSessionId();
-  const res = await fetch(`${API_BASE}/cart/item/${bookId}?guestId=${guestId}`, {
+  const res = await fetch(`${getApiBase()}/cart/item/${bookId}?guestId=${guestId}`, {
     method: 'DELETE',
     headers: getAuthHeaders()
   });
@@ -269,7 +273,7 @@ export async function apiRemoveFromCart(bookId) {
 // ----------------- Wishlist APIs -----------------
 export async function fetchWishlist() {
   const guestId = getGuestSessionId();
-  const res = await fetch(`${API_BASE}/wishlist?guestId=${guestId}`, {
+  const res = await fetch(`${getApiBase()}/wishlist?guestId=${guestId}`, {
     headers: getAuthHeaders()
   });
   const data = await res.json();
@@ -278,7 +282,7 @@ export async function fetchWishlist() {
 
 export async function apiToggleWishlist(bookId) {
   const guestId = getGuestSessionId();
-  const res = await fetch(`${API_BASE}/wishlist/toggle`, {
+  const res = await fetch(`${getApiBase()}/wishlist/toggle`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ bookId, guestId })
@@ -290,7 +294,7 @@ export async function apiToggleWishlist(bookId) {
 
 // ----------------- Coupons & Referral APIs -----------------
 export async function apiValidateCoupon(code, cartTotal) {
-  const res = await fetch(`${API_BASE}/coupons/validate`, {
+  const res = await fetch(`${getApiBase()}/coupons/validate`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ code, cartTotal })
@@ -301,7 +305,7 @@ export async function apiValidateCoupon(code, cartTotal) {
 }
 
 export async function apiGetAvailableCoupons() {
-  const res = await fetch(`${API_BASE}/coupons/available`, {
+  const res = await fetch(`${getApiBase()}/coupons/available`, {
     headers: getAuthHeaders()
   });
   const data = await res.json();
@@ -309,7 +313,7 @@ export async function apiGetAvailableCoupons() {
 }
 
 export async function apiValidateReferral(referralCode) {
-  const res = await fetch(`${API_BASE}/referrals/validate`, {
+  const res = await fetch(`${getApiBase()}/referrals/validate`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ referralCode })
@@ -320,7 +324,7 @@ export async function apiValidateReferral(referralCode) {
 }
 
 export async function apiGetMyReferralSummary() {
-  const res = await fetch(`${API_BASE}/referrals/my-rewards`, {
+  const res = await fetch(`${getApiBase()}/referrals/my-rewards`, {
     headers: getAuthHeaders()
   });
   const data = await res.json();
@@ -330,7 +334,7 @@ export async function apiGetMyReferralSummary() {
 
 // ----------------- Orders APIs -----------------
 export async function apiCreateOrder(orderPayload) {
-  const res = await fetch(`${API_BASE}/orders`, {
+  const res = await fetch(`${getApiBase()}/orders`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(orderPayload)
@@ -341,7 +345,7 @@ export async function apiCreateOrder(orderPayload) {
 }
 
 export async function apiCreateRazorpayOrder(payload) {
-  const res = await fetch(`${API_BASE}/orders/razorpay/create`, {
+  const res = await fetch(`${getApiBase()}/orders/razorpay/create`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(payload)
@@ -352,7 +356,7 @@ export async function apiCreateRazorpayOrder(payload) {
 }
 
 export async function apiVerifyRazorpayPayment(payload) {
-  const res = await fetch(`${API_BASE}/orders/razorpay/verify`, {
+  const res = await fetch(`${getApiBase()}/orders/razorpay/verify`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(payload)
@@ -363,7 +367,7 @@ export async function apiVerifyRazorpayPayment(payload) {
 }
 
 export async function apiGetMyOrders() {
-  const res = await fetch(`${API_BASE}/orders/my-orders`, {
+  const res = await fetch(`${getApiBase()}/orders/my-orders`, {
     headers: getAuthHeaders()
   });
   const data = await res.json();
@@ -372,7 +376,7 @@ export async function apiGetMyOrders() {
 }
 
 export async function apiGetOrderById(orderId) {
-  const res = await fetch(`${API_BASE}/orders/${orderId}`, {
+  const res = await fetch(`${getApiBase()}/orders/${orderId}`, {
     headers: getAuthHeaders()
   });
   const data = await res.json();
@@ -381,7 +385,7 @@ export async function apiGetOrderById(orderId) {
 }
 
 export async function apiCancelOrder(orderId, reason = '') {
-  const res = await fetch(`${API_BASE}/orders/${orderId}/cancel`, {
+  const res = await fetch(`${getApiBase()}/orders/${orderId}/cancel`, {
     method: 'PUT',
     headers: getAuthHeaders(),
     body: JSON.stringify({ cancellationReason: reason, reason })
@@ -392,7 +396,7 @@ export async function apiCancelOrder(orderId, reason = '') {
 }
 
 export async function apiRequestReturn(orderId, reason, description = '') {
-  const res = await fetch(`${API_BASE}/orders/${orderId}/return`, {
+  const res = await fetch(`${getApiBase()}/orders/${orderId}/return`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ reason, description })
@@ -404,7 +408,7 @@ export async function apiRequestReturn(orderId, reason, description = '') {
 
 export async function fetchSpotlightAuthor() {
   try {
-    const res = await fetch(`${API_BASE}/books/spotlight/author`, {
+    const res = await fetch(`${getApiBase()}/books/spotlight/author`, {
       next: { revalidate: 15 }
     });
     if (!res.ok) return null;
@@ -418,7 +422,7 @@ export async function fetchSpotlightAuthor() {
 
 export async function fetchSpotlightBook() {
   try {
-    const res = await fetch(`${API_BASE}/books/spotlight/book`, {
+    const res = await fetch(`${getApiBase()}/books/spotlight/book`, {
       next: { revalidate: 15 }
     });
     if (!res.ok) return null;
@@ -432,7 +436,7 @@ export async function fetchSpotlightBook() {
 
 export async function fetchAuthors() {
   try {
-    const res = await fetch(`${API_BASE}/books/authors/all`, {
+    const res = await fetch(`${getApiBase()}/books/authors/all`, {
       next: { revalidate: 30 }
     });
     if (!res.ok) return [];
@@ -446,7 +450,7 @@ export async function fetchAuthors() {
 
 export async function fetchTestimonials() {
   try {
-    const res = await fetch(`${API_BASE}/reviews/testimonials`, {
+    const res = await fetch(`${getApiBase()}/reviews/testimonials`, {
       next: { revalidate: 30 }
     });
     if (!res.ok) return [];

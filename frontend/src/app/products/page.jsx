@@ -65,7 +65,7 @@ function ProductsContent() {
     async function load() {
       try {
         setLoading(true);
-        const live = await fetchBooks();
+        const live = await fetchBooks({ limit: 500 });
         if (Array.isArray(live)) {
           setRawBooks(live);
         }
