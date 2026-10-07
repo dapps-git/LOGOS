@@ -47,12 +47,19 @@ const getWishlist = async (req, res) => {
 // @access  Public / Optional Auth
 const toggleWishlist = async (req, res) => {
   try {
-    const { bookId, guestId } = req.body;
+    const rawId = req.body.bookId || req.body.id || req.body._id || (req.body.book && (req.body.book._id || req.body.book.id || req.body.book));
+    const bookId = typeof rawId === 'object' && rawId !== null ? (rawId._id || rawId.id || rawId.bookId) : rawId;
     const customerId = req.customer ? req.customer._id : null;
-    const gId = guestId || req.headers['x-guest-id'] || req.headers['x-guest-session-id'] || req.query.guestId || ('guest_' + Math.random().toString(36).substring(2, 12));
+    const gId = req.body.guestId || req.headers['x-guest-id'] || req.headers['x-guest-session-id'] || req.query.guestId || ('guest_' + Math.random().toString(36).substring(2, 12));
 
     if (!bookId) {
       return res.status(400).json({ success: false, message: 'Book ID is required' });
+    }
+
+    let targetBookId = bookId;
+    if (!mongoose.Types.ObjectId.isValid(bookId)) {
+      const found = await Book.findOne({ $or: [{ slug: bookId }, { sku: bookId }] });
+      if (found) targetBookId = found._id.toString();
     }
 
     let wishlist;
@@ -64,14 +71,14 @@ const toggleWishlist = async (req, res) => {
       if (!wishlist) wishlist = await Wishlist.create({ guestId: gId, books: [] });
     }
 
-    const exists = wishlist.books.some(b => b.toString() === bookId);
+    const exists = wishlist.books.some(b => (b._id ? b._id.toString() : b.toString()) === targetBookId);
     let action = 'added';
 
     if (exists) {
-      wishlist.books = wishlist.books.filter(b => b.toString() !== bookId);
+      wishlist.books = wishlist.books.filter(b => (b._id ? b._id.toString() : b.toString()) !== targetBookId);
       action = 'removed';
     } else {
-      wishlist.books.push(bookId);
+      wishlist.books.push(targetBookId);
     }
 
     await wishlist.save();

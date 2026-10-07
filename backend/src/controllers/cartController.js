@@ -68,7 +68,10 @@ const getCart = async (req, res) => {
 // @access  Public / Optional Auth
 const addToCart = async (req, res) => {
   try {
-    const { bookId, quantity = 1, guestId } = req.body;
+    const rawId = req.body.bookId || req.body.id || req.body._id || (req.body.book && (req.body.book._id || req.body.book.id || req.body.book));
+    const bookId = typeof rawId === 'object' && rawId !== null ? (rawId._id || rawId.id || rawId.bookId) : rawId;
+    const quantity = Number(req.body.quantity || 1);
+    const guestId = req.body.guestId;
     const customerId = req.customer ? req.customer._id : null;
     const gId = guestId || req.headers['x-guest-id'] || req.headers['x-guest-session-id'] || req.query.guestId || ('guest_' + Math.random().toString(36).substring(2, 12));
 
@@ -76,7 +79,13 @@ const addToCart = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Book ID is required' });
     }
 
-    const book = await Book.findById(bookId);
+    let book = null;
+    if (mongoose.Types.ObjectId.isValid(bookId)) {
+      book = await Book.findById(bookId);
+    }
+    if (!book) {
+      book = await Book.findOne({ $or: [{ slug: bookId }, { sku: bookId }] });
+    }
     if (!book || !book.isActive) {
       return res.status(404).json({ success: false, message: 'Book not found or unavailable' });
     }
@@ -87,7 +96,7 @@ const addToCart = async (req, res) => {
     }
 
     const unitPrice = (book.discountPrice && book.discountPrice < book.price) ? book.discountPrice : book.price;
-    const existingIndex = cart.items.findIndex(i => i.book && i.book._id.toString() === bookId);
+    const existingIndex = cart.items.findIndex(i => i.book && i.book._id.toString() === book._id.toString());
 
     if (existingIndex > -1) {
       cart.items[existingIndex].quantity += Number(quantity);

@@ -42,18 +42,26 @@ export function CartProvider({ children }) {
 
   const addToCart = async (book, quantity = 1) => {
     try {
-      const bookId = book._id || book.id;
+      const bookId = typeof book === 'string'
+        ? book
+        : (book?._id || book?.id || book?.bookId || (book?.book && (book.book._id || book.book.id || book.book)));
+
+      if (!bookId) {
+        console.error('[CartContext] Cannot add to cart: bookId is missing', book);
+        return false;
+      }
+
       // Optimistic update
       setItems((prev) => {
-        const existing = prev.find((item) => (item.book?._id || item.book) === bookId);
+        const existing = prev.find((item) => (item.book?._id || item.book || item.bookId) === bookId);
         if (existing) {
           return prev.map((item) =>
-            (item.book?._id || item.book) === bookId
+            (item.book?._id || item.book || item.bookId) === bookId
               ? { ...item, quantity: item.quantity + quantity }
               : item
           );
         }
-        return [...prev, { book, quantity, price: book.price || book.salePrice || 299 }];
+        return [...prev, { book: typeof book === 'object' ? book : { _id: bookId }, quantity, price: book?.price || book?.salePrice || 299 }];
       });
 
       const updated = await apiAddToCart(bookId, quantity);

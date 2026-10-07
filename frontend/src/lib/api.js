@@ -230,12 +230,15 @@ export async function fetchCart() {
   return data.cart || { items: [] };
 }
 
-export async function apiAddToCart(bookId, quantity = 1) {
+export async function apiAddToCart(bookOrId, quantity = 1) {
   const guestId = getGuestSessionId();
+  const bookId = typeof bookOrId === 'object' && bookOrId !== null
+    ? (bookOrId._id || bookOrId.id || bookOrId.bookId || (bookOrId.book && (bookOrId.book._id || bookOrId.book.id || bookOrId.book)))
+    : bookOrId;
   const res = await fetch(`${getApiBase()}/cart/add`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ bookId, quantity, guestId })
+    body: JSON.stringify({ bookId, id: bookId, quantity, guestId })
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to add to cart');
@@ -275,12 +278,15 @@ export async function fetchWishlist() {
   return data.wishlist || { books: [] };
 }
 
-export async function apiToggleWishlist(bookId) {
+export async function apiToggleWishlist(bookOrId) {
   const guestId = getGuestSessionId();
+  const bookId = typeof bookOrId === 'object' && bookOrId !== null
+    ? (bookOrId._id || bookOrId.id || bookOrId.bookId || (bookOrId.book && (bookOrId.book._id || bookOrId.book.id || bookOrId.book)))
+    : bookOrId;
   const res = await fetch(`${getApiBase()}/wishlist/toggle`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ bookId, guestId })
+    body: JSON.stringify({ bookId, id: bookId, guestId })
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to update wishlist');
