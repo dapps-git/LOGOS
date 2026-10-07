@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Star, Heart } from 'lucide-react';
-import { fetchNewArrivals } from '@/lib/api';
+import { fetchNewArrivals, fetchBooks } from '@/lib/api';
 import { useWishlist } from '@/context/WishlistContext';
+import { BookGridSkeleton } from '@/components/Skeletons';
 
 export const NewArrivals = () => {
   const [books, setBooks] = useState([]);
@@ -80,8 +81,11 @@ export const NewArrivals = () => {
       </div>
 
       {/* Book Cards Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        {books.map((book) => (
+      {loading ? (
+        <BookGridSkeleton count={8} />
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          {books.map((book) => (
           <Link
             key={book.id}
             href={book.href}
@@ -164,6 +168,7 @@ export const NewArrivals = () => {
           </Link>
         ))}
       </div>
+      )}
     </section>
   );
 };

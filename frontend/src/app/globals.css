@@ -48,3 +48,19 @@ body {
   transform: translateY(-4px);
   box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.1);
 }
+
+/* Skeleton Loading Shimmer Effect */
+@keyframes shimmerAnim {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer-effect {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 37%, #f1f5f9 63%);
+  background-size: 200% 100%;
+  animation: shimmerAnim 1.6s ease-in-out infinite;
+}

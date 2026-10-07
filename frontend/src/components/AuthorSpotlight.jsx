@@ -3,9 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { fetchSpotlightAuthor } from '@/lib/api';
+import { AuthorSpotlightSkeleton } from '@/components/Skeletons';
 
 export const AuthorSpotlight = () => {
   const [authorData, setAuthorData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -20,7 +22,10 @@ export const AuthorSpotlight = () => {
             featuredBookSlug: spotlight.featuredBookSlug
           });
         }
-      } catch (err) {}
+      } catch (err) {
+      } finally {
+        if (isMounted) setLoading(false);
+      }
     };
 
     loadSpotlight();
@@ -29,6 +34,7 @@ export const AuthorSpotlight = () => {
     };
   }, []);
 
+  if (loading) return <AuthorSpotlightSkeleton />;
   if (!authorData) return null;
 
   return (

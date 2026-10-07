@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Star, Heart } from 'lucide-react';
-import { fetchFeaturedBooks } from '@/lib/api';
+import { fetchFeaturedBooks, fetchBooks } from '@/lib/api';
 import { useWishlist } from '@/context/WishlistContext';
+import { HandpickedSkeleton } from '@/components/Skeletons';
 
 export const HandpickedReads = () => {
   const [books, setBooks] = useState([]);
@@ -82,93 +83,97 @@ export const HandpickedReads = () => {
       </div>
 
       {/* 3-Column Staggered Book Showcase */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12 items-end pt-4">
-        {books.map((book) => (
-          <Link
-            key={book.id}
-            href={book.href}
-            className={`group flex flex-col transition-all ${
-              book.prominent ? '-translate-y-2 sm:-translate-y-4' : ''
-            }`}
-          >
-            {/* Number Index (01, 02, 03) */}
-            <span className="text-xl sm:text-2xl font-serif text-[#224494] font-semibold mb-2 block">
-              {book.num}
-            </span>
+      {loading ? (
+        <HandpickedSkeleton />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12 items-end pt-4">
+          {books.map((book) => (
+            <Link
+              key={book.id}
+              href={book.href}
+              className={`group flex flex-col transition-all ${
+                book.prominent ? '-translate-y-2 sm:-translate-y-4' : ''
+              }`}
+            >
+              {/* Number Index (01, 02, 03) */}
+              <span className="text-xl sm:text-2xl font-serif text-[#224494] font-semibold mb-2 block">
+                {book.num}
+              </span>
 
-            {/* Book Image Showcase Container */}
-            <div className="relative aspect-3/4 w-full overflow-hidden bg-slate-100 rounded-xs transition-transform duration-300 group-hover:scale-[1.02] shadow-sm">
-              <img
-                src={book.image}
-                alt={book.title}
-                className="w-full h-full object-cover object-center"
-              />
-              {/* Wishlist Heart Button */}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  toggleWishlist({
-                    id: book.id,
-                    _id: book.id,
-                    title: book.title,
-                    author: book.author,
-                    price: book.price,
-                    originalPrice: book.originalPrice,
-                    coverImage: book.image,
-                    image: book.image,
-                    slug: book.href ? book.href.replace('/books/', '') : book.id
-                  });
-                }}
-                className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md transition-all shadow-sm z-10 ${
-                  isBookInWishlist(book.id)
-                    ? 'bg-white text-rose-500 shadow-rose-200'
-                    : 'bg-white/80 text-slate-400 hover:text-rose-500 hover:bg-white'
-                }`}
-                title="Wishlist"
-              >
-                <Heart
-                  className={`w-3.5 h-3.5 ${
-                    isBookInWishlist(book.id) ? 'fill-rose-500 text-rose-500' : ''
-                  }`}
+              {/* Book Image Showcase Container */}
+              <div className="relative aspect-3/4 w-full overflow-hidden bg-slate-100 rounded-xs transition-transform duration-300 group-hover:scale-[1.02] shadow-sm">
+                <img
+                  src={book.image}
+                  alt={book.title}
+                  className="w-full h-full object-cover object-center"
                 />
-              </button>
-            </div>
-
-            {/* Book Metadata & Pricing */}
-            <div className="pt-3 space-y-1 text-left">
-              <h3 className="text-xs sm:text-sm font-bold text-slate-900 leading-snug line-clamp-2 h-9 sm:h-10 flex items-start group-hover:text-[#4361ee] transition-colors">
-                {book.title}
-              </h3>
-
-              {/* Price & Rating Row */}
-              <div className="flex items-center justify-between text-xs pt-1">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="font-bold text-rose-600 text-xs sm:text-sm">
-                    ₹{book.price.toFixed(2)}
-                  </span>
-                  {book.originalPrice && (
-                    <span className="text-[10px] sm:text-xs text-slate-400 line-through">
-                      ₹{book.originalPrice.toFixed(2)}
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-1 text-slate-700 text-[11px] sm:text-xs font-semibold flex-shrink-0">
-                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                  <span>({book.rating})</span>
-                </div>
+                {/* Wishlist Heart Button */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleWishlist({
+                      id: book.id,
+                      _id: book.id,
+                      title: book.title,
+                      author: book.author,
+                      price: book.price,
+                      originalPrice: book.originalPrice,
+                      coverImage: book.image,
+                      image: book.image,
+                      slug: book.href ? book.href.replace('/books/', '') : book.id
+                    });
+                  }}
+                  className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md transition-all shadow-sm z-10 ${
+                    isBookInWishlist(book.id)
+                      ? 'bg-white text-rose-500 shadow-rose-200'
+                      : 'bg-white/80 text-slate-400 hover:text-rose-500 hover:bg-white'
+                  }`}
+                  title="Wishlist"
+                >
+                  <Heart
+                    className={`w-3.5 h-3.5 ${
+                      isBookInWishlist(book.id) ? 'fill-rose-500 text-rose-500' : ''
+                    }`}
+                  />
+                </button>
               </div>
 
-              {/* Author Row */}
-              <p className="text-[11px] sm:text-xs text-slate-500 truncate pt-0.5">
-                {book.author}
-              </p>
-            </div>
-          </Link>
-        ))}
-      </div>
+              {/* Book Metadata & Pricing */}
+              <div className="pt-3 space-y-1 text-left">
+                <h3 className="text-xs sm:text-sm font-bold text-slate-900 leading-snug line-clamp-2 h-9 sm:h-10 flex items-start group-hover:text-[#4361ee] transition-colors">
+                  {book.title}
+                </h3>
+
+                {/* Price & Rating Row */}
+                <div className="flex items-center justify-between text-xs pt-1">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="font-bold text-rose-600 text-xs sm:text-sm">
+                      ₹{book.price.toFixed(2)}
+                    </span>
+                    {book.originalPrice && (
+                      <span className="text-[10px] sm:text-xs text-slate-400 line-through">
+                        ₹{book.originalPrice.toFixed(2)}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1 text-slate-700 text-[11px] sm:text-xs font-semibold flex-shrink-0">
+                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                    <span>({book.rating})</span>
+                  </div>
+                </div>
+
+                {/* Author Row */}
+                <p className="text-[11px] sm:text-xs text-slate-500 truncate pt-0.5">
+                  {book.author}
+                </p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </section>
   );
 };

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { fetchAuthors } from '@/lib/api';
+import { AuthorGridSkeleton } from '@/components/Skeletons';
 
 export const FeaturedAuthors = () => {
   const [authors, setAuthors] = useState([]);
@@ -62,26 +63,30 @@ export const FeaturedAuthors = () => {
       </div>
 
       {/* Authors Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
-        {authors.map((author) => (
-          <Link
-            key={author.id}
-            href={author.href}
-            className="group flex flex-col items-center text-center space-y-3"
-          >
-            <div className="relative aspect-3/4 w-full overflow-hidden bg-slate-100 rounded-xs transition-transform duration-300 group-hover:scale-[1.02]">
-              <img
-                src={author.image}
-                alt={author.name}
-                className="w-full h-full object-cover object-center"
-              />
-            </div>
-            <h3 className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-[#4361ee] transition-colors leading-snug">
-              {author.name}
-            </h3>
-          </Link>
-        ))}
-      </div>
+      {loading ? (
+        <AuthorGridSkeleton count={4} />
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
+          {authors.map((author) => (
+            <Link
+              key={author.id}
+              href={author.href}
+              className="group flex flex-col items-center text-center space-y-3"
+            >
+              <div className="relative aspect-3/4 w-full overflow-hidden bg-slate-100 rounded-xs transition-transform duration-300 group-hover:scale-[1.02]">
+                <img
+                  src={author.image}
+                  alt={author.name}
+                  className="w-full h-full object-cover object-center"
+                />
+              </div>
+              <h3 className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-[#4361ee] transition-colors leading-snug">
+                {author.name}
+              </h3>
+            </Link>
+          ))}
+        </div>
+      )}
     </section>
   );
 };

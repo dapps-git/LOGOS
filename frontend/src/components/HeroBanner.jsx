@@ -4,10 +4,12 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { fetchBanners } from '@/lib/api';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { HeroBannerSkeleton } from '@/components/Skeletons';
 
 export const HeroBanner = () => {
   const [banners, setBanners] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -22,7 +24,10 @@ export const HeroBanner = () => {
             setBanners(heroBanners);
           }
         }
-      } catch (err) {}
+      } catch (err) {
+      } finally {
+        if (isMounted) setLoading(false);
+      }
     }
     load();
     return () => {
@@ -96,6 +101,10 @@ export const HeroBanner = () => {
       )}
     </div>
   );
+
+  if (loading) {
+    return <HeroBannerSkeleton />;
+  }
 
   return (
     <section className="relative w-full overflow-hidden bg-white">

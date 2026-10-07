@@ -8,6 +8,7 @@ import Footer from '../../components/Footer';
 import { fetchBooks } from '../../lib/api';
 import { useWishlist } from '../../context/WishlistContext';
 import { useCart } from '../../context/CartContext';
+import { CatalogGridSkeleton } from '../../components/Skeletons';
 import {
   Search,
   Filter,
@@ -538,7 +539,9 @@ function ProductsContent() {
 
           {/* RIGHT: Books Catalog Grid (9 cols) */}
           <div className="lg:col-span-9 space-y-6">
-            {filteredBooks.length === 0 ? (
+            {loading ? (
+              <CatalogGridSkeleton count={8} />
+            ) : filteredBooks.length === 0 ? (
               /* Empty Search / Filter State */
               <div className="bg-white rounded-3xl p-10 text-center border border-slate-200/80 shadow-xs max-w-lg mx-auto my-8">
                 <div className="w-14 h-14 bg-blue-50 text-[#1E3A8A] rounded-full flex items-center justify-center mx-auto mb-3.5">
