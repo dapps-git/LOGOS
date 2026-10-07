@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Wishlist = require('../models/Wishlist');
 const Book = require('../models/Book');
 
