@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 420" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="spineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#000" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0.05"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Book Base -->
+  <rect width="300" height="420" rx="8" fill="url(#bgGrad)"/>
+  
+  <!-- Subtle Spine Shadow -->
+  <rect x="0" y="0" width="18" height="420" rx="4" fill="url(#spineGrad)"/>
+  <line x1="18" y1="0" x2="18" y2="420" stroke="#334155" stroke-width="1" stroke-opacity="0.6"/>
+  
+  <!-- Elegant Inner Border -->
+  <rect x="30" y="24" width="240" height="372" rx="4" fill="none" stroke="#334155" stroke-width="1.5" stroke-dasharray="4 2" stroke-opacity="0.8"/>
+  <rect x="36" y="30" width="228" height="360" rx="3" fill="none" stroke="#475569" stroke-width="0.8" stroke-opacity="0.5"/>
+  
+  <!-- Book Icon Badge -->
+  <g transform="translate(150, 160)">
+    <circle r="42" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+    <!-- Book Icon -->
+    <path d="M-18 -12 C-10 -15 -2 -14 0 -10 C2 -14 10 -15 18 -12 L18 14 C10 11 2 12 0 16 C-2 12 -10 11 -18 14 Z" fill="none" stroke="url(#goldGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="0" y1="-10" x2="0" y2="16" stroke="url(#goldGrad)" stroke-width="2"/>
+  </g>
+  
+  <!-- Brand / Title -->
+  <text x="150" y="245" font-family="serif, Georgia, Times" font-size="19" font-weight="bold" fill="#f8fafc" text-anchor="middle" letter-spacing="3">LOGOS</text>
+  <text x="150" y="265" font-family="sans-serif, Arial" font-size="10" font-weight="600" fill="#94a3b8" text-anchor="middle" letter-spacing="4">BOOKS</text>
+  
+  <!-- Subtitle -->
+  <text x="150" y="325" font-family="sans-serif, Arial" font-size="11" fill="#64748b" text-anchor="middle" letter-spacing="1">COVER COMING SOON</text>
+</svg>

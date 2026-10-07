@@ -28,17 +28,12 @@ function getGuestSessionId() {
   return guestId;
 }
 
-// Helper for authorized fetch
+// Helper for authorized fetch (standard headers only to avoid CORS preflight rejection)
 function getAuthHeaders() {
   if (typeof window === 'undefined') return {};
   const token = localStorage.getItem('logos_customer_token');
-  const guestId = getGuestSessionId();
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  if (guestId) {
-    headers['x-guest-id'] = guestId;
-    headers['x-guest-session-id'] = guestId;
-  }
   return headers;
 }
 
@@ -334,10 +329,12 @@ export async function apiGetMyReferralSummary() {
 
 // ----------------- Orders APIs -----------------
 export async function apiCreateOrder(orderPayload) {
+  const guestId = getGuestSessionId();
+  const payload = { guestId, ...orderPayload };
   const res = await fetch(`${getApiBase()}/orders`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify(orderPayload)
+    body: JSON.stringify(payload)
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to create order');

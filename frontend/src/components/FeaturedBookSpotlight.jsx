@@ -17,7 +17,7 @@ export const FeaturedBookSpotlight = () => {
             title: liveBook.title,
             author: liveBook.author,
             description: liveBook.description,
-            image: liveBook.image || (liveBook.images && liveBook.images[0]) || '/placeholder-book.png',
+            image: liveBook.image || (liveBook.images && liveBook.images[0]) || '/book-placeholder.svg',
             slug: liveBook.slug || liveBook._id
           });
         }

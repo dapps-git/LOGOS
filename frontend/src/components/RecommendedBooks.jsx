@@ -25,7 +25,7 @@ export const RecommendedBooks = () => {
               price: Number(b.discountPrice || b.price || 0),
               originalPrice: b.discountPrice ? Number(b.price) : null,
               rating: b.rating ? String(b.rating) : '5.0',
-              image: (b.images && b.images[0]) || '/placeholder-book.png',
+              image: (b.images && b.images[0]) || '/book-placeholder.svg',
               href: `/books/${b.slug || b._id}`
             }));
             setBooks(formatted.slice(0, 4));
