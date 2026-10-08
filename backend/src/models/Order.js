@@ -128,9 +128,11 @@ const orderSchema = new mongoose.Schema({
     type: String,
     enum: [
       'Pending', 'Confirmed', 'Processing', 'Shipped', 'Out for Delivery', 'Delivered', 'Cancelled', 'Returned', 'Refunded',
-      'Return Requested', 'Return Accepted', 'Return Rejected',
+      'Return Requested', 'Requested', 'Under Review', 'Return Under Review', 'Approved', 'Return Approved', 'Return Accepted',
+      'Pickup Scheduled', 'Received', 'Return Received', 'Refund Initiated', 'Return Rejected', 'Rejected',
       'pending', 'confirmed', 'processing', 'shipped', 'out for delivery', 'delivered', 'cancelled', 'returned', 'refunded',
-      'return requested', 'return accepted', 'return rejected'
+      'return requested', 'requested', 'under review', 'return under review', 'approved', 'return approved', 'return accepted',
+      'pickup scheduled', 'received', 'return received', 'refund initiated', 'return rejected', 'rejected'
     ],
     default: 'Pending',
     index: true
@@ -145,7 +147,14 @@ const orderSchema = new mongoose.Schema({
     adminNote: { type: String },
     status: {
       type: String,
-      enum: ['None', 'Pending', 'Approved', 'Rejected'],
+      enum: [
+        'None', 'Pending', 'Requested', 'Return Requested', 'Under Review', 'Return Under Review',
+        'Approved', 'Return Approved', 'Return Accepted', 'Pickup Scheduled', 'Received',
+        'Return Received', 'Refund Initiated', 'Refunded', 'Returned', 'Return Rejected', 'Rejected',
+        'none', 'pending', 'requested', 'return requested', 'under review', 'return under review',
+        'approved', 'return approved', 'return accepted', 'pickup scheduled', 'received',
+        'return received', 'refund initiated', 'refunded', 'returned', 'return rejected', 'rejected'
+      ],
       default: 'None'
     }
   },

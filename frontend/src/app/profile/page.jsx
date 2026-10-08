@@ -398,13 +398,15 @@ function ProfileContent() {
                         <div className="flex items-center gap-3">
                           <span
                             className={`text-xs font-medium px-3 py-1 rounded-full capitalize ${
-                              order.orderStatus === 'delivered'
+                              (order.orderStatus || '').toLowerCase() === 'delivered'
                                 ? 'bg-emerald-50 text-emerald-700'
-                                : order.orderStatus === 'cancelled'
+                                : (order.orderStatus || '').toLowerCase() === 'cancelled' || (order.orderStatus || '').toLowerCase().includes('reject')
                                 ? 'bg-rose-50 text-rose-700'
-                                : order.orderStatus === 'shipped'
+                                : (order.orderStatus || '').toLowerCase().includes('return') || (order.orderStatus || '').toLowerCase().includes('refund')
+                                ? 'bg-amber-50 text-amber-700'
+                                : (order.orderStatus || '').toLowerCase() === 'shipped'
                                 ? 'bg-indigo-50 text-indigo-700'
-                                : 'bg-amber-50 text-amber-700'
+                                : 'bg-blue-50 text-blue-700'
                             }`}
                           >
                             {order.orderStatus || 'Processing'}

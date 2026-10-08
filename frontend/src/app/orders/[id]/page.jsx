@@ -86,14 +86,36 @@ export default function OrderTrackingPage({ params }) {
   const orderNum = order?.orderNumber || order?.orderId || (orderId ? (orderId.length > 12 ? `#LB${orderId.slice(-8).toUpperCase()}` : orderId) : '#LB202506281045');
   const items = order?.items || order?.orderItems || [];
   const status = (order?.orderStatus || 'Processing').toLowerCase();
+  const rawReturnStatus = (order?.returnRequest?.status || '').toLowerCase();
+
+  const isReturnRequested = status === 'return requested' || status === 'requested' || rawReturnStatus === 'pending' || rawReturnStatus === 'requested';
+  const isReturnUnderReview = status === 'under review' || status === 'return under review' || rawReturnStatus === 'under review';
+  const isReturnApproved = ['return accepted', 'approved', 'return approved'].includes(status) || rawReturnStatus === 'approved';
+  const isPickupScheduled = status === 'pickup scheduled' || rawReturnStatus === 'pickup scheduled';
+  const isReceived = status === 'received' || status === 'return received' || rawReturnStatus === 'received';
+  const isRefundInitiated = status === 'refund initiated' || rawReturnStatus === 'refund initiated';
+  const isRefunded = ['refunded', 'returned'].includes(status) || ['refunded', 'returned'].includes(rawReturnStatus);
+  const isReturnRejected = ['return rejected', 'rejected'].includes(status) || rawReturnStatus === 'rejected';
+
+  const hasReturn = Boolean(
+    order?.returnRequest?.reason ||
+    isReturnRequested ||
+    isReturnUnderReview ||
+    isReturnApproved ||
+    isPickupScheduled ||
+    isReceived ||
+    isRefundInitiated ||
+    isRefunded ||
+    isReturnRejected
+  );
 
   // Timeline Step Calculations
   const isPlaced = true;
   const isPaymentConfirmed = order?.paymentStatus?.toLowerCase() === 'paid' || order?.paymentMethod === 'COD' || true;
-  const isProcessing = ['processing', 'shipped', 'out for delivery', 'delivered'].includes(status);
-  const isShipped = ['shipped', 'out for delivery', 'delivered'].includes(status);
-  const isOutForDelivery = ['out for delivery', 'delivered'].includes(status);
-  const isDelivered = status === 'delivered';
+  const isProcessing = hasReturn || ['processing', 'shipped', 'out for delivery', 'delivered'].includes(status);
+  const isShipped = hasReturn || ['shipped', 'out for delivery', 'delivered'].includes(status);
+  const isOutForDelivery = hasReturn || ['out for delivery', 'delivered'].includes(status);
+  const isDelivered = hasReturn || status === 'delivered';
   const isCancelled = status === 'cancelled';
   const cancelEntry = order?.statusHistory?.find((h) => (h.status || '').toLowerCase() === 'cancelled');
   const cancelledAtStr = (cancelEntry?.timestamp || order?.cancelledAt || order?.updatedAt)
@@ -193,6 +215,33 @@ export default function OrderTrackingPage({ params }) {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                     <span>Cancelled</span>
+                  </div>
+                ) : hasReturn ? (
+                  <div className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold border ${
+                    isReturnRejected
+                      ? 'bg-rose-50 text-rose-700 border-rose-200'
+                      : isRefunded || isReturnApproved
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : isPickupScheduled || isReceived
+                      ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                      : 'bg-amber-50 text-amber-800 border-amber-200'
+                  }`}>
+                    <span className="w-2 h-2 rounded-full animate-pulse bg-current" />
+                    <span>
+                      {isReturnRejected
+                        ? 'Return Declined'
+                        : isRefunded
+                        ? 'Refunded'
+                        : isRefundInitiated
+                        ? 'Refund Initiated'
+                        : isReceived
+                        ? 'Return Received'
+                        : isPickupScheduled
+                        ? 'Pickup Scheduled'
+                        : isReturnApproved
+                        ? 'Return Approved'
+                        : 'Return Under Review'}
+                    </span>
                   </div>
                 ) : (
                   <div className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium ${isDelivered ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-[#1044A5]'}`}>
@@ -347,6 +396,14 @@ export default function OrderTrackingPage({ params }) {
 
               {/* Step 6: Delivered */}
               <div className="flex items-start gap-4 relative">
+                {hasReturn && (
+                  <div
+                    className={`absolute left-3.5 top-7 bottom-0 w-[2px] ${
+                      isReturnRejected ? 'bg-rose-400' : isRefunded ? 'bg-emerald-500' : 'bg-amber-400'
+                    }`}
+                    style={{ height: 'calc(100% + 8px)' }}
+                  />
+                )}
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 z-10 ${isDelivered ? 'bg-emerald-600 text-white' : 'bg-white border-2 border-slate-300 text-slate-400'}`}>
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
@@ -359,6 +416,68 @@ export default function OrderTrackingPage({ params }) {
                   </p>
                 </div>
               </div>
+
+              {/* Step 7: Return Lifecycle (Only rendered when return request exists) */}
+              {hasReturn && (
+                <div className="flex items-start gap-4 relative">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 z-10 shadow-xs ${
+                    isReturnRejected
+                      ? 'bg-rose-600 text-white'
+                      : isRefunded
+                      ? 'bg-emerald-600 text-white'
+                      : isReturnApproved || isPickupScheduled || isReceived
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-amber-500 text-white'
+                  }`}>
+                    {isReturnRejected ? (
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    ) : isRefunded || isReturnApproved ? (
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className={`text-xs font-semibold ${
+                      isReturnRejected ? 'text-rose-600' : isRefunded || isReturnApproved ? 'text-emerald-700' : 'text-amber-700'
+                    }`}>
+                      {isReturnRejected
+                        ? 'Return Request Declined'
+                        : isRefunded
+                        ? 'Return Complete & Refunded'
+                        : isRefundInitiated
+                        ? 'Refund Initiated'
+                        : isReceived
+                        ? 'Book Received at Fulfillment Hub'
+                        : isPickupScheduled
+                        ? 'Courier Pickup Scheduled'
+                        : isReturnApproved
+                        ? 'Return Request Approved'
+                        : 'Return Request Under Review'}
+                    </h4>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      {isReturnRejected
+                        ? (order.returnRequest?.adminNote ? `Admin note: ${order.returnRequest.adminNote}` : 'Does not meet return policy criteria.')
+                        : isRefunded
+                        ? 'Refund has been processed and credited.'
+                        : isPickupScheduled
+                        ? 'Courier partner assigned for item pickup.'
+                        : isReturnApproved
+                        ? 'Approved by admin. Courier partner will arrange pickup.'
+                        : 'Submitted to admin team. Awaiting verification.'}
+                    </p>
+                    {order.returnRequest?.requestedAt && (
+                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                        Requested on {new Date(order.returnRequest.requestedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
               </>
               )}
             </div>
@@ -398,8 +517,8 @@ export default function OrderTrackingPage({ params }) {
             )}
 
             {/* 5. Status Feedback & Action Banners */}
-            {/* Case A: Return Requested (Waiting Admin Approval) */}
-            {status === 'return requested' && (
+            {/* Case A: Return Requested / Under Review (Waiting Admin Approval) */}
+            {(isReturnRequested || isReturnUnderReview) && !isReturnApproved && !isReturnRejected && !isRefunded && (
               <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-1.5">
                 <div className="flex items-center gap-2 font-semibold">
                   <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
@@ -415,15 +534,29 @@ export default function OrderTrackingPage({ params }) {
               </div>
             )}
 
-            {/* Case B: Return Accepted */}
-            {(status === 'return accepted' || status === 'returned') && (
+            {/* Case B: Return Approved / Pickup Scheduled / Received / Refund Initiated / Refunded */}
+            {(isReturnApproved || isPickupScheduled || isReceived || isRefundInitiated || isRefunded) && (
               <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs space-y-1.5">
                 <div className="flex items-center gap-2 font-semibold text-emerald-800">
                   <span>✓</span>
-                  <span>Return Request Accepted by Admin</span>
+                  <span>
+                    {isRefunded
+                      ? 'Return Completed & Refund Processed'
+                      : isRefundInitiated
+                      ? 'Refund Initiated'
+                      : isReceived
+                      ? 'Package Received at Warehouse'
+                      : isPickupScheduled
+                      ? 'Courier Pickup Scheduled'
+                      : 'Return Request Approved by Admin'}
+                  </span>
                 </div>
                 <p className="text-[11px] text-emerald-700/90 leading-relaxed">
-                  Your return has been approved. Our courier partner will contact you for pickup, and refund/replacement will be processed.
+                  {isRefunded
+                    ? 'The return process is complete. Your refund has been credited.'
+                    : isPickupScheduled
+                    ? 'Our courier partner will arrive soon to collect the package.'
+                    : 'Your return has been approved. Our courier partner will contact you for pickup, and refund/replacement will be processed.'}
                   {order.returnRequest?.adminNote && (
                     <span className="block mt-1 font-medium">Admin Note: {order.returnRequest.adminNote}</span>
                   )}
@@ -432,7 +565,7 @@ export default function OrderTrackingPage({ params }) {
             )}
 
             {/* Case C: Return Rejected */}
-            {status === 'return rejected' && (
+            {isReturnRejected && (
               <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs space-y-1.5">
                 <div className="flex items-center gap-2 font-semibold text-rose-800">
                   <span>✕</span>

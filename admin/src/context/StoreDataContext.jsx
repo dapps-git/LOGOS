@@ -200,7 +200,7 @@ export const StoreDataProvider = ({ children }) => {
             customerEmail: o.customer?.email || 'N/A',
             phone: o.shippingAddress?.phone || o.customer?.phone || '',
             reason: o.returnRequest?.reason || 'Return requested by customer',
-            status: o.orderStatus === 'Return Accepted' ? 'Approved' : (o.orderStatus === 'Return Rejected' ? 'Rejected' : 'Return Requested'),
+            status: o.returnRequest?.status || (o.orderStatus === 'Return Accepted' ? 'Approved' : (o.orderStatus === 'Return Rejected' ? 'Rejected' : o.orderStatus || 'Return Requested')),
             requestedAt: o.returnRequest?.requestedAt || o.updatedAt || o.createdAt,
             totalAmount: o.finalTotal || o.totalAmount || 0,
             items: o.items || []

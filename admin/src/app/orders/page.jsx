@@ -206,7 +206,12 @@ export default function OrdersPage() {
                             <option value="Delivered">Delivered</option>
                             <option value="Cancelled">Cancelled</option>
                             <option value="Return Requested">Return Requested</option>
+                            <option value="Under Review">Under Review</option>
                             <option value="Return Accepted">Return Accepted</option>
+                            <option value="Pickup Scheduled">Pickup Scheduled</option>
+                            <option value="Received">Received</option>
+                            <option value="Refund Initiated">Refund Initiated</option>
+                            <option value="Refunded">Refunded</option>
                             <option value="Return Rejected">Return Rejected</option>
                           </select>
                         </td>

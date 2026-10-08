@@ -329,28 +329,34 @@ const updateOrderStatusAdmin = async (req, res) => {
       });
 
       // Handle return review transitions
-      if (['Return Accepted', 'Returned', 'Refunded'].includes(status)) {
+      if (['Return Accepted', 'Approved', 'Return Approved', 'Returned', 'Refunded', 'Pickup Scheduled', 'Received', 'Return Received', 'Refund Initiated'].includes(status)) {
         if (!order.returnRequest) {
           order.returnRequest = { reason: 'Return accepted', requestedAt: new Date() };
         }
-        order.returnRequest.status = 'Approved';
+        order.returnRequest.status = ['Return Accepted', 'Approved', 'Return Approved'].includes(status) ? 'Approved' : status;
         order.returnRequest.reviewedAt = new Date();
         if (note) order.returnRequest.adminNote = note;
 
         // If transitioning from un-restocked state to return accepted, restore stock
-        if (!['Cancelled', 'Returned', 'Return Accepted'].includes(previousStatus)) {
+        if (['Return Accepted', 'Approved', 'Return Approved', 'Returned', 'Refunded'].includes(status) && !['Cancelled', 'Returned', 'Return Accepted', 'Approved', 'Return Approved'].includes(previousStatus)) {
           for (const item of order.items) {
             if (item.book) {
               await Book.findByIdAndUpdate(item.book, { $inc: { stock: item.quantity } });
             }
           }
         }
-      } else if (status === 'Return Rejected') {
+      } else if (['Return Rejected', 'Rejected'].includes(status)) {
         if (!order.returnRequest) {
           order.returnRequest = { reason: 'Return requested', requestedAt: new Date() };
         }
         order.returnRequest.status = 'Rejected';
         order.returnRequest.reviewedAt = new Date();
+        if (note) order.returnRequest.adminNote = note;
+      } else if (['Under Review', 'Return Under Review', 'Return Requested', 'Requested'].includes(status)) {
+        if (!order.returnRequest) {
+          order.returnRequest = { reason: 'Return requested', requestedAt: new Date() };
+        }
+        order.returnRequest.status = status === 'Requested' ? 'Return Requested' : status;
         if (note) order.returnRequest.adminNote = note;
       }
     }
