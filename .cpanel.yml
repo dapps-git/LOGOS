@@ -3,3 +3,5 @@ deployment:
   tasks:
     - export DEPLOYPATH=/home/tweaxzow/repositories/LOGOS/
     - /bin/cp -R * $DEPLOYPATH
+    - /bin/mkdir -p $DEPLOYPATH/tmp $DEPLOYPATH/backend/tmp
+    - /bin/touch $DEPLOYPATH/tmp/restart.txt $DEPLOYPATH/backend/tmp/restart.txt
