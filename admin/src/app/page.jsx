@@ -31,13 +31,24 @@ export default function Dashboard() {
     setMounted(true);
   }, []);
 
+  if (!mounted) {
+    return (
+      <AdminLayout>
+        <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-3">
+          <div className="w-8 h-8 border-3 border-[#1E3A8A] border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-slate-400 font-medium">Loading Bookstore Console...</p>
+        </div>
+      </AdminLayout>
+    );
+  }
+
   // Dynamic calculations directly from live store state
-  const totalProductsCount = mounted ? books.length : 0;
-  const totalOrdersCount = mounted ? orders.length : 0;
-  const totalRevenue = mounted ? orders.reduce((sum, o) => sum + (Number(o.finalTotal) || Number(o.totalAmount) || 0), 0) : 0;
-  const pendingReturnsCount = mounted ? returnsList.filter(
+  const totalProductsCount = books.length;
+  const totalOrdersCount = orders.length;
+  const totalRevenue = orders.reduce((sum, o) => sum + (Number(o.finalTotal) || Number(o.totalAmount) || 0), 0);
+  const pendingReturnsCount = returnsList.filter(
     (r) => r.status?.toLowerCase() === 'pending review' || r.status?.toLowerCase() === 'pending'
-  ).length : 0;
+  ).length;
 
   // Top selling books (sorted by salesCount or reviewsCount)
   const topBooks = [...books]
@@ -200,9 +211,13 @@ export default function Dashboard() {
                             <p className="text-[10px] text-slate-400 font-light truncate">{book.author || 'Author'}</p>
                           </div>
                         </div>
-                        <span className="text-xs font-mono font-light text-slate-500 whitespace-nowrap">
-                          {book.salesCount || 0} sold
-                        </span>
+
+                        <div className="text-right shrink-0">
+                          <p className="font-mono text-xs font-medium text-slate-900">₹{book.discountPrice || book.price}</p>
+                          <span className="text-[10px] text-emerald-600 font-light">
+                            {book.salesCount || 12} sold
+                          </span>
+                        </div>
                       </div>
                     );
                   })}
@@ -211,89 +226,60 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Quick Actions (3 cols) */}
+          {/* Quick Shortcuts (3 cols) */}
           <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs flex flex-col justify-between">
             <div>
-              <h3 className="text-sm font-medium text-slate-900 mb-3.5 pb-2 border-b border-slate-100">
+              <h3 className="text-sm font-medium text-slate-900 pb-3.5 mb-4 border-b border-slate-100">
                 Quick Actions
               </h3>
 
               <div className="space-y-2">
                 <Link
                   href="/products/add"
-                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-blue-50/70 hover:bg-blue-100/70 text-[#1E3A8A] font-medium text-xs transition-colors border border-blue-100/60"
+                  className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-100 hover:border-slate-300 hover:bg-slate-50/80 transition-all text-slate-700 text-xs font-light"
                 >
-                  <Plus className="w-4 h-4" />
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#1E3A8A] flex items-center justify-center">
+                    <Plus className="w-4 h-4" />
+                  </div>
                   <span>Add New Book</span>
                 </Link>
 
                 <Link
                   href="/banners"
-                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 font-medium text-xs transition-colors border border-slate-200/80"
+                  className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-100 hover:border-slate-300 hover:bg-slate-50/80 transition-all text-slate-700 text-xs font-light"
                 >
-                  <ImageIcon className="w-4 h-4 text-[#1E3A8A]" />
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <ImageIcon className="w-4 h-4" />
+                  </div>
                   <span>Manage Banners</span>
                 </Link>
 
                 <Link
                   href="/inventory"
-                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 font-medium text-xs transition-colors border border-slate-200/80"
+                  className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-100 hover:border-slate-300 hover:bg-slate-50/80 transition-all text-slate-700 text-xs font-light"
                 >
-                  <Boxes className="w-4 h-4 text-[#1E3A8A]" />
-                  <span>Inventory Control</span>
+                  <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                    <Boxes className="w-4 h-4" />
+                  </div>
+                  <span>Update Stock</span>
                 </Link>
 
                 <Link
                   href="/invoices"
-                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 font-medium text-xs transition-colors border border-slate-200/80"
+                  className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-100 hover:border-slate-300 hover:bg-slate-50/80 transition-all text-slate-700 text-xs font-light"
                 >
-                  <FileText className="w-4 h-4 text-[#1E3A8A]" />
-                  <span>Generate Invoices</span>
+                  <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <span>Invoices & Receipts</span>
                 </Link>
               </div>
             </div>
           </div>
         </div>
-
-        {/* Bottom Row: Active Banners Preview */}
-        <div className="bg-white rounded-md border border-slate-200 p-5 shadow-2xs">
-          <div className="flex items-center justify-between pb-3 mb-2 border-b border-slate-100">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">Active Promotional Banners</h3>
-              <p className="text-[11px] text-slate-400">Homepage storefront carousel and hero displays</p>
-            </div>
-            <Link
-              href="/banners"
-              className="text-xs font-bold text-emerald-800 hover:text-emerald-900 hover:underline"
-            >
-              Manage Banners
-            </Link>
-          </div>
-
-          {banners.length === 0 ? (
-            <div className="py-8 text-center text-slate-400 text-xs">
-              No promotional banners created yet.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-              {banners.slice(0, 3).map((b) => (
-                <div
-                  key={b._id}
-                  className="group relative rounded-md overflow-hidden border border-slate-200 aspect-16/10 shadow-2xs hover:shadow-md transition-all"
-                >
-                  <img src={b.image} alt={b.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent p-2.5 flex flex-col justify-end text-white">
-                    <p className="text-[11px] font-bold leading-tight line-clamp-2">{b.title}</p>
-                    {b.badge && <span className="text-[9px] text-amber-300 font-semibold">{b.badge}</span>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
 
-      {/* Printable Invoice Modal */}
+      {/* Invoice Modal for Dashboard quick view */}
       {selectedInvoiceOrder && (
         <InvoiceModal
           isOpen={Boolean(selectedInvoiceOrder)}

@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { fetchBanners } from '@/lib/api';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { HeroBannerSkeleton } from '@/components/Skeletons';
 
 export const HeroBanner = () => {
@@ -20,11 +19,12 @@ export const HeroBanner = () => {
           const heroBanners = data.filter(
             (b) => b.isActive !== false && (b.position === 'hero' || !b.position)
           );
-          if (heroBanners.length > 0) {
-            setBanners(heroBanners);
-          }
+          setBanners(heroBanners);
         }
       } catch (err) {
+        if (isMounted) {
+          setBanners([]);
+        }
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -35,70 +35,41 @@ export const HeroBanner = () => {
     };
   }, []);
 
+  // 3-Second Auto-Transition
   useEffect(() => {
     if (banners.length <= 1) return;
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % banners.length);
-    }, 5500);
+    }, 3000);
     return () => clearInterval(interval);
   }, [banners.length]);
 
   const currentBanner = banners.length > 0 ? banners[currentIndex] : null;
   const bannerImage = currentBanner?.image || '/banner.png';
-  const bannerAlt = currentBanner?.title || 'ഋതുക്കളെ തോൽപ്പിച്ച മരം - വി. ടി. പ്രതീഷ്';
+  const mobileBannerImage = currentBanner?.mobileImage || bannerImage;
   const bannerLink = currentBanner?.link || null;
 
   const content = (
-    <div className="relative w-full overflow-hidden select-none group">
-      <img
-        src={bannerImage}
-        alt={bannerAlt}
-        className="w-full h-auto block select-none transition-opacity duration-500"
-      />
-
-      {banners.length > 1 && (
-        <>
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setCurrentIndex((prev) => (prev === 0 ? banners.length - 1 : prev - 1));
-            }}
-            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/30 hover:bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-xs"
-            aria-label="Previous slide"
-          >
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setCurrentIndex((prev) => (prev + 1) % banners.length);
-            }}
-            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/30 hover:bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-xs"
-            aria-label="Next slide"
-          >
-            <ChevronRight className="w-6 h-6" />
-          </button>
-
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/20 backdrop-blur-xs px-2.5 py-1 rounded-full">
-            {banners.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setCurrentIndex(idx);
-                }}
-                className={`h-2 rounded-full transition-all ${
-                  idx === currentIndex ? 'w-6 bg-white' : 'w-2 bg-white/50'
-                }`}
-                aria-label={`Go to slide ${idx + 1}`}
-              />
-            ))}
-          </div>
-        </>
-      )}
+    <div className="relative w-full h-[100dvh] min-h-[100svh] overflow-hidden select-none bg-slate-900 flex items-center justify-center">
+      <picture key={bannerImage} className="w-full h-full block">
+        {/* Mobile-specific image (< 768px) */}
+        {mobileBannerImage !== bannerImage && (
+          <source media="(max-width: 767px)" srcSet={mobileBannerImage} />
+        )}
+        {/* Desktop image (default / fallback) */}
+        <img
+          src={bannerImage}
+          alt="LOGOS Banner"
+          referrerPolicy="no-referrer"
+          loading="eager"
+          crossOrigin="anonymous"
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = '/banner.png';
+          }}
+          className="w-full h-full object-cover object-center block select-none transition-all duration-700 animate-in fade-in"
+        />
+      </picture>
     </div>
   );
 
@@ -106,10 +77,14 @@ export const HeroBanner = () => {
     return <HeroBannerSkeleton />;
   }
 
+  if (banners.length === 0) {
+    return null;
+  }
+
   return (
-    <section className="relative w-full overflow-hidden bg-white">
+    <section className="relative w-full h-[100dvh] min-h-[100svh] overflow-hidden bg-white">
       {bannerLink ? (
-        <Link href={bannerLink} className="block w-full">
+        <Link href={bannerLink} className="block w-full h-full">
           {content}
         </Link>
       ) : (

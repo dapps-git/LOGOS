@@ -7,6 +7,7 @@ import { Footer } from '@/components/Footer';
 import { fetchBookBySlugOrId } from '@/lib/api';
 
 const DEFAULT_BOOK = {
+  _id: '6ac8775feacfec1eea80cc70',
   title: 'Mani Muzhangunnathu Aarkku Vendi',
   name: 'മണിമുഴങ്ങുന്നത് ആർക്കുവേണ്ടി',
   slug: 'manimuzhangunnathu-aarkkuvendi',
@@ -32,23 +33,24 @@ export default async function BookDetailPage({ params }) {
   const { slug } = await params;
   let bookData = await fetchBookBySlugOrId(slug);
 
-  if (!bookData) {
-    bookData = {
-      ...DEFAULT_BOOK,
-      title: slug ? slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : DEFAULT_BOOK.title
-    };
-  } else {
-    // Map backend model fields to detail view format
+  if (bookData) {
     bookData = {
       ...bookData,
-      gallery: (bookData.images && bookData.images.length > 0)
+      title: bookData.title || bookData.name || bookData.titleMalayalam,
+      images: (bookData.images && bookData.images.length > 0)
         ? bookData.images
-        : DEFAULT_BOOK.gallery,
-      originalPrice: bookData.price || DEFAULT_BOOK.originalPrice,
-      price: bookData.discountPrice || bookData.price || DEFAULT_BOOK.price,
-      language: (bookData.languages && bookData.languages[0]) || 'Malayalam',
-      pages: bookData.pageCount || 146,
-      theme: bookData.theme || bookData.genre || 'Novel'
+        : (bookData.coverImage ? [bookData.coverImage] : ['/book-placeholder.svg']),
+      originalPrice: bookData.price,
+      price: bookData.discountPrice || bookData.price,
+      language: (bookData.languages && bookData.languages[0]) || bookData.language || 'Malayalam',
+      pages: bookData.pageCount || bookData.pages || 123,
+      theme: bookData.theme || bookData.genre || 'Novel',
+      description: bookData.description || ''
+    };
+  } else {
+    bookData = {
+      ...DEFAULT_BOOK,
+      title: slug ? decodeURIComponent(slug).replace(/-/g, ' ') : DEFAULT_BOOK.title
     };
   }
 

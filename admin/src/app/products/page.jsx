@@ -28,6 +28,8 @@ export default function ProductsPage() {
   const [search, setSearch] = useState('');
   const [themeFilter, setThemeFilter] = useState('ALL');
   const [stockFilter, setStockFilter] = useState('ALL');
+  const [featureFilter, setFeatureFilter] = useState('ALL');
+  const [authorFilter, setAuthorFilter] = useState('ALL');
   const [previewBook, setPreviewBook] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
@@ -38,6 +40,19 @@ export default function ProductsPage() {
 
   // Filter themes
   const themes = ['ALL', ...Array.from(new Set(books.map((b) => b.theme).filter(Boolean)))];
+
+  // Authors list for Featured Authors Filter
+  const authors = ['ALL', ...Array.from(new Set(books.map((b) => (b.author || '').trim()).filter(Boolean))).sort()];
+
+  // Counts for quick pill filters
+  const counts = {
+    all: books.length,
+    authorSpotlight: books.filter((b) => b.isAuthorSpotlight || b.isBestAuthor).length,
+    featuredSpotlight: books.filter((b) => b.isFeatured || b.isFeaturedSpotlight).length,
+    bestsellers: books.filter((b) => b.isBestSeller).length,
+    handpicked: books.filter((b) => b.isHandpicked).length,
+    newArrivals: books.filter((b) => b.isNewArrival).length
+  };
 
   const filteredBooks = books.filter((book) => {
     const matchesSearch =
@@ -54,7 +69,22 @@ export default function ProductsPage() {
       (stockFilter === 'low_stock' && book.stock > 0 && book.stock <= 5) ||
       (stockFilter === 'out_of_stock' && book.stock === 0);
 
-    return matchesSearch && matchesTheme && matchesStock;
+    const matchesAuthor = authorFilter === 'ALL' || (book.author || '').trim().toLowerCase() === authorFilter.trim().toLowerCase();
+
+    let matchesFeature = true;
+    if (featureFilter === 'author_spotlight') {
+      matchesFeature = Boolean(book.isAuthorSpotlight || book.isBestAuthor);
+    } else if (featureFilter === 'featured_spotlight') {
+      matchesFeature = Boolean(book.isFeatured || book.isFeaturedSpotlight);
+    } else if (featureFilter === 'bestsellers') {
+      matchesFeature = Boolean(book.isBestSeller);
+    } else if (featureFilter === 'handpicked') {
+      matchesFeature = Boolean(book.isHandpicked);
+    } else if (featureFilter === 'new_arrivals') {
+      matchesFeature = Boolean(book.isNewArrival);
+    }
+
+    return matchesSearch && matchesTheme && matchesStock && matchesAuthor && matchesFeature;
   });
 
   const handleDelete = (id) => {
@@ -84,7 +114,7 @@ export default function ProductsPage() {
             <button
               type="button"
               onClick={() => setBulkModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-md shadow-xs transition-all active:scale-95"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-md shadow-xs transition-all active:scale-95 cursor-pointer"
             >
               <FileSpreadsheet className="w-4 h-4" />
               Import Excel / CSV
@@ -92,7 +122,7 @@ export default function ProductsPage() {
 
             <Link
               href="/products/add"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-md shadow-xs transition-all active:scale-95"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-md shadow-xs transition-all active:scale-95 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               Add New Product
@@ -100,8 +130,71 @@ export default function ProductsPage() {
           </div>
         </div>
 
+        {/* Quick Filter Pills (1-Click Highlights Bar) */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          <button
+            type="button"
+            onClick={() => setFeatureFilter('ALL')}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+              featureFilter === 'ALL'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+            }`}
+          >
+            All Books <span className="text-[10px] opacity-75 font-mono">({counts.all})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFeatureFilter(featureFilter === 'bestsellers' ? 'ALL' : 'bestsellers')}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+              featureFilter === 'bestsellers'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100'
+            }`}
+          >
+            🔥 Bestsellers <span className="text-[10px] opacity-75 font-mono">({counts.bestsellers})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFeatureFilter(featureFilter === 'handpicked' ? 'ALL' : 'handpicked')}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+              featureFilter === 'handpicked'
+                ? 'bg-emerald-700 text-white shadow-xs'
+                : 'bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100'
+            }`}
+          >
+            ✨ Handpicked <span className="text-[10px] opacity-75 font-mono">({counts.handpicked})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFeatureFilter(featureFilter === 'featured_spotlight' ? 'ALL' : 'featured_spotlight')}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+              featureFilter === 'featured_spotlight'
+                ? 'bg-purple-700 text-white shadow-xs'
+                : 'bg-purple-50 text-purple-900 border border-purple-200 hover:bg-purple-100'
+            }`}
+          >
+            🌟 Featured Spotlight <span className="text-[10px] opacity-75 font-mono">({counts.featuredSpotlight})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFeatureFilter(featureFilter === 'new_arrivals' ? 'ALL' : 'new_arrivals')}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+              featureFilter === 'new_arrivals'
+                ? 'bg-blue-700 text-white shadow-xs'
+                : 'bg-blue-50 text-blue-900 border border-blue-200 hover:bg-blue-100'
+            }`}
+          >
+            🚀 New Arrivals <span className="text-[10px] opacity-75 font-mono">({counts.newArrivals})</span>
+          </button>
+        </div>
+
         {/* Filter & Search Bar */}
-        <div className="p-4 bg-white border border-slate-200 rounded-md flex flex-col sm:flex-row items-center gap-3">
+        <div className="p-4 bg-white border border-slate-200 rounded-md flex flex-col lg:flex-row items-center gap-3">
           <div className="relative flex-1 w-full">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
@@ -113,30 +206,64 @@ export default function ProductsPage() {
             />
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+            {/* Spotlights / Special Filter */}
+            <select
+              value={featureFilter}
+              onChange={(e) => setFeatureFilter(e.target.value)}
+              className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-xs font-semibold text-slate-700 focus:outline-hidden"
+            >
+              <option value="ALL">All Spotlights / Highlights</option>
+              <option value="author_spotlight">✍️ Author Spotlight / Best Authors</option>
+              <option value="bestsellers">🔥 Bestsellers</option>
+              <option value="handpicked">✨ Handpicked</option>
+              <option value="featured_spotlight">🌟 Featured Book Spotlight</option>
+              <option value="new_arrivals">🚀 New Arrivals</option>
+            </select>
+
+            {/* Featured Authors Filter */}
+            <select
+              value={authorFilter}
+              onChange={(e) => setAuthorFilter(e.target.value)}
+              suppressHydrationWarning
+              className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-xs font-semibold text-slate-700 focus:outline-hidden max-w-[200px]"
+            >
+              {mounted ? (
+                authors.map((a) => (
+                  <option key={a} value={a}>
+                    {a === 'ALL' ? 'All Featured Authors' : a}
+                  </option>
+                ))
+              ) : (
+                <option value="ALL">All Featured Authors</option>
+              )}
+            </select>
+
+            {/* Theme / Genre Filter */}
             <select
               value={themeFilter}
               onChange={(e) => setThemeFilter(e.target.value)}
               suppressHydrationWarning
-              className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-xs font-semibold text-slate-700 focus:outline-hidden"
+              className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-xs font-semibold text-slate-700 focus:outline-hidden max-w-[160px]"
             >
               {mounted ? (
                 themes.map((t) => (
                   <option key={t} value={t}>
-                    {t === 'ALL' ? 'All Themes / Genres' : t}
+                    {t === 'ALL' ? 'All Themes' : t}
                   </option>
                 ))
               ) : (
-                <option value="ALL">All Themes / Genres</option>
+                <option value="ALL">All Themes</option>
               )}
             </select>
 
+            {/* Stock Filter */}
             <select
               value={stockFilter}
               onChange={(e) => setStockFilter(e.target.value)}
               className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-xs font-semibold text-slate-700 focus:outline-hidden"
             >
-              <option value="ALL">All Stock Levels</option>
+              <option value="ALL">All Stock</option>
               <option value="in_stock">In Stock (&gt;5)</option>
               <option value="low_stock">Low Stock (≤5)</option>
               <option value="out_of_stock">Out of Stock (0)</option>
@@ -180,9 +307,14 @@ export default function ProductsPage() {
                               <img
                                 src={cover}
                                 alt={book.title || book.name}
+                                referrerPolicy="no-referrer"
+                                loading="lazy"
+                                crossOrigin="anonymous"
                                 onError={(e) => {
-                                  e.currentTarget.onerror = null;
-                                  e.currentTarget.src = '/book-placeholder.svg';
+                                  if (!e.currentTarget.dataset.failed) {
+                                    e.currentTarget.dataset.failed = 'true';
+                                    e.currentTarget.src = '/book-placeholder.svg';
+                                  }
                                 }}
                                 className="w-10 h-14 object-cover border border-slate-200 rounded-lg shadow-2xs bg-slate-50"
                               />

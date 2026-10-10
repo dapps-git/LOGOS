@@ -122,6 +122,18 @@ export const StoreDataProvider = ({ children }) => {
     return initialMockCustomers;
   });
 
+  const [authors, setAuthors] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('logos_admin_authors');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {}
+      }
+    }
+    return [];
+  });
+
   // Safe localStorage helper to prevent QuotaExceededError
   const safeSetItem = (key, data) => {
     if (typeof window === 'undefined') return;
@@ -129,7 +141,6 @@ export const StoreDataProvider = ({ children }) => {
       localStorage.setItem(key, JSON.stringify(data));
     } catch (e) {
       console.warn(`[StoreDataContext] LocalStorage quota reached for ${key}. Silently continuing with in-memory state.`);
-      // If quota exceeded, selectively clear heavy cached images to free up space
       try {
         localStorage.removeItem('logos_admin_banners');
         localStorage.removeItem('logos_admin_books');
@@ -145,6 +156,10 @@ export const StoreDataProvider = ({ children }) => {
   useEffect(() => {
     safeSetItem('logos_admin_banners', banners);
   }, [banners]);
+
+  useEffect(() => {
+    safeSetItem('logos_admin_authors', authors);
+  }, [authors]);
 
   useEffect(() => {
     safeSetItem('logos_admin_orders', orders);
@@ -239,6 +254,13 @@ export const StoreDataProvider = ({ children }) => {
       const customerData = await apiClient('/auth/admin/customers');
       if (Array.isArray(customerData?.customers)) {
         setCustomers(customerData.customers);
+      }
+    } catch {}
+
+    try {
+      const authorData = await apiClient('/author-highlights/admin/all');
+      if (Array.isArray(authorData?.highlights)) {
+        setAuthors(authorData.highlights);
       }
     } catch {}
   };
@@ -352,16 +374,102 @@ export const StoreDataProvider = ({ children }) => {
     setBanners((prev) => prev.filter((b) => b._id !== id));
   };
 
+  // Author Actions
+  const addAuthor = async (newAuthor) => {
+    const authorWithId = {
+      ...newAuthor,
+      _id: `auth-${Date.now().toString().slice(-6)}`
+    };
+
+    try {
+      const backendRes = await apiClient('/author-highlights', {
+        method: 'POST',
+        body: JSON.stringify(newAuthor)
+      });
+      if (backendRes?.highlight) {
+        if (newAuthor.isSpotlight) {
+          setAuthors((prev) => [backendRes.highlight, ...prev.map(a => ({ ...a, isSpotlight: false }))]);
+        } else {
+          setAuthors((prev) => [backendRes.highlight, ...prev]);
+        }
+        return backendRes.highlight;
+      }
+    } catch {}
+
+    if (newAuthor.isSpotlight) {
+      setAuthors((prev) => [authorWithId, ...prev.map(a => ({ ...a, isSpotlight: false }))]);
+    } else {
+      setAuthors((prev) => [authorWithId, ...prev]);
+    }
+    return authorWithId;
+  };
+
+  const updateAuthor = async (id, updatedFields) => {
+    try {
+      await apiClient(`/author-highlights/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(updatedFields)
+      });
+    } catch {}
+
+    setAuthors((prev) =>
+      prev.map((a) => {
+        if (a._id === id) {
+          return { ...a, ...updatedFields };
+        }
+        if (updatedFields.isSpotlight) {
+          return { ...a, isSpotlight: false };
+        }
+        return a;
+      })
+    );
+  };
+
+  const deleteAuthor = async (id) => {
+    try {
+      await apiClient(`/author-highlights/${id}`, { method: 'DELETE' });
+    } catch {}
+    setAuthors((prev) => prev.filter((a) => a._id !== id));
+  };
+
   // Order Actions
-  const updateOrderStatus = async (id, newStatus, note, trackingNumber) => {
+  const updateOrderStatus = async (id, newStatus, note, trackingNumber, options = {}) => {
+    const payload = {
+      status: newStatus,
+      note,
+      trackingNumber,
+      ...options
+    };
     try {
       await apiClient(`/orders/admin/${id}/status`, {
         method: 'PUT',
-        body: JSON.stringify({ status: newStatus, note, trackingNumber })
+        body: JSON.stringify(payload)
       });
-    } catch {}
+    } catch (err) {
+      console.error('[StoreDataContext] Failed to update order status:', err.message);
+    }
     setOrders((prev) =>
-      prev.map((o) => (o._id === id ? { ...o, orderStatus: newStatus, trackingNumber: trackingNumber || o.trackingNumber } : o))
+      prev.map((o) => {
+        if (o._id !== id) return o;
+        return {
+          ...o,
+          orderStatus: newStatus,
+          trackingNumber: trackingNumber !== undefined ? trackingNumber : o.trackingNumber,
+          currentLocation: options.currentLocation !== undefined ? options.currentLocation : o.currentLocation,
+          shippingLocation: options.shippingLocation !== undefined ? options.shippingLocation : o.shippingLocation,
+          returnRequest: options.scheduledDate || options.resolutionType || options.refundAmount
+            ? {
+                ...(o.returnRequest || {}),
+                status: newStatus,
+                scheduledDate: options.scheduledDate ? new Date(options.scheduledDate) : o.returnRequest?.scheduledDate,
+                resolutionType: options.resolutionType || o.returnRequest?.resolutionType,
+                refundAmount: options.refundAmount !== undefined ? options.refundAmount : o.returnRequest?.refundAmount,
+                adminNote: note || o.returnRequest?.adminNote,
+                note: note || o.returnRequest?.note
+              }
+            : o.returnRequest
+        };
+      })
     );
   };
 
@@ -389,7 +497,6 @@ export const StoreDataProvider = ({ children }) => {
   };
 
   const deleteCoupon = async (id) => {
-    // Optimistic removal from UI state
     setCoupons((prev) => prev.filter((c) => c._id !== id && c.id !== id && c.code !== id));
 
     try {
@@ -398,7 +505,6 @@ export const StoreDataProvider = ({ children }) => {
       });
     } catch (err) {
       console.error('[StoreDataContext] Failed to delete coupon from backend:', err.message);
-      // Re-fetch to ensure sync with database
       try {
         const couponData = await apiClient('/coupons/admin/all');
         if (Array.isArray(couponData?.coupons)) {
@@ -410,18 +516,40 @@ export const StoreDataProvider = ({ children }) => {
   };
 
   // Return Actions
-  const updateReturnStatus = async (id, newStatus, note) => {
+  const updateReturnStatus = async (id, newStatus, note, returnDetails = {}) => {
     try {
       const mappedOrderStatus = newStatus === 'Approved' ? 'Return Accepted' : (newStatus === 'Rejected' ? 'Return Rejected' : newStatus);
       await apiClient(`/orders/admin/${id}/status`, {
         method: 'PUT',
-        body: JSON.stringify({ status: mappedOrderStatus, note: note || `Return status: ${newStatus}` })
+        body: JSON.stringify({
+          status: mappedOrderStatus,
+          note: note || `Return status: ${newStatus}`,
+          ...returnDetails
+        })
       });
       setOrders((prev) =>
-        prev.map((o) => (o._id === id ? { ...o, orderStatus: mappedOrderStatus } : o))
+        prev.map((o) =>
+          o._id === id
+            ? {
+                ...o,
+                orderStatus: mappedOrderStatus,
+                returnRequest: {
+                  ...(o.returnRequest || {}),
+                  status: newStatus,
+                  adminNote: note,
+                  note,
+                  scheduledDate: returnDetails.scheduledDate ? new Date(returnDetails.scheduledDate) : o.returnRequest?.scheduledDate,
+                  resolutionType: returnDetails.resolutionType || o.returnRequest?.resolutionType,
+                  refundAmount: returnDetails.refundAmount || o.returnRequest?.refundAmount
+                }
+              }
+            : o
+        )
       );
     } catch {}
-    setReturnsList((prev) => prev.map((r) => (r._id === id ? { ...r, status: newStatus } : r)));
+    setReturnsList((prev) =>
+      prev.map((r) => (r._id === id || r.orderId === id ? { ...r, status: newStatus, note, ...returnDetails } : r))
+    );
   };
 
   return (
@@ -429,6 +557,7 @@ export const StoreDataProvider = ({ children }) => {
       value={{
         books,
         banners,
+        authors,
         orders,
         coupons,
         referrals,
@@ -441,6 +570,9 @@ export const StoreDataProvider = ({ children }) => {
         addBanner,
         updateBanner,
         deleteBanner,
+        addAuthor,
+        updateAuthor,
+        deleteAuthor,
         updateOrderStatus,
         updatePaymentStatus,
         addCoupon,

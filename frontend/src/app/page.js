@@ -7,7 +7,6 @@ import { NewArrivals } from '@/components/NewArrivals';
 import { FeaturedBookSpotlight } from '@/components/FeaturedBookSpotlight';
 import { Bestsellers } from '@/components/Bestsellers';
 import { AuthorSpotlight } from '@/components/AuthorSpotlight';
-import { AuthorBestBooks } from '@/components/AuthorBestBooks';
 import { ComboOfferBanner } from '@/components/ComboOfferBanner';
 import { FeaturedAuthors } from '@/components/FeaturedAuthors';
 import { HandpickedReads } from '@/components/HandpickedReads';
@@ -37,10 +36,7 @@ export default function HomePage() {
         {/* 5. Author Spotlight (Meet the author - രാജേഷ് കെ.ആർ) */}
         <AuthorSpotlight />
 
-        {/* 6. Author's Best Book (ഘടോൽക്കചൻ) */}
-        <AuthorBestBooks />
-
-        {/* 7. Combo Offer Banner (BUY 1 GET 2) */}
+        {/* 6. Combo Offer Banner (BUY 1 GET 2) */}
         <ComboOfferBanner />
 
         {/* 8. Featured Authors (The voices behind the pages) */}

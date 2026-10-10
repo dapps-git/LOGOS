@@ -48,7 +48,7 @@ export const BookGridSkeleton = ({ count = 8 }) => {
  */
 export const HeroBannerSkeleton = () => {
   return (
-    <div className="relative w-full aspect-[1748/900] min-h-[220px] sm:min-h-[360px] md:min-h-[480px] bg-slate-100 overflow-hidden">
+    <div className="relative w-full aspect-[3/4] sm:aspect-[1748/900] min-h-[460px] sm:min-h-[360px] md:min-h-[480px] bg-slate-100 overflow-hidden">
       <div className="w-full h-full shimmer-effect" />
       
       {/* Subtle overlay shapes suggesting banner elements */}
@@ -155,9 +155,9 @@ export const CatalogGridSkeleton = ({ count = 8 }) => {
         {Array.from({ length: count }).map((_, idx) => (
           <div
             key={`desk-skel-${idx}`}
-            className="bg-white rounded-xl border border-slate-200/90 p-3 flex flex-col justify-between"
+            className="bg-white rounded-2xl border border-slate-200/90 p-3.5 flex flex-col justify-between shadow-2xs"
           >
-            <div className="relative aspect-4/3 w-full bg-slate-100 rounded-lg overflow-hidden mb-2.5">
+            <div className="relative aspect-[3/4] w-full bg-slate-100 rounded-xl overflow-hidden mb-3">
               <div className="w-full h-full shimmer-effect" />
             </div>
             <div className="space-y-2">
@@ -222,4 +222,45 @@ export const HandpickedSkeleton = () => {
     </div>
   );
 };
+
+/**
+ * Featured Book Spotlight Skeleton
+ */
+export const FeaturedBookSpotlightSkeleton = () => {
+  return (
+    <section className="py-12 sm:py-16 px-4 sm:px-8 max-w-6xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-14 items-center">
+        <div className="flex justify-center items-center">
+          <div className="relative max-w-[420px] w-full aspect-[4/5] rounded-md overflow-hidden bg-slate-100 shadow-sm">
+            <div className="w-full h-full shimmer-effect" />
+          </div>
+        </div>
+        <div className="flex flex-col justify-center space-y-4">
+          <div className="h-8 sm:h-10 bg-slate-200 rounded-xs w-3/4 shimmer-effect" />
+          <div className="h-4 bg-slate-150 rounded-xs w-1/3 shimmer-effect" />
+          <div className="space-y-2 pt-2">
+            <div className="h-3.5 bg-slate-100 rounded-xs w-full shimmer-effect" />
+            <div className="h-3.5 bg-slate-100 rounded-xs w-11/12 shimmer-effect" />
+            <div className="h-3.5 bg-slate-100 rounded-xs w-4/5 shimmer-effect" />
+          </div>
+          <div className="h-10 bg-[#224494]/20 rounded-full w-32 shimmer-effect mt-2" />
+        </div>
+      </div>
+    </section>
+  );
+};
+
+/**
+ * Combo Offer Banner Skeleton
+ */
+export const ComboOfferBannerSkeleton = () => {
+  return (
+    <div className="w-full my-8 sm:my-12 overflow-hidden">
+      <div className="w-full aspect-[1200/350] min-h-[140px] sm:min-h-[220px] bg-slate-100 rounded-none overflow-hidden">
+        <div className="w-full h-full shimmer-effect" />
+      </div>
+    </div>
+  );
+};
+
 

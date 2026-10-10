@@ -1,4 +1,5 @@
 const Book = require('../models/Book');
+const AuthorHighlight = require('../models/AuthorHighlight');
 const cloudinary = require('../config/cloudinary');
 
 // @desc    Get all books with rich filters, search, pagination, and sorting
@@ -590,21 +591,48 @@ const bulkImportBooks = async (req, res) => {
 // @access  Public
 const getSpotlightAuthor = async (req, res) => {
   try {
-    // 1. Find book with isAuthorSpotlight: true
-    let spotlightBook = await Book.findOne({ isActive: true, isAuthorSpotlight: true }).sort({ updatedAt: -1 });
+    // 1. Check dedicated AuthorHighlight model for spotlight author
+    const authorHighlight = await AuthorHighlight.findOne({ isActive: true, isSpotlight: true }).sort({ updatedAt: -1 });
 
-    // 2. Fallback to book with authorPhoto and authorBio
-    if (!spotlightBook) {
-      spotlightBook = await Book.findOne({
-        isActive: true,
-        authorPhoto: { $exists: true, $ne: '' },
-        authorBio: { $exists: true, $ne: '' }
-      }).sort({ updatedAt: -1 });
+    let authorName = authorHighlight ? authorHighlight.name : '';
+    let authorPhoto = (authorHighlight && authorHighlight.photo) || '';
+    let authorBio = (authorHighlight && authorHighlight.bio) || '';
+
+    // 2. Fallback to any active AuthorHighlight with bio
+    if (!authorName) {
+      const anyHighlight = await AuthorHighlight.findOne({ isActive: true, bio: { $exists: true, $ne: '' } }).sort({ order: 1, updatedAt: -1 });
+      if (anyHighlight) {
+        authorName = anyHighlight.name;
+        authorPhoto = anyHighlight.photo;
+        authorBio = anyHighlight.bio;
+      }
     }
 
-    let authorName = spotlightBook ? spotlightBook.author : 'രാജേഷ് കെ.ആർ';
-    let authorPhoto = (spotlightBook && spotlightBook.authorPhoto) || '/author_rajesh.png';
-    let authorBio = (spotlightBook && spotlightBook.authorBio) || "പത്തനംതിട്ട സ്വദേശിയായ അധ്യാപകനും എഴുത്തുകാരനുമാണ്. 'ഘടോൽക്കചൻ' അദ്ദേഹത്തിന്റെ ആദ്യ നോവലാണ്. മഹാഭാരതത്തിലെ ഘടോൽക്കചന്റെയും മൗർവിയുടെയും ജീവിതത്തെ വ്യത്യസ്തമായ രീതിയിൽ അവതരിപ്പിക്കുന്നതാണ് ഈ കൃതി. വായനയോടുള്ള ഗൗരവമായ സമീപനം എം.എ. പഠനത്തിനു ശേഷമാണ് അദ്ദേഹത്തിൽ വളർന്നത്. കഥകളെക്കുറിച്ച് കുറിപ്പുകൾ എഴുതുകയും പിന്നീട് തിരക്കഥകൾ രചിക്കുകയും ചെയ്ത അനുഭവം അദ്ദേഹത്തിന്റെ നോവൽരചനയെയും സ്വാധീനിച്ചു.";
+    // 3. Fallback to Book with isAuthorSpotlight or authorPhoto
+    let spotlightBook = null;
+    if (!authorName) {
+      spotlightBook = await Book.findOne({ isActive: true, isAuthorSpotlight: true }).sort({ updatedAt: -1 });
+      if (!spotlightBook) {
+        spotlightBook = await Book.findOne({
+          isActive: true,
+          authorPhoto: { $exists: true, $ne: '' },
+          authorBio: { $exists: true, $ne: '' }
+        }).sort({ updatedAt: -1 });
+      }
+      if (spotlightBook) {
+        authorName = spotlightBook.author;
+        authorPhoto = spotlightBook.authorPhoto;
+        authorBio = spotlightBook.authorBio;
+      }
+    }
+
+    // If no author found from Admin Author Highlights or Books, return null
+    if (!authorName) {
+      return res.json({
+        success: true,
+        author: null
+      });
+    }
 
     // Get list of books under this author
     const authorBooks = await Book.find({
@@ -620,7 +648,7 @@ const getSpotlightAuthor = async (req, res) => {
         image: authorPhoto,
         bio: authorBio,
         booksCount: authorBooks.length,
-        featuredBookSlug: (spotlightBook && spotlightBook.slug) || (authorBooks[0] && authorBooks[0].slug) || 'ghadolkachan',
+        featuredBookSlug: (spotlightBook && spotlightBook.slug) || (authorBooks[0] && authorBooks[0].slug) || '',
         books: authorBooks
       }
     });
@@ -680,32 +708,46 @@ const getSpotlightBook = async (req, res) => {
 // @access  Public
 const getAuthorsList = async (req, res) => {
   try {
-    const authors = await Book.aggregate([
-      { $match: { isActive: true, author: { $exists: true, $ne: '' } } },
-      {
-        $group: {
-          _id: '$author',
-          author: { $first: '$author' },
-          photo: { $max: '$authorPhoto' },
-          bio: { $max: '$authorBio' },
-          isSpotlight: { $max: '$isAuthorSpotlight' },
-          booksCount: { $sum: 1 },
-          lastBookSlug: { $first: '$slug' }
+    const [highlights, bookAuthors] = await Promise.all([
+      AuthorHighlight.find({ isActive: true }).sort({ isSpotlight: -1, order: 1, createdAt: -1 }),
+      Book.aggregate([
+        { $match: { isActive: true, author: { $exists: true, $ne: '' } } },
+        {
+          $group: {
+            _id: '$author',
+            booksCount: { $sum: 1 },
+            lastBookSlug: { $first: '$slug' }
+          }
         }
-      },
-      { $sort: { isSpotlight: -1, booksCount: -1, author: 1 } }
+      ])
     ]);
+
+    const bookCountMap = new Map();
+    bookAuthors.forEach((b) => {
+      const name = (b._id || '').trim().toLowerCase();
+      if (name) {
+        bookCountMap.set(name, { count: b.booksCount, slug: b.lastBookSlug });
+      }
+    });
+
+    // Only return authors explicitly created in the Admin Authors section
+    const authorsList = highlights.map((h) => {
+      const key = (h.name || '').trim().toLowerCase();
+      const bookInfo = bookCountMap.get(key) || { count: 0, slug: '' };
+      return {
+        id: h._id,
+        name: h.name.trim(),
+        photo: h.photo || '',
+        bio: h.bio || '',
+        isSpotlight: Boolean(h.isSpotlight),
+        booksCount: bookInfo.count,
+        lastBookSlug: bookInfo.slug
+      };
+    });
 
     return res.json({
       success: true,
-      authors: authors.map((a) => ({
-        name: a.author || a._id,
-        photo: a.photo || '',
-        bio: a.bio || '',
-        isSpotlight: Boolean(a.isSpotlight),
-        booksCount: a.booksCount,
-        lastBookSlug: a.lastBookSlug
-      }))
+      authors: authorsList
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { Sparkles, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { apiCreateOrder, apiCreateRazorpayOrder, apiVerifyRazorpayPayment, apiGetAvailableCoupons } from '../../lib/api';
@@ -175,10 +176,6 @@ export default function CheckoutPage() {
     if (e) e.preventDefault();
     const code = (codeToApply || couponInput).trim().toUpperCase();
     if (!code) return;
-    if (subtotal < 1000) {
-      setCouponMsg({ success: false, message: 'Coupons are applicable only on orders above ₹1,000' });
-      return;
-    }
     setApplyingCoupon(true);
     setCouponMsg(null);
     const res = await applyCouponCode(code);
@@ -791,25 +788,44 @@ export default function CheckoutPage() {
         </div>
       </main>
 
-      {/* Literary Book Order Placing Loading Modal Overlay */}
+      {/* LOGOS Branded Order Placing Loading Modal Overlay */}
       {loading && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-xs w-full p-6 text-center shadow-2xl border border-slate-100 flex flex-col items-center">
-            {/* Animated Book graphic */}
-            <div className="w-24 h-24 rounded-full bg-[#EFF5FF] flex items-center justify-center mb-4 relative animate-pulse">
-              <svg className="w-16 h-16" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M50 20C40 18 20 22 20 22V75C20 75 40 71 50 75C60 71 80 75 80 75V22C80 22 60 18 50 20Z" fill="#1D4ED8" opacity="0.9"/>
-                <path d="M50 20V75" stroke="white" strokeWidth="2"/>
-                <path d="M26 32H44M26 42H44M26 52H38" stroke="#93C5FD" strokeWidth="1.5" strokeLinecap="round"/>
-                <path d="M56 32H74M56 42H74M56 52H68" stroke="#93C5FD" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="relative bg-white rounded-3xl max-w-sm w-full p-8 text-center shadow-2xl border border-slate-100 flex flex-col items-center overflow-hidden">
+            {/* Top decorative gradient glow */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-2 bg-gradient-to-r from-transparent via-[#1044A5] to-transparent rounded-full opacity-80" />
+            <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-36 h-36 bg-blue-400/10 rounded-full blur-2xl pointer-events-none" />
+
+            {/* LOGOS Brand Emblem with soft animated pulse */}
+            <div className="relative mb-5">
+              <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-50 via-white to-sky-50 ring-8 ring-blue-50/70 border border-blue-100/60 shadow-lg shadow-blue-500/5 flex items-center justify-center p-3.5 transition-all">
+                <img
+                  src="/logo.png"
+                  alt="LOGOS Books"
+                  className="w-full h-full object-contain filter drop-shadow-xs"
+                />
+              </div>
+              <div className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-[#1044A5] text-white flex items-center justify-center shadow-md ring-2 ring-white animate-bounce">
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              </div>
             </div>
 
-            <h3 className="text-base font-bold text-slate-900">Placing Your Order...</h3>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-              Preparing your literary journey to your doorstep.
+            {/* Title and Subtitle */}
+            <h3 className="text-lg font-bold text-slate-900 tracking-tight">Placing Your Order...</h3>
+            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed max-w-[240px]">
+              Preparing your literary journey to your doorstep with care.
             </p>
-            <div className="w-6 h-6 border-2 border-[#1044A5]/30 border-t-[#1044A5] rounded-full animate-spin mt-4" />
+
+            {/* Loading Indicator Bar */}
+            <div className="w-full mt-6 flex flex-col items-center gap-2.5">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50/80 border border-blue-100 text-xs text-[#1044A5] font-medium">
+                <div className="w-4 h-4 border-2 border-[#1044A5]/30 border-t-[#1044A5] rounded-full animate-spin" />
+                <span>Confirming Order &amp; Stock</span>
+              </div>
+              <p className="text-[10px] text-slate-400 font-medium flex items-center gap-1">
+                <span>🔒</span> Safe &amp; 256-Bit Encrypted Checkout
+              </p>
+            </div>
           </div>
         </div>
       )}

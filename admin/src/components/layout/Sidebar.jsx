@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   Package,
+  Feather,
   Image as ImageIcon,
   Boxes,
   ShoppingBag,
@@ -42,6 +43,7 @@ export const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Products', href: '/products', icon: Package },
+    { name: 'Authors', href: '/authors', icon: Feather },
     { name: 'Banners', href: '/banners', icon: ImageIcon },
     { name: 'Inventory', href: '/inventory', icon: Boxes, badge: lowStockCount > 0 ? lowStockCount : null, badgeColor: 'bg-amber-50 text-amber-800 border border-amber-200' },
     { name: 'Orders', href: '/orders', icon: ShoppingBag, badge: pendingOrdersCount > 0 ? pendingOrdersCount : null, badgeColor: 'bg-rose-50 text-rose-800 border border-rose-200' },

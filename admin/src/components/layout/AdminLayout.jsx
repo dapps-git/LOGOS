@@ -11,6 +11,11 @@ export const AdminLayout = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -30,7 +35,14 @@ export const AdminLayout = ({ children }) => {
         />
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto animate-in fade-in duration-200">
-          {children}
+          {!mounted || loading ? (
+            <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-3">
+              <div className="w-8 h-8 border-3 border-[#1E3A8A] border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs text-slate-400 font-medium">Loading Bookstore Console...</p>
+            </div>
+          ) : (
+            children
+          )}
         </main>
       </div>
     </div>

@@ -16,28 +16,26 @@ export const FeaturedAuthors = () => {
         const live = await fetchAuthors();
         if (isMounted) {
           if (Array.isArray(live) && live.length > 0) {
-            const authorsWithPhotos = live.filter(
-              (a) => a && a.photo && typeof a.photo === 'string' && a.photo.trim() !== '' && !a.photo.includes('placeholder')
-            );
-            if (authorsWithPhotos.length > 0) {
-              setAuthors(
-                authorsWithPhotos.slice(0, 8).map((a, idx) => ({
-                  id: a._id || `auth-${idx}`,
-                  name: a.name || a.author || a,
-                  image: a.photo,
-                  href: `/products?author=${encodeURIComponent(a.name || a.author || a)}`
-                }))
-              );
-            } else {
-              setAuthors([]);
-            }
+            const mapped = live
+              .filter((a) => a && a.name)
+              .map((a, idx) => ({
+                id: a.id || a._id || `auth-${idx}`,
+                name: a.name,
+                image: a.photo || a.image || '/author_rajesh.png',
+                href: `/products?author=${encodeURIComponent(a.name)}`
+              }));
+
+            setAuthors(mapped.slice(0, 8));
           } else {
             setAuthors([]);
           }
           setLoading(false);
         }
       } catch (e) {
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          setAuthors([]);
+          setLoading(false);
+        }
       }
     }
     load();

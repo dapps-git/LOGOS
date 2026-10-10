@@ -2,21 +2,71 @@ const mongoose = require('mongoose');
 const Cart = require('../models/Cart');
 const Book = require('../models/Book');
 
-// Helper to get or initialize cart
+// Helper to extract clean string ID for a cart item's book
+const getItemBookId = (item) => {
+  if (!item || !item.book) return null;
+  if (typeof item.book === 'object' && item.book !== null) {
+    return (item.book._id || item.book.id || item.book).toString();
+  }
+  return item.book.toString();
+};
+
+// Helper to get or initialize unpopulated cart (for mutating operations)
 const findOrCreateCart = async (customerId, guestId) => {
-  let cart;
+  let cart = null;
   if (customerId) {
-    cart = await Cart.findOne({ customer: customerId }).populate('items.book', 'title author price discountPrice images stock stockStatus slug');
+    cart = await Cart.findOne({ customer: customerId });
     if (!cart) {
       cart = await Cart.create({ customer: customerId, items: [] });
     }
   } else if (guestId) {
-    cart = await Cart.findOne({ guestId }).populate('items.book', 'title author price discountPrice images stock stockStatus slug');
+    cart = await Cart.findOne({ guestId });
     if (!cart) {
       cart = await Cart.create({ guestId, items: [] });
     }
   }
   return cart;
+};
+
+// Helper to format and return populated cart response
+const sendCartResponse = async (cart, res) => {
+  if (!cart) {
+    return res.json({
+      success: true,
+      cart: { items: [], totalItems: 0, subtotal: 0 }
+    });
+  }
+
+  // Populate book details cleanly for client consumption
+  await cart.populate('items.book', 'title name titleMalayalam author price discountPrice images coverImage stock stockStatus slug');
+
+  let subtotal = 0;
+  const items = (cart.items || []).map(item => {
+    const book = item.book;
+    if (!book) return null;
+    const unitPrice = (book.discountPrice && book.discountPrice < book.price)
+      ? book.discountPrice
+      : (book.price != null ? book.price : (item.price || 0));
+    const itemTotal = unitPrice * item.quantity;
+    subtotal += itemTotal;
+    return {
+      _id: item._id,
+      book: item.book,
+      quantity: item.quantity,
+      price: unitPrice,
+      subtotal: itemTotal
+    };
+  }).filter(Boolean);
+
+  return res.json({
+    success: true,
+    cart: {
+      _id: cart._id,
+      items,
+      totalItems: items.reduce((sum, i) => sum + i.quantity, 0),
+      subtotal
+    }
+  });
 };
 
 // @desc    Get Cart
@@ -25,40 +75,14 @@ const findOrCreateCart = async (customerId, guestId) => {
 const getCart = async (req, res) => {
   try {
     const customerId = req.customer ? req.customer._id : null;
-    const guestId = req.headers['x-guest-id'] || req.headers['x-guest-session-id'] || req.query.guestId;
+    const guestId = req._guestId || req.headers['x-guest-id'] || req.headers['x-guest-session-id'] || req.query.guestId || (req.body && req.body.guestId);
 
     if (!customerId && !guestId) {
-      return res.json({ success: true, cart: { items: [] } });
+      return res.json({ success: true, cart: { items: [], totalItems: 0, subtotal: 0 } });
     }
 
     const cart = await findOrCreateCart(customerId, guestId);
-
-    // Calculate cart totals
-    let subtotal = 0;
-    const items = (cart ? cart.items : []).map(item => {
-      const book = item.book;
-      if (!book) return null;
-      const unitPrice = (book.discountPrice && book.discountPrice < book.price) ? book.discountPrice : book.price;
-      const itemTotal = unitPrice * item.quantity;
-      subtotal += itemTotal;
-      return {
-        _id: item._id,
-        book: item.book,
-        quantity: item.quantity,
-        price: unitPrice,
-        subtotal: itemTotal
-      };
-    }).filter(Boolean);
-
-    return res.json({
-      success: true,
-      cart: {
-        _id: cart ? cart._id : null,
-        items,
-        totalItems: items.reduce((sum, i) => sum + i.quantity, 0),
-        subtotal
-      }
-    });
+    return sendCartResponse(cart, res);
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
@@ -71,10 +95,9 @@ const addToCart = async (req, res) => {
   try {
     const rawId = req.body.bookId || req.body.id || req.body._id || (req.body.book && (req.body.book._id || req.body.book.id || req.body.book));
     const bookId = typeof rawId === 'object' && rawId !== null ? (rawId._id || rawId.id || rawId.bookId) : rawId;
-    const quantity = Number(req.body.quantity || 1);
-    const guestId = req.body.guestId;
+    const quantity = Math.max(1, Number(req.body.quantity || 1));
     const customerId = req.customer ? req.customer._id : null;
-    const gId = guestId || req.headers['x-guest-id'] || req.headers['x-guest-session-id'] || req.query.guestId || ('guest_' + Math.random().toString(36).substring(2, 12));
+    const gId = req.body.guestId || req.headers['x-guest-id'] || req.headers['x-guest-session-id'] || req.query.guestId || ('guest_' + Math.random().toString(36).substring(2, 12));
 
     if (!bookId) {
       return res.status(400).json({ success: false, message: 'Book ID is required' });
@@ -87,7 +110,7 @@ const addToCart = async (req, res) => {
     if (!book) {
       book = await Book.findOne({ $or: [{ slug: bookId }, { sku: bookId }] });
     }
-    if (!book || !book.isActive) {
+    if (!book || book.isActive === false) {
       return res.status(404).json({ success: false, message: 'Book not found or unavailable' });
     }
 
@@ -97,20 +120,23 @@ const addToCart = async (req, res) => {
     }
 
     const unitPrice = (book.discountPrice && book.discountPrice < book.price) ? book.discountPrice : book.price;
-    const existingIndex = cart.items.findIndex(i => i.book && i.book._id.toString() === book._id.toString());
+    const targetBookIdStr = book._id.toString();
+
+    const existingIndex = cart.items.findIndex(i => getItemBookId(i) === targetBookIdStr);
 
     if (existingIndex > -1) {
-      cart.items[existingIndex].quantity += Number(quantity);
+      cart.items[existingIndex].quantity += quantity;
+      cart.items[existingIndex].price = unitPrice;
     } else {
       cart.items.push({
         book: book._id,
-        quantity: Number(quantity),
+        quantity: quantity,
         price: unitPrice
       });
     }
 
     await cart.save();
-    return getCart(req, res);
+    return sendCartResponse(cart, res);
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
@@ -121,28 +147,35 @@ const addToCart = async (req, res) => {
 // @access  Public / Optional Auth
 const updateCartItem = async (req, res) => {
   try {
-    const { bookId, quantity, guestId } = req.body;
+    const rawId = req.body.bookId || req.body.id || req.body._id;
+    const bookId = typeof rawId === 'object' && rawId !== null ? (rawId._id || rawId.id) : rawId;
+    const quantity = Number(req.body.quantity);
     const customerId = req.customer ? req.customer._id : null;
-    const gId = guestId || req.headers['x-guest-id'] || req.headers['x-guest-session-id'] || req.query.guestId || ('guest_' + Math.random().toString(36).substring(2, 12));
+    const gId = req.body.guestId || req.headers['x-guest-id'] || req.headers['x-guest-session-id'] || req.query.guestId;
+
+    if (!bookId) {
+      return res.status(400).json({ success: false, message: 'Book ID is required' });
+    }
 
     const cart = await findOrCreateCart(customerId, gId);
     if (!cart) {
       return res.status(404).json({ success: false, message: 'Cart not found' });
     }
 
-    const itemIndex = cart.items.findIndex(i => i.book && i.book._id.toString() === bookId);
+    const targetBookIdStr = bookId.toString();
+    const itemIndex = cart.items.findIndex(i => getItemBookId(i) === targetBookIdStr);
     if (itemIndex === -1) {
       return res.status(404).json({ success: false, message: 'Item not found in cart' });
     }
 
-    if (Number(quantity) <= 0) {
+    if (quantity <= 0) {
       cart.items.splice(itemIndex, 1);
     } else {
-      cart.items[itemIndex].quantity = Number(quantity);
+      cart.items[itemIndex].quantity = quantity;
     }
 
     await cart.save();
-    return getCart(req, res);
+    return sendCartResponse(cart, res);
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
@@ -154,18 +187,19 @@ const updateCartItem = async (req, res) => {
 const removeFromCart = async (req, res) => {
   try {
     const { bookId } = req.params;
-    const guestId = req.query.guestId || req.headers['x-guest-id'];
+    const gId = req.query.guestId || req.headers['x-guest-id'] || req.headers['x-guest-session-id'];
     const customerId = req.customer ? req.customer._id : null;
 
-    const cart = await findOrCreateCart(customerId, guestId);
+    const cart = await findOrCreateCart(customerId, gId);
     if (!cart) {
       return res.status(404).json({ success: false, message: 'Cart not found' });
     }
 
-    cart.items = cart.items.filter(i => i.book && i.book._id.toString() !== bookId);
+    const targetBookIdStr = bookId.toString();
+    cart.items = cart.items.filter(i => getItemBookId(i) !== targetBookIdStr);
     await cart.save();
 
-    return getCart(req, res);
+    return sendCartResponse(cart, res);
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
@@ -182,29 +216,31 @@ const mergeGuestCart = async (req, res) => {
     }
 
     const guestCart = await Cart.findOne({ guestId });
-    if (!guestCart || guestCart.items.length === 0) {
-      return getCart(req, res);
-    }
-
     let customerCart = await Cart.findOne({ customer: req.customer._id });
     if (!customerCart) {
       customerCart = await Cart.create({ customer: req.customer._id, items: [] });
     }
 
-    // Merge items
-    for (const guestItem of guestCart.items) {
-      const idx = customerCart.items.findIndex(i => i.book && i.book.toString() === guestItem.book.toString());
-      if (idx > -1) {
-        customerCart.items[idx].quantity += guestItem.quantity;
-      } else {
-        customerCart.items.push(guestItem);
+    if (guestCart && guestCart.items.length > 0) {
+      for (const guestItem of guestCart.items) {
+        const guestBookId = getItemBookId(guestItem);
+        if (!guestBookId) continue;
+        const idx = customerCart.items.findIndex(i => getItemBookId(i) === guestBookId);
+        if (idx > -1) {
+          customerCart.items[idx].quantity += guestItem.quantity;
+        } else {
+          customerCart.items.push({
+            book: (guestItem.book && (guestItem.book._id || guestItem.book)) || guestBookId,
+            quantity: guestItem.quantity,
+            price: guestItem.price
+          });
+        }
       }
+      await customerCart.save();
+      await Cart.findByIdAndDelete(guestCart._id);
     }
 
-    await customerCart.save();
-    await Cart.findByIdAndDelete(guestCart._id);
-
-    return getCart(req, res);
+    return sendCartResponse(customerCart, res);
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }

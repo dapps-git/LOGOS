@@ -40,11 +40,15 @@ export function CartProvider({ children }) {
     loadCart();
   }, [loadCart, user]);
 
+  const extractBookId = (b) => {
+    if (!b) return null;
+    if (typeof b === 'string') return b;
+    return b._id || b.id || b.bookId || (b.book && (b.book._id || b.book.id || b.book.bookId || b.book)) || b.slug || null;
+  };
+
   const addToCart = async (book, quantity = 1) => {
     try {
-      const bookId = typeof book === 'string'
-        ? book
-        : (book?._id || book?.id || book?.bookId || (book?.book && (book.book._id || book.book.id || book.book)));
+      const bookId = extractBookId(book);
 
       if (!bookId) {
         console.error('[CartContext] Cannot add to cart: bookId is missing', book);
@@ -53,19 +57,27 @@ export function CartProvider({ children }) {
 
       // Optimistic update
       setItems((prev) => {
-        const existing = prev.find((item) => (item.book?._id || item.book || item.bookId) === bookId);
+        const existing = prev.find((item) => {
+          const id = extractBookId(item.book) || item.bookId || item._id;
+          return id === bookId;
+        });
         if (existing) {
-          return prev.map((item) =>
-            (item.book?._id || item.book || item.bookId) === bookId
+          return prev.map((item) => {
+            const id = extractBookId(item.book) || item.bookId || item._id;
+            return id === bookId
               ? { ...item, quantity: item.quantity + quantity }
-              : item
-          );
+              : item;
+          });
         }
-        return [...prev, { book: typeof book === 'object' ? book : { _id: bookId }, quantity, price: book?.price || book?.salePrice || 299 }];
+        return [...prev, {
+          book: typeof book === 'object' ? book : { _id: bookId },
+          quantity,
+          price: book?.discountPrice || book?.salePrice || book?.price || 299
+        }];
       });
 
       const updated = await apiAddToCart(bookId, quantity);
-      if (updated && updated.items) {
+      if (updated && Array.isArray(updated.items)) {
         setItems(updated.items);
       }
       return true;
@@ -76,33 +88,43 @@ export function CartProvider({ children }) {
     }
   };
 
-  const updateQuantity = async (bookId, quantity) => {
+  const updateQuantity = async (bookOrId, quantity) => {
+    const bookId = extractBookId(bookOrId);
+    if (!bookId) return;
+
     if (quantity <= 0) {
       return removeFromCart(bookId);
     }
     try {
       setItems((prev) =>
-        prev.map((item) =>
-          (item.book?._id || item.book?.id || item.book) === bookId
+        prev.map((item) => {
+          const id = extractBookId(item.book) || item.bookId || item._id;
+          return id === bookId
             ? { ...item, quantity }
-            : item
-        )
+            : item;
+        })
       );
       const updated = await apiUpdateCart(bookId, quantity);
-      if (updated && updated.items) setItems(updated.items);
+      if (updated && Array.isArray(updated.items)) setItems(updated.items);
     } catch (err) {
       console.error('[CartContext] Update error:', err.message);
       loadCart();
     }
   };
 
-  const removeFromCart = async (bookId) => {
+  const removeFromCart = async (bookOrId) => {
+    const bookId = extractBookId(bookOrId);
+    if (!bookId) return;
+
     try {
       setItems((prev) =>
-        prev.filter((item) => (item.book?._id || item.book?.id || item.book) !== bookId)
+        prev.filter((item) => {
+          const id = extractBookId(item.book) || item.bookId || item._id;
+          return id !== bookId;
+        })
       );
       const updated = await apiRemoveFromCart(bookId);
-      if (updated && updated.items) setItems(updated.items);
+      if (updated && Array.isArray(updated.items)) setItems(updated.items);
     } catch (err) {
       console.error('[CartContext] Remove error:', err.message);
       loadCart();

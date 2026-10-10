@@ -64,3 +64,29 @@ body {
   background-size: 200% 100%;
   animation: shimmerAnim 1.6s ease-in-out infinite;
 }
+
+/* Reviews Train Marquee Animation */
+@keyframes trainScroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.train-track {
+  display: flex;
+  width: max-content;
+  animation: trainScroll 25s linear infinite;
+}
+
+.train-track:hover {
+  animation-play-state: paused;
+}
+
+@media (max-width: 640px) {
+  .train-track {
+    animation-duration: 18s;
+  }
+}

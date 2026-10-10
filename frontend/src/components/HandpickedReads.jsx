@@ -18,22 +18,43 @@ export const HandpickedReads = () => {
       try {
         const [liveBooks, allBooks] = await Promise.all([
           fetchFeaturedBooks().catch(() => []),
-          fetchBooks({ limit: 40 }).catch(() => [])
+          fetchBooks({ limit: 50 }).catch(() => [])
         ]);
 
         if (isMounted) {
-          const pool = [...(Array.isArray(liveBooks) ? liveBooks : []), ...(Array.isArray(allBooks) ? allBooks : [])];
           const map = new Map();
-          pool.forEach((b) => {
-            if (b && b._id && !map.has(b._id)) map.set(b._id, b);
-          });
-          const uniqueBooks = Array.from(map.values());
+          if (Array.isArray(liveBooks)) {
+            liveBooks.forEach((b) => {
+              if (b && b._id) map.set(b._id, { ...b, priority: 3 });
+            });
+          }
+          if (Array.isArray(allBooks)) {
+            allBooks.forEach((b) => {
+              if (b && b._id) {
+                const existing = map.get(b._id);
+                if (!existing) {
+                  map.set(b._id, { ...b, priority: b.isHandpicked || b.isFeatured ? 3 : 1 });
+                }
+              }
+            });
+          }
 
-          // Prioritize books with real cover images
+          const uniqueBooks = Array.from(map.values()).filter((b) => {
+            const img = (b.images && b.images[0]) || b.coverImage;
+            return img && img !== '/book-placeholder.svg' && !img.includes('placeholder');
+          });
+
+          // Prioritize handpicked/featured books and books with real cover images
           const sorted = uniqueBooks.sort((a, b) => {
+            const aPri = a.isHandpicked ? 4 : (a.isFeatured || a.priority === 3 ? 3 : 1);
+            const bPri = b.isHandpicked ? 4 : (b.isFeatured || b.priority === 3 ? 3 : 1);
+            if (bPri !== aPri) return bPri - aPri;
+
             const aHas = a.images && a.images.length > 0 && a.images[0] && a.images[0] !== '/book-placeholder.svg' ? 1 : 0;
             const bHas = b.images && b.images.length > 0 && b.images[0] && b.images[0] !== '/book-placeholder.svg' ? 1 : 0;
-            return bHas - aHas;
+            if (bHas !== aHas) return bHas - aHas;
+
+            return (Number(b.rating) || 0) - (Number(a.rating) || 0);
           });
 
           if (sorted.length > 0) {
@@ -43,9 +64,9 @@ export const HandpickedReads = () => {
               title: b.title || b.name,
               author: b.author,
               price: Number(b.discountPrice || b.price || 0),
-              originalPrice: b.discountPrice ? Number(b.price) : null,
+              originalPrice: b.discountPrice && Number(b.discountPrice) < Number(b.price) ? Number(b.price) : null,
               rating: b.rating ? String(b.rating) : '5.0',
-              image: (b.images && b.images[0]) || '/book-placeholder.svg',
+              image: (b.images && b.images[0]) || b.coverImage || (idx === 0 ? '/handpicked1.png' : idx === 1 ? '/handpicked2.png' : '/handpicked3.png'),
               href: `/books/${b.slug || b._id}`,
               prominent: idx === 1
             }));
@@ -105,7 +126,16 @@ export const HandpickedReads = () => {
                 <img
                   src={book.image}
                   alt={book.title}
+                  referrerPolicy="no-referrer"
+                  loading="lazy"
+                  crossOrigin="anonymous"
                   className="w-full h-full object-cover object-center"
+                  onError={(e) => {
+                    if (!e.currentTarget.dataset.failed) {
+                      e.currentTarget.dataset.failed = 'true';
+                      e.currentTarget.src = '/book-placeholder.svg';
+                    }
+                  }}
                 />
                 {/* Wishlist Heart Button */}
                 <button

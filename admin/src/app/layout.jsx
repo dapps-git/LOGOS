@@ -14,7 +14,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className="bg-[#F8FAFC] text-slate-900 font-sans antialiased selection:bg-blue-100 selection:text-[#1E3A8A]">
+      <body className="bg-[#F8FAFC] text-slate-900 font-sans antialiased selection:bg-blue-100 selection:text-[#1E3A8A]" suppressHydrationWarning>
         <ToastProvider>
           <AuthProvider>
             <StoreDataProvider>

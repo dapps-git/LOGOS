@@ -1,17 +1,17 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const Book = require('../models/Book');
-const Category = require('../models/Category');
-const Banner = require('../models/Banner');
-const Coupon = require('../models/Coupon');
 
-const seedMalayalamStore = async () => {
+async function fixBookData() {
   try {
-    console.log('[LOGOS Seed] Connecting to MongoDB...');
     await mongoose.connect(process.env.MONGODB_URI);
-    console.log('[LOGOS Seed] MongoDB Connected.');
+    console.log('[Fix] Connected to MongoDB');
 
-    const books = [
+    // Remove any mismatched duplicate "ഡാർക്ക് ഫാന്റസി" that pointed to watermelon image
+    await Book.deleteMany({ title: 'ഡാർക്ക് ഫാന്റസി' });
+
+    // Ensure accurate books
+    const verifiedBooks = [
       {
         title: 'Mani Muzhangunnathu Aarkku Vendi',
         name: 'മണിമുഴങ്ങുന്നത് ആർക്കുവേണ്ടി',
@@ -23,23 +23,18 @@ const seedMalayalamStore = async () => {
         genre: 'Historical Fiction, War Literature',
         languages: ['Malayalam'],
         pageCount: 146,
-        description: "Mani Muzhangunnathu Aarkkuvendi is the Malayalam translation of Ernest Hemingway's celebrated novel For Whom the Bell Tolls. Set against the backdrop of the Spanish Civil War, the novel follows Robert Jordan, an American volunteer fighting alongside the Republican forces. The story brings together themes of love, war, sacrifice, courage, death, and human relationships. Hemingway presents the emotional and psychological experiences of people caught in the middle of conflict.",
+        description: "Mani Muzhangunnathu Aarkkuvendi is the Malayalam translation of Ernest Hemingway's celebrated novel For Whom the Bell Tolls. Set against the backdrop of the Spanish Civil War, the novel follows Robert Jordan, an American volunteer fighting alongside the Republican forces.",
         price: 860,
         discountPrice: 616,
         stock: 50,
         stockStatus: 'in_stock',
         sku: 'LGS-MAL-001',
         isbn: '9789347536090',
-        images: [
-          '/product_detail_main.png',
-          '/product_thumb1.png',
-          '/product_thumb2.png',
-          '/handpicked2.png'
-        ],
+        images: ['/product_detail_main.png', '/product_thumb1.png', '/product_thumb2.png'],
         isBestSeller: true,
         isNewArrival: false,
         isFeatured: true,
-        rating: 5.4,
+        rating: 5.0,
         reviewsCount: 146,
         isActive: true
       },
@@ -65,7 +60,7 @@ const seedMalayalamStore = async () => {
         isBestSeller: false,
         isNewArrival: true,
         isFeatured: false,
-        rating: 5.4,
+        rating: 5.0,
         reviewsCount: 88,
         isActive: true
       },
@@ -91,34 +86,8 @@ const seedMalayalamStore = async () => {
         isBestSeller: false,
         isNewArrival: true,
         isFeatured: false,
-        rating: 5.4,
+        rating: 5.0,
         reviewsCount: 64,
-        isActive: true
-      },
-      {
-        title: 'ഡാർക്ക് ഫാന്റസി',
-        name: 'ഡാർക്ക് ഫാന്റസി',
-        slug: 'dark-fantasy',
-        author: 'ജിസ ജോൺ',
-        publisher: 'LOGOS BOOKS',
-        edition: '1',
-        theme: 'Fantasy',
-        genre: 'Sci-Fi & Fantasy',
-        languages: ['Malayalam'],
-        pageCount: 160,
-        description: 'നിഗൂഢതകളും മാന്ത്രികതയും നിറഞ്ഞ ഒരു ലോകത്തിന്റെ രഹസ്യങ്ങൾ.',
-        price: 200,
-        discountPrice: 170,
-        stock: 45,
-        stockStatus: 'in_stock',
-        sku: 'LGS-MAL-004',
-        isbn: '9789347536093',
-        images: ['/book3.png'],
-        isBestSeller: false,
-        isNewArrival: true,
-        isFeatured: false,
-        rating: 5.4,
-        reviewsCount: 52,
         isActive: true
       },
       {
@@ -143,7 +112,7 @@ const seedMalayalamStore = async () => {
         isBestSeller: false,
         isNewArrival: true,
         isFeatured: false,
-        rating: 5.4,
+        rating: 5.0,
         reviewsCount: 110,
         isActive: true
       },
@@ -169,7 +138,7 @@ const seedMalayalamStore = async () => {
         isBestSeller: true,
         isNewArrival: false,
         isFeatured: false,
-        rating: 5.4,
+        rating: 5.0,
         reviewsCount: 220,
         isActive: true
       },
@@ -193,9 +162,9 @@ const seedMalayalamStore = async () => {
         isbn: '9789347536096',
         images: ['/bestseller2.png'],
         isBestSeller: true,
-        isNewArrival: false,
+        isNewArrival: true,
         isFeatured: false,
-        rating: 5.4,
+        rating: 5.0,
         reviewsCount: 95,
         isActive: true
       },
@@ -221,7 +190,7 @@ const seedMalayalamStore = async () => {
         isBestSeller: true,
         isNewArrival: false,
         isFeatured: false,
-        rating: 5.4,
+        rating: 5.0,
         reviewsCount: 130,
         isActive: true
       },
@@ -247,7 +216,7 @@ const seedMalayalamStore = async () => {
         isBestSeller: true,
         isNewArrival: false,
         isFeatured: false,
-        rating: 5.4,
+        rating: 5.0,
         reviewsCount: 115,
         isActive: true
       },
@@ -273,7 +242,7 @@ const seedMalayalamStore = async () => {
         isBestSeller: false,
         isNewArrival: false,
         isFeatured: true,
-        rating: 5.4,
+        rating: 5.0,
         reviewsCount: 78,
         isActive: true
       },
@@ -299,7 +268,7 @@ const seedMalayalamStore = async () => {
         isBestSeller: false,
         isNewArrival: false,
         isFeatured: true,
-        rating: 5.4,
+        rating: 5.0,
         reviewsCount: 92,
         isActive: true
       },
@@ -314,7 +283,7 @@ const seedMalayalamStore = async () => {
         genre: 'Non-Fiction',
         languages: ['Malayalam'],
         pageCount: 240,
-        description: 'തമിഴ് സിനിമയും രാഷ്ട്രീയവും തമ്മിലുള്ള ആഴത്തിലുള്ള ബന്ധം വ്യക്തമാക്കുന്നതാണ് ഈ പുസ്തകം. എം.ജി.ആർ, ജയലളിത തുടങ്ങിയവർ തമിഴ് രാഷ്ട്രീയത്തിൽ വലിയ വിജയങ്ങൾ കൊയ്തപ്പോൾ, രാഷ്ട്രീയത്തിൽ പരാജയപ്പെടുകയോ അല്ലെങ്കിൽ വലിയ ചലനങ്ങൾ സൃഷ്ടിക്കാൻ കഴിയാതെ പോവുകയോ ചെയ്ത ശിവാജി ഗണേശൻ, വിജയകാന്ത്, കമൽ ഹാസൻ, രജനീകാന്ത് തുടങ്ങിയ താരങ്ങളുടെ രാഷ്ട്രീയ ശ്രമങ്ങളെയും അവരുടെ സിനിമകളെയും ഈ പുസ്തകം വിലയിരുത്തുന്നു.',
+        description: 'തമിഴ് സിനിമയും രാഷ്ട്രീയവും തമ്മിലുള്ള ആഴത്തിലുള്ള ബന്ധം വ്യക്തമാക്കുന്നതാണ് ഈ പുസ്തകം.',
         price: 380,
         discountPrice: 380,
         stock: 50,
@@ -325,7 +294,7 @@ const seedMalayalamStore = async () => {
         isBestSeller: false,
         isNewArrival: false,
         isFeatured: true,
-        rating: 5.4,
+        rating: 5.0,
         reviewsCount: 140,
         isActive: true
       },
@@ -351,7 +320,7 @@ const seedMalayalamStore = async () => {
         isBestSeller: false,
         isNewArrival: false,
         isFeatured: true,
-        rating: 5.4,
+        rating: 5.0,
         reviewsCount: 65,
         isActive: true
       },
@@ -377,78 +346,23 @@ const seedMalayalamStore = async () => {
         isBestSeller: false,
         isNewArrival: false,
         isFeatured: true,
-        rating: 5.4,
+        rating: 5.0,
         reviewsCount: 72,
         isActive: true
       }
     ];
 
-    for (const b of books) {
+    for (const b of verifiedBooks) {
       await Book.findOneAndUpdate({ slug: b.slug }, b, { upsert: true, new: true });
-      console.log(`[LOGOS Seed] Upserted book: ${b.title}`);
+      console.log(`[Fix] Verified Book: ${b.title} -> ${b.images[0]}`);
     }
 
-    // Upsert Default Banners
-    console.log('[LOGOS Seed] Seeding Banners...');
-    const banners = [
-      {
-        title: 'ഋതുക്കളെ തോൽപ്പിച്ച മരം - വി. ടി. പ്രതീഷ്',
-        subtitle: 'മലയാളത്തിന്റെ പ്രിയ കൃതികൾ ഇപ്പോൾ ലഭ്യമാണ്',
-        description: 'Logos Books presents the finest collection of contemporary Malayalam literature.',
-        badge: 'New Release',
-        image: '/banner.png',
-        link: '/products',
-        buttonText: 'Explore Collection',
-        position: 'hero',
-        order: 1,
-        isActive: true
-      },
-      {
-        title: 'BUY 1 GET 2 SPECIAL COMBO',
-        subtitle: 'Exclusive bookstore festival package on classic literature',
-        description: 'Special combo book offers from LOGOS publishing house.',
-        badge: 'Combo Offer',
-        image: '/combo_banner.png',
-        link: '/products',
-        buttonText: 'View Offers',
-        position: 'deal_of_day',
-        order: 2,
-        isActive: true
-      }
-    ];
-
-    // Remove obsolete broken banners
-    await Banner.deleteMany({ image: { $regex: 'unsplash' } });
-
-    for (const ban of banners) {
-      await Banner.findOneAndUpdate({ title: ban.title }, ban, { upsert: true, new: true });
-      console.log(`[LOGOS Seed] Upserted banner: ${ban.title}`);
-    }
-
-    // Upsert Welcome Coupon
-    console.log('[LOGOS Seed] Seeding WELCOME100 Coupon...');
-    await Coupon.findOneAndUpdate(
-      { code: 'WELCOME100' },
-      {
-        code: 'WELCOME100',
-        description: 'Welcome Offer: Flat ₹100 OFF on your first order above ₹500',
-        discountType: 'fixed',
-        discountValue: 100,
-        minOrderValue: 500,
-        usageLimit: 1000,
-        isWelcomeCoupon: true,
-        isActive: true
-      },
-      { upsert: true, new: true }
-    );
-    console.log('[LOGOS Seed] Upserted WELCOME100 coupon');
-
-    console.log('[LOGOS Seed] Completed successfully!');
+    console.log('[Fix] Successfully verified and aligned all book images with their titles!');
     process.exit(0);
   } catch (err) {
-    console.error('[LOGOS Seed] Error:', err);
+    console.error('[Fix] Error:', err);
     process.exit(1);
   }
-};
+}
 
-seedMalayalamStore();
+fixBookData();

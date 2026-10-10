@@ -1,21 +1,9 @@
 export const getApiBase = () => {
-  const envUrl = typeof process !== 'undefined' ? process.env?.NEXT_PUBLIC_API_URL : null;
-  if (typeof window !== 'undefined') {
-    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    if (isLocal) {
-      return (envUrl && envUrl.includes('localhost')) ? envUrl.replace(/\/+$/, '') : 'http://localhost:5001/api';
-    }
-    // On production (e.g. logos-2nkc.vercel.app), ignore any localhost env variables
-    if (envUrl && !envUrl.includes('localhost')) {
-      return envUrl.replace(/\/+$/, '');
-    }
-    return 'https://tweaki.pw/logos/api';
-  }
-  // Server-side / Build-time
-  if (envUrl && !envUrl.includes('localhost')) {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL;
+  if (envUrl) {
     return envUrl.replace(/\/+$/, '');
   }
-  return 'https://tweaki.pw/logos/api';
+  return 'http://localhost:5001/api';
 };
 
 function getGuestSessionId() {
@@ -112,7 +100,7 @@ export async function fetchBookBySlugOrId(idOrSlug) {
 export async function fetchBanners() {
   try {
     const res = await fetch(`${getApiBase()}/banners`, {
-      next: { revalidate: 60 }
+      cache: 'no-store'
     });
     if (!res.ok) throw new Error(`Failed to fetch banners: ${res.status}`);
     const data = await res.json();
@@ -233,7 +221,7 @@ export async function fetchCart() {
 export async function apiAddToCart(bookOrId, quantity = 1) {
   const guestId = getGuestSessionId();
   const bookId = typeof bookOrId === 'object' && bookOrId !== null
-    ? (bookOrId._id || bookOrId.id || bookOrId.bookId || (bookOrId.book && (bookOrId.book._id || bookOrId.book.id || bookOrId.book)))
+    ? (bookOrId._id || bookOrId.id || bookOrId.bookId || (bookOrId.book && (bookOrId.book._id || bookOrId.book.id || bookOrId.book)) || bookOrId.slug)
     : bookOrId;
   const res = await fetch(`${getApiBase()}/cart/add`, {
     method: 'POST',
@@ -245,8 +233,11 @@ export async function apiAddToCart(bookOrId, quantity = 1) {
   return data.cart;
 }
 
-export async function apiUpdateCart(bookId, quantity) {
+export async function apiUpdateCart(bookOrId, quantity) {
   const guestId = getGuestSessionId();
+  const bookId = typeof bookOrId === 'object' && bookOrId !== null
+    ? (bookOrId._id || bookOrId.id || bookOrId.bookId || bookOrId.slug)
+    : bookOrId;
   const res = await fetch(`${getApiBase()}/cart/update`, {
     method: 'PUT',
     headers: getAuthHeaders(),
@@ -257,8 +248,11 @@ export async function apiUpdateCart(bookId, quantity) {
   return data.cart;
 }
 
-export async function apiRemoveFromCart(bookId) {
+export async function apiRemoveFromCart(bookOrId) {
   const guestId = getGuestSessionId();
+  const bookId = typeof bookOrId === 'object' && bookOrId !== null
+    ? (bookOrId._id || bookOrId.id || bookOrId.bookId || bookOrId.slug)
+    : bookOrId;
   const res = await fetch(`${getApiBase()}/cart/item/${bookId}?guestId=${guestId}`, {
     method: 'DELETE',
     headers: getAuthHeaders()

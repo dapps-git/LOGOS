@@ -400,7 +400,9 @@ export default function ReviewsPage() {
               <label className="block text-xs font-medium text-slate-700 mb-1.5">
                 Avatar Photo
               </label>
-              <div className="flex items-center gap-2 mb-2">
+
+              {/* Preset avatar circles */}
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
                 {DEFAULT_AVATARS.map((url, i) => (
                   <button
                     key={i}
@@ -416,13 +418,54 @@ export default function ReviewsPage() {
                   </button>
                 ))}
               </div>
-              <input
-                type="text"
-                placeholder="Or paste custom image URL"
-                value={formData.avatar}
-                onChange={(e) => setFormData({ ...formData, avatar: e.target.value })}
-                className="w-full text-xs px-3.5 py-2 rounded-lg border border-slate-200 text-slate-600 focus:outline-none"
-              />
+
+              {/* Upload from device + URL row */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* File upload button */}
+                <label className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 hover:border-slate-400 rounded-lg cursor-pointer text-xs font-semibold text-slate-700 transition-colors shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 12V4m0 0L8 8m4-4l4 4" />
+                  </svg>
+                  Choose File
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        if (ev.target?.result) {
+                          setFormData((prev) => ({ ...prev, avatar: ev.target.result }));
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                </label>
+
+                {/* Live circular preview of selected custom avatar */}
+                {formData.avatar && (
+                  <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-[#1E3A8A] shadow-sm shrink-0">
+                    <img
+                      src={formData.avatar}
+                      alt="Selected avatar"
+                      className="w-full h-full object-cover"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  </div>
+                )}
+
+                {/* URL input */}
+                <input
+                  type="text"
+                  placeholder="Or paste custom image URL"
+                  value={formData.avatar}
+                  onChange={(e) => setFormData({ ...formData, avatar: e.target.value })}
+                  className="flex-1 min-w-0 text-xs px-3.5 py-2 rounded-lg border border-slate-200 text-slate-600 focus:outline-none focus:border-[#1E3A8A]"
+                />
+              </div>
             </div>
 
             {/* Checkbox Options */}

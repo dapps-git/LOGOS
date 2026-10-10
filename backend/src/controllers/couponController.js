@@ -36,15 +36,7 @@ const validateCoupon = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Coupon usage limit reached' });
     }
 
-    // Coupons rule: only applicable on orders of ₹1,000 or more
-    if (orderAmount < 1000) {
-      return res.status(400).json({
-        success: false,
-        message: 'Coupons are applicable only on orders above ₹1,000'
-      });
-    }
-
-    // Min order value from admin
+    // Min order value check from coupon configuration
     if (coupon.minOrderValue && orderAmount < coupon.minOrderValue) {
       return res.status(400).json({
         success: false,
@@ -56,22 +48,24 @@ const validateCoupon = async (req, res) => {
     if (req.customer) {
       const customer = await Customer.findById(req.customer._id);
 
-      // Rule: Welcome coupon exclusivity
-      if (coupon.isWelcomeCoupon) {
-        if (customer.isWelcomeOfferUsed) {
+      if (customer) {
+        // Rule: Welcome coupon exclusivity on first order
+        if (coupon.isWelcomeCoupon) {
+          if (customer.isWelcomeOfferUsed || customer.ordersCount > 0) {
+            return res.status(400).json({
+              success: false,
+              message: 'Welcome offer is valid only on your first order'
+            });
+          }
+        }
+
+        const alreadyUsed = coupon.usedBy && coupon.usedBy.some(id => id.toString() === customer._id.toString());
+        if (alreadyUsed) {
           return res.status(400).json({
             success: false,
-            message: 'Welcome offer can only be used once per account'
+            message: 'You have already redeemed this coupon code'
           });
         }
-      }
-
-      const alreadyUsed = coupon.usedBy && coupon.usedBy.some(id => id.toString() === customer._id.toString());
-      if (alreadyUsed) {
-        return res.status(400).json({
-          success: false,
-          message: 'You have already redeemed this coupon code'
-        });
       }
     }
 

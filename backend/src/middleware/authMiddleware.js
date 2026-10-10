@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
 const Customer = require('../models/Customer');
 
+const JWT_SECRET = process.env.JWT_SECRET || 'logos_book_store_super_secure_jwt_secret_key_2026_xyz!';
+
 const protectCustomer = async (req, res, next) => {
   let token;
 
@@ -10,7 +12,7 @@ const protectCustomer = async (req, res, next) => {
   ) {
     try {
       token = req.headers.authorization.split(' ')[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, JWT_SECRET);
       
       const customer = await Customer.findById(decoded.id).select('-password');
       if (!customer) {
@@ -39,7 +41,7 @@ const optionalAuth = async (req, res, next) => {
   ) {
     try {
       token = req.headers.authorization.split(' ')[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, JWT_SECRET);
       const customer = await Customer.findById(decoded.id).select('-password');
       if (customer) {
         req.customer = customer;

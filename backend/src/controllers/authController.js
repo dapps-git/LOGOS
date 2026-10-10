@@ -5,8 +5,10 @@ const Admin = require('../models/Admin');
 const Referral = require('../models/Referral');
 const sendEmail = require('../utils/sendEmail');
 
+const JWT_SECRET = process.env.JWT_SECRET || 'logos_book_store_super_secure_jwt_secret_key_2026_xyz!';
+
 const generateToken = (id, role = 'customer') => {
-  return jwt.sign({ id, role }, process.env.JWT_SECRET, {
+  return jwt.sign({ id, role }, JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || '7d'
   });
 };

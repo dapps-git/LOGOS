@@ -114,14 +114,15 @@ const createOrder = async (req, res) => {
       }
     }
 
-    // 2. Check & apply Coupon Discount (supports combining with 15% referral discount, order >= 1000)
+    // 2. Check & apply Coupon Discount (supports combining with 15% referral discount)
     const effectiveCouponCode = couponCode || req.body.appliedCoupon;
-    if (effectiveCouponCode && subtotal >= 1000) {
+    if (effectiveCouponCode) {
       const coupon = await Coupon.findOne({ code: String(effectiveCouponCode).trim().toUpperCase(), isActive: true });
       if (coupon) {
-        if (coupon.isWelcomeCoupon && customer.isWelcomeOfferUsed) {
-          // ignore already used welcome coupon
-        } else if (subtotal >= (coupon.minOrderValue || 0)) {
+        const meetsMin = !coupon.minOrderValue || subtotal >= coupon.minOrderValue;
+        const alreadyUsedWelcome = coupon.isWelcomeCoupon && (customer.isWelcomeOfferUsed || customer.ordersCount > 0);
+        
+        if (!alreadyUsedWelcome && meetsMin) {
           if (coupon.discountType === 'percentage') {
             couponDiscount = (subtotal * coupon.discountValue) / 100;
             if (coupon.maxDiscount && couponDiscount > coupon.maxDiscount) {
@@ -135,7 +136,9 @@ const createOrder = async (req, res) => {
 
           // Increment coupon usage
           coupon.usedCount = (coupon.usedCount || 0) + 1;
-          coupon.usedBy.push(customer._id);
+          if (!coupon.usedBy.includes(customer._id)) {
+            coupon.usedBy.push(customer._id);
+          }
           await coupon.save();
 
           if (coupon.isWelcomeCoupon) {
@@ -311,7 +314,17 @@ const getAllOrdersAdmin = async (req, res) => {
 // @access  Private (Admin)
 const updateOrderStatusAdmin = async (req, res) => {
   try {
-    const { status, note, trackingNumber, trackingUrl } = req.body;
+    const {
+      status,
+      note,
+      trackingNumber,
+      trackingUrl,
+      currentLocation,
+      shippingLocation,
+      scheduledDate,
+      resolutionType,
+      refundAmount
+    } = req.body;
     const order = await Order.findById(req.params.id);
 
     if (!order) {
@@ -319,26 +332,45 @@ const updateOrderStatusAdmin = async (req, res) => {
     }
 
     const previousStatus = order.orderStatus;
+    const effectiveLocation = currentLocation || shippingLocation || order.currentLocation;
+
+    if (currentLocation !== undefined) order.currentLocation = currentLocation;
+    if (shippingLocation !== undefined) order.shippingLocation = shippingLocation;
 
     if (status) {
       order.orderStatus = status;
       order.statusHistory.push({
         status,
+        location: effectiveLocation,
         timestamp: new Date(),
-        note: note || `Order status updated to ${status}`
+        note: note || (effectiveLocation ? `Status updated to ${status} (${effectiveLocation})` : `Order status updated to ${status}`)
       });
 
       // Handle return review transitions
-      if (['Return Accepted', 'Approved', 'Return Approved', 'Returned', 'Refunded', 'Pickup Scheduled', 'Received', 'Return Received', 'Refund Initiated'].includes(status)) {
+      if (['Return Accepted', 'Approved', 'Return Approved', 'Return Scheduled', 'Pickup Scheduled', 'Returned', 'Received', 'Return Received', 'Refund Initiated', 'Refunded', 'Exchanged', 'Replacement Dispatched'].includes(status)) {
         if (!order.returnRequest) {
-          order.returnRequest = { reason: 'Return accepted', requestedAt: new Date() };
+          order.returnRequest = { reason: 'Return request', requestedAt: new Date() };
         }
-        order.returnRequest.status = ['Return Accepted', 'Approved', 'Return Approved'].includes(status) ? 'Approved' : status;
+        order.returnRequest.status = status;
         order.returnRequest.reviewedAt = new Date();
-        if (note) order.returnRequest.adminNote = note;
+        if (note) {
+          order.returnRequest.adminNote = note;
+          order.returnRequest.note = note;
+        }
+        if (scheduledDate) {
+          order.returnRequest.scheduledDate = new Date(scheduledDate);
+        }
+        if (resolutionType) {
+          order.returnRequest.resolutionType = resolutionType;
+        } else if (!order.returnRequest.resolutionType) {
+          order.returnRequest.resolutionType = order.paymentMethod === 'COD' ? 'Exchange' : 'Refund';
+        }
+        if (refundAmount) {
+          order.returnRequest.refundAmount = Number(refundAmount);
+        }
 
         // If transitioning from un-restocked state to return accepted, restore stock
-        if (['Return Accepted', 'Approved', 'Return Approved', 'Returned', 'Refunded'].includes(status) && !['Cancelled', 'Returned', 'Return Accepted', 'Approved', 'Return Approved'].includes(previousStatus)) {
+        if (['Return Accepted', 'Approved', 'Return Approved', 'Returned', 'Refunded', 'Exchanged'].includes(status) && !['Cancelled', 'Returned', 'Return Accepted', 'Approved', 'Return Approved'].includes(previousStatus)) {
           for (const item of order.items) {
             if (item.book) {
               await Book.findByIdAndUpdate(item.book, { $inc: { stock: item.quantity } });
@@ -351,13 +383,19 @@ const updateOrderStatusAdmin = async (req, res) => {
         }
         order.returnRequest.status = 'Rejected';
         order.returnRequest.reviewedAt = new Date();
-        if (note) order.returnRequest.adminNote = note;
+        if (note) {
+          order.returnRequest.adminNote = note;
+          order.returnRequest.note = note;
+        }
       } else if (['Under Review', 'Return Under Review', 'Return Requested', 'Requested'].includes(status)) {
         if (!order.returnRequest) {
           order.returnRequest = { reason: 'Return requested', requestedAt: new Date() };
         }
         order.returnRequest.status = status === 'Requested' ? 'Return Requested' : status;
-        if (note) order.returnRequest.adminNote = note;
+        if (note) {
+          order.returnRequest.adminNote = note;
+          order.returnRequest.note = note;
+        }
       }
     }
 
@@ -552,7 +590,7 @@ const requestReturn = async (req, res) => {
 // @access  Private (Admin)
 const reviewReturnAdmin = async (req, res) => {
   try {
-    const { action, note } = req.body; // 'approve' or 'reject'
+    const { action, note, scheduledDate, resolutionType, refundAmount } = req.body; // 'approve' or 'reject'
     const order = await Order.findById(req.params.id);
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
@@ -563,14 +601,23 @@ const reviewReturnAdmin = async (req, res) => {
     }
 
     if (action === 'approve') {
-      order.orderStatus = 'Return Accepted';
-      order.returnRequest.status = 'Approved';
+      order.orderStatus = scheduledDate ? 'Return Scheduled' : 'Return Accepted';
+      order.returnRequest.status = scheduledDate ? 'Return Scheduled' : 'Approved';
       order.returnRequest.reviewedAt = new Date();
-      order.returnRequest.adminNote = note || 'Return request accepted by admin';
+      order.returnRequest.adminNote = note || 'Return request accepted';
+      order.returnRequest.note = note || 'Return request accepted';
+      if (scheduledDate) {
+        order.returnRequest.scheduledDate = new Date(scheduledDate);
+      }
+      order.returnRequest.resolutionType = resolutionType || (order.paymentMethod === 'COD' ? 'Exchange' : 'Refund');
+      if (refundAmount) {
+        order.returnRequest.refundAmount = Number(refundAmount);
+      }
+
       order.statusHistory.push({
-        status: 'Return Accepted',
+        status: order.orderStatus,
         timestamp: new Date(),
-        note: note || 'Return request approved by admin. Processing return/refund.'
+        note: note || (scheduledDate ? `Return pickup scheduled for ${new Date(scheduledDate).toLocaleDateString('en-IN')}` : 'Return request accepted. Processing return.')
       });
 
       // Restock books
@@ -585,11 +632,12 @@ const reviewReturnAdmin = async (req, res) => {
       order.orderStatus = 'Return Rejected';
       order.returnRequest.status = 'Rejected';
       order.returnRequest.reviewedAt = new Date();
-      order.returnRequest.adminNote = note || 'Return request declined by admin';
+      order.returnRequest.adminNote = note || 'Return request declined';
+      order.returnRequest.note = note || 'Return request declined';
       order.statusHistory.push({
         status: 'Return Rejected',
         timestamp: new Date(),
-        note: `Return request rejected by admin: ${note || 'Did not satisfy return policy requirements'}`
+        note: `Return request declined: ${note || 'Did not satisfy return policy requirements'}`
       });
     } else {
       return res.status(400).json({ success: false, message: 'Invalid action. Must be approve or reject.' });

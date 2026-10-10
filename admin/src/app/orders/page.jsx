@@ -27,6 +27,10 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [invoiceOrder, setInvoiceOrder] = useState(null);
   const [trackingInput, setTrackingInput] = useState('');
+  const [locationInput, setLocationInput] = useState('');
+  const [returnScheduleDate, setReturnScheduleDate] = useState('');
+  const [returnResolution, setReturnResolution] = useState('Refund');
+  const [returnNote, setReturnNote] = useState('');
 
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
@@ -49,11 +53,47 @@ export default function OrdersPage() {
     showToast(`Payment status updated to ${paymentStatus}`, 'success');
   };
 
-  const handleUpdateTracking = (orderId) => {
-    if (!trackingInput.trim()) return;
-    updateOrderStatus(orderId, selectedOrder.orderStatus, 'Tracking updated', trackingInput.trim());
-    showToast('Tracking number updated successfully', 'success');
-    setTrackingInput('');
+  const handleUpdateTrackingAndLocation = (orderId) => {
+    const tracking = trackingInput.trim() || selectedOrder?.trackingNumber;
+    const location = locationInput.trim() || selectedOrder?.currentLocation;
+    updateOrderStatus(orderId, selectedOrder.orderStatus, `Location: ${location || 'In transit'}`, tracking, {
+      currentLocation: location,
+      shippingLocation: location
+    });
+    setSelectedOrder((prev) => ({
+      ...prev,
+      trackingNumber: tracking,
+      currentLocation: location
+    }));
+    showToast('Shipping tracking & live location updated', 'success');
+  };
+
+  const handleScheduleReturn = (orderId, status = 'Return Scheduled') => {
+    const defaultResolution = selectedOrder.paymentMethod === 'COD' ? 'Exchange' : 'Refund';
+    const resolution = returnResolution || defaultResolution;
+    const date = returnScheduleDate || new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const note = returnNote.trim() || (status === 'Return Scheduled' ? `Pickup scheduled on ${date}` : `Return status updated to ${status}`);
+
+    updateOrderStatus(orderId, status, note, selectedOrder.trackingNumber, {
+      scheduledDate: date,
+      resolutionType: resolution,
+      refundAmount: selectedOrder.finalTotal || selectedOrder.totalAmount
+    });
+
+    setSelectedOrder((prev) => ({
+      ...prev,
+      orderStatus: status,
+      returnRequest: {
+        ...(prev.returnRequest || {}),
+        status: status,
+        scheduledDate: new Date(date),
+        resolutionType: resolution,
+        refundAmount: prev.finalTotal || prev.totalAmount,
+        adminNote: note,
+        note
+      }
+    }));
+    showToast(`Return status updated to ${status}`, 'success');
   };
 
   return (
@@ -87,7 +127,7 @@ export default function OrdersPage() {
           </div>
 
           <div className="flex items-center gap-1 p-1 bg-slate-100 border border-slate-200 rounded-md text-xs font-semibold overflow-x-auto w-full sm:w-auto">
-            {['ALL', 'Pending', 'Processing', 'Shipped', 'Out for Delivery', 'Delivered', 'Cancelled', 'Return Requested', 'Return Accepted'].map((st) => (
+            {['ALL', 'Pending', 'Processing', 'Shipped', 'Out for Delivery', 'Delivered', 'Cancelled', 'Return Requested', 'Return Scheduled', 'Returned', 'Refunded', 'Exchanged'].map((st) => (
               <button
                 key={st}
                 type="button"
@@ -206,12 +246,11 @@ export default function OrdersPage() {
                             <option value="Delivered">Delivered</option>
                             <option value="Cancelled">Cancelled</option>
                             <option value="Return Requested">Return Requested</option>
-                            <option value="Under Review">Under Review</option>
                             <option value="Return Accepted">Return Accepted</option>
-                            <option value="Pickup Scheduled">Pickup Scheduled</option>
-                            <option value="Received">Received</option>
-                            <option value="Refund Initiated">Refund Initiated</option>
-                            <option value="Refunded">Refunded</option>
+                            <option value="Return Scheduled">Return Scheduled</option>
+                            <option value="Returned">Returned</option>
+                            <option value="Refunded">Refunded (Online/UPI)</option>
+                            <option value="Exchanged">Exchanged (COD)</option>
                             <option value="Return Rejected">Return Rejected</option>
                           </select>
                         </td>
@@ -221,7 +260,18 @@ export default function OrdersPage() {
                           <div className="flex items-center justify-end gap-1">
                             <button
                               type="button"
-                              onClick={() => setSelectedOrder(order)}
+                              onClick={() => {
+                                setSelectedOrder(order);
+                                setTrackingInput(order.trackingNumber || '');
+                                setLocationInput(order.currentLocation || '');
+                                setReturnScheduleDate(
+                                  order.returnRequest?.scheduledDate
+                                    ? new Date(order.returnRequest.scheduledDate).toISOString().split('T')[0]
+                                    : new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+                                );
+                                setReturnResolution(order.returnRequest?.resolutionType || (order.paymentMethod === 'COD' ? 'Exchange' : 'Refund'));
+                                setReturnNote(order.returnRequest?.adminNote || order.returnRequest?.note || '');
+                              }}
                               className="p-1.5 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-colors"
                               title="View Order Details"
                             >
@@ -282,6 +332,57 @@ export default function OrdersPage() {
                 </div>
               </div>
 
+              {/* Transit & Live Location Management (For Shipped & Out for Delivery) */}
+              <div className="p-4 bg-blue-50/60 border border-blue-200 rounded-md space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="font-bold flex items-center gap-1.5 uppercase text-[11px] tracking-wider text-blue-900">
+                    <Truck className="w-4 h-4 text-blue-700" />
+                    Live Courier Tracking &amp; Transit Location
+                  </p>
+                  <span className="text-[10px] font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded">
+                    Updates Customer Live Timeline
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">
+                      Tracking ID / Waybill
+                    </label>
+                    <input
+                      type="text"
+                      value={trackingInput}
+                      onChange={(e) => setTrackingInput(e.target.value)}
+                      placeholder="e.g. DEL-IND-98231"
+                      className="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-xs font-medium outline-hidden focus:border-slate-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">
+                      Current Transit Location / Hub
+                    </label>
+                    <input
+                      type="text"
+                      value={locationInput}
+                      onChange={(e) => setLocationInput(e.target.value)}
+                      placeholder="e.g. Kochi Central Hub / Calicut Facility"
+                      className="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-xs font-medium outline-hidden focus:border-slate-900"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateTrackingAndLocation(selectedOrder._id)}
+                    className="px-3.5 py-1.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded text-xs transition-colors shadow-2xs"
+                  >
+                    Update Live Location &amp; Tracking
+                  </button>
+                </div>
+              </div>
+
               {/* Cancellation Reason Note Banner */}
               {Boolean(selectedOrder.cancellationReason || selectedOrder.notes?.includes('Cancellation') || selectedOrder.orderStatus === 'Cancelled') && (
                 <div className="p-3 bg-rose-50 border border-rose-200 rounded-md text-rose-900">
@@ -294,65 +395,122 @@ export default function OrdersPage() {
                 </div>
               )}
 
-              {/* Customer Return Request Review Card */}
-              {Boolean(selectedOrder.returnRequest?.reason || selectedOrder.orderStatus === 'Return Requested' || selectedOrder.orderStatus === 'Return Accepted') && (
-                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-md text-amber-950 space-y-2">
+              {/* Customer Return Request Review Card & Scheduling */}
+              {Boolean(
+                selectedOrder.returnRequest?.reason ||
+                selectedOrder.orderStatus.includes('Return') ||
+                ['Returned', 'Refunded', 'Exchanged'].includes(selectedOrder.orderStatus)
+              ) && (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-md text-amber-950 space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="font-bold flex items-center gap-1.5 uppercase text-[10px] tracking-wider text-amber-800">
-                      🔄 Customer Return Request
+                    <p className="font-bold flex items-center gap-1.5 uppercase text-[11px] tracking-wider text-amber-900">
+                      🔄 Return Lifecycle Management
                     </p>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      selectedOrder.orderStatus === 'Return Accepted'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : selectedOrder.orderStatus === 'Return Rejected'
-                        ? 'bg-rose-100 text-rose-800'
-                        : 'bg-amber-200 text-amber-900'
-                    }`}>
+                    <Badge variant={selectedOrder.orderStatus.toLowerCase().replace(/\s+/g, '_')} size="sm">
                       {selectedOrder.orderStatus}
-                    </span>
+                    </Badge>
                   </div>
-                  <div className="bg-white p-2.5 rounded border border-amber-100 text-xs text-slate-800 space-y-1">
-                    <p><strong className="text-slate-600">Customer Reason:</strong> {selectedOrder.returnRequest?.reason || 'Return requested by customer'}</p>
-                    {selectedOrder.returnRequest?.adminNote && (
-                      <p><strong className="text-slate-600">Admin Review Note:</strong> {selectedOrder.returnRequest.adminNote}</p>
-                    )}
+
+                  <div className="bg-white p-3 rounded border border-amber-100 text-xs text-slate-800 space-y-1.5">
+                    <p><strong className="text-slate-600">Customer Reason:</strong> {selectedOrder.returnRequest?.reason || 'Return requested'}</p>
+                    <p>
+                      <strong className="text-slate-600">Payment Type:</strong>{' '}
+                      <span className="font-semibold text-slate-900">{selectedOrder.paymentMethod || 'COD'}</span>{' '}
+                      <span className="text-[10px] text-slate-500">
+                        ({selectedOrder.paymentMethod === 'COD' ? 'Eligible for Exchange / Replacement Book' : 'Eligible for Refund to original UPI/Card'})
+                      </span>
+                    </p>
                   </div>
-                  {/* Action Buttons: Approve / Reject Return */}
-                  {selectedOrder.orderStatus === 'Return Requested' && (
-                    <div className="flex items-center gap-2 pt-1">
+
+                  {/* Return Scheduling & Resolution Inputs */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-slate-700 mb-1">
+                        📅 Schedule Pickup Date
+                      </label>
+                      <input
+                        type="date"
+                        value={returnScheduleDate}
+                        onChange={(e) => setReturnScheduleDate(e.target.value)}
+                        className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs font-medium outline-hidden focus:border-slate-900"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-slate-700 mb-1">
+                        Resolution Mode
+                      </label>
+                      <select
+                        value={returnResolution}
+                        onChange={(e) => setReturnResolution(e.target.value)}
+                        className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs font-medium outline-hidden focus:border-slate-900"
+                      >
+                        <option value="Refund">Refund (UPI / Bank Account)</option>
+                        <option value="Exchange">Exchange / Replacement Book</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-700 mb-1">
+                      Update Note for Customer
+                    </label>
+                    <input
+                      type="text"
+                      value={returnNote}
+                      onChange={(e) => setReturnNote(e.target.value)}
+                      placeholder="e.g. Courier assigned for pickup on scheduled date..."
+                      className="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-xs font-medium outline-hidden focus:border-slate-900"
+                    />
+                  </div>
+
+                  {/* Action Buttons for Return Lifecycle */}
+                  <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-amber-200">
+                    <button
+                      type="button"
+                      onClick={() => handleScheduleReturn(selectedOrder._id, 'Return Scheduled')}
+                      className="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded text-xs transition-colors shadow-2xs"
+                    >
+                      📅 Schedule Return Pickup
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleScheduleReturn(selectedOrder._id, 'Returned')}
+                      className="px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded text-xs transition-colors shadow-2xs"
+                    >
+                      📦 Mark as Returned
+                    </button>
+
+                    {selectedOrder.paymentMethod !== 'COD' ? (
                       <button
                         type="button"
-                        onClick={() => {
-                          updateOrderStatus(selectedOrder._id, 'Return Accepted', 'Return approved by admin');
-                          setSelectedOrder({
-                            ...selectedOrder,
-                            orderStatus: 'Return Accepted',
-                            returnRequest: { ...selectedOrder.returnRequest, status: 'Approved', adminNote: 'Approved by admin' }
-                          });
-                          showToast('Return approved & inventory restored', 'success');
-                        }}
+                        onClick={() => handleScheduleReturn(selectedOrder._id, 'Refunded')}
                         className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded text-xs transition-colors shadow-2xs"
                       >
-                        ✓ Approve Return
+                        💰 Complete &amp; Mark Refunded
                       </button>
+                    ) : (
                       <button
                         type="button"
-                        onClick={() => {
-                          const note = window.prompt('Enter reason for declining return:') || 'Does not meet return criteria';
-                          updateOrderStatus(selectedOrder._id, 'Return Rejected', note);
-                          setSelectedOrder({
-                            ...selectedOrder,
-                            orderStatus: 'Return Rejected',
-                            returnRequest: { ...selectedOrder.returnRequest, status: 'Rejected', adminNote: note }
-                          });
-                          showToast('Return request declined', 'info');
-                        }}
-                        className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded text-xs transition-colors shadow-2xs"
+                        onClick={() => handleScheduleReturn(selectedOrder._id, 'Exchanged')}
+                        className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded text-xs transition-colors shadow-2xs"
                       >
-                        ✕ Reject Return
+                        🔄 Dispatch Exchange Copy
                       </button>
-                    </div>
-                  )}
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const note = window.prompt('Enter reason for declining return:') || 'Does not meet return criteria';
+                        handleScheduleReturn(selectedOrder._id, 'Return Rejected');
+                      }}
+                      className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded text-xs transition-colors shadow-2xs"
+                    >
+                      ✕ Decline Return
+                    </button>
+                  </div>
                 </div>
               )}
 

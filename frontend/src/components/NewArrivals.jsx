@@ -18,33 +18,56 @@ export const NewArrivals = () => {
       try {
         const [liveBooks, allBooks] = await Promise.all([
           fetchNewArrivals().catch(() => []),
-          fetchBooks({ limit: 40 }).catch(() => [])
+          fetchBooks({ limit: 50 }).catch(() => [])
         ]);
 
         if (isMounted) {
-          const pool = [...(Array.isArray(liveBooks) ? liveBooks : []), ...(Array.isArray(allBooks) ? allBooks : [])];
           const map = new Map();
-          pool.forEach((b) => {
-            if (b && b._id && !map.has(b._id)) map.set(b._id, b);
-          });
-          const uniqueBooks = Array.from(map.values());
+          // First add new arrivals collection
+          if (Array.isArray(liveBooks)) {
+            liveBooks.forEach((b) => {
+              if (b && b._id) map.set(b._id, { ...b, priority: 2 });
+            });
+          }
+          // Then add all books
+          if (Array.isArray(allBooks)) {
+            allBooks.forEach((b) => {
+              if (b && b._id) {
+                const existing = map.get(b._id);
+                if (!existing) {
+                  map.set(b._id, { ...b, priority: b.isNewArrival ? 2 : 1 });
+                }
+              }
+            });
+          }
 
-          // Prioritize books with real cover images first
+          const uniqueBooks = Array.from(map.values()).filter((b) => {
+            const img = (b.images && b.images[0]) || b.coverImage;
+            return img && img !== '/book-placeholder.svg' && !img.includes('placeholder');
+          });
+
+          // Sort: new arrival flag first, then real cover images, then newest date
           const sorted = uniqueBooks.sort((a, b) => {
-            const aHas = a.images && a.images.length > 0 && a.images[0] && a.images[0] !== '/book-placeholder.svg' ? 1 : 0;
-            const bHas = b.images && b.images.length > 0 && b.images[0] && b.images[0] !== '/book-placeholder.svg' ? 1 : 0;
-            return bHas - aHas;
+            const aPriority = a.isNewArrival || a.priority === 2 ? 2 : 1;
+            const bPriority = b.isNewArrival || b.priority === 2 ? 2 : 1;
+            if (bPriority !== aPriority) return bPriority - aPriority;
+
+            const aHasImg = a.images && a.images.length > 0 && a.images[0] && a.images[0] !== '/book-placeholder.svg' ? 1 : 0;
+            const bHasImg = b.images && b.images.length > 0 && b.images[0] && b.images[0] !== '/book-placeholder.svg' ? 1 : 0;
+            if (bHasImg !== aHasImg) return bHasImg - aHasImg;
+
+            return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
           });
 
           if (sorted.length > 0) {
-            const formatted = sorted.slice(0, 8).map((b) => ({
+            const formatted = sorted.slice(0, 6).map((b) => ({
               id: b._id,
               title: b.title || b.name,
               author: b.author,
               price: Number(b.discountPrice || b.price || 0),
-              originalPrice: b.discountPrice ? Number(b.price) : null,
+              originalPrice: b.discountPrice && Number(b.discountPrice) < Number(b.price) ? Number(b.price) : null,
               rating: b.rating ? String(b.rating) : '5.0',
-              image: (b.images && b.images[0]) || '/book-placeholder.svg',
+              image: (b.images && b.images[0]) || b.coverImage || '/book-placeholder.svg',
               href: `/books/${b.slug || b._id}`
             }));
             setBooks(formatted);
@@ -67,24 +90,23 @@ export const NewArrivals = () => {
   if (!loading && books.length === 0) return null;
 
   return (
-    <section className="py-10 sm:py-14 px-4 sm:px-8 max-w-6xl mx-auto">
-      {/* Section Header */}
-      <div className="flex items-end justify-between gap-4 pb-6 sm:pb-8">
-        <div>
-          <p className="text-xs sm:text-sm font-medium text-[#4361ee] tracking-tight">
-            Fresh from the press
-          </p>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-serif text-slate-900 tracking-tight mt-1">
-            New Arrivals
-          </h2>
-        </div>
+    <section className="py-10 sm:py-14 px-3 sm:px-6 lg:px-8 w-full">
+      {/* Centered Section Header */}
+      <div className="text-center pb-6 sm:pb-8">
+        <h2 className="text-2xl sm:text-3xl lg:text-4xl font-serif text-slate-900 tracking-tight">
+          New Arrivals
+        </h2>
       </div>
 
-      {/* Book Cards Grid */}
+      {/* Book Cards Grid: 6 in one row on desktop */}
       {loading ? (
-        <BookGridSkeleton count={8} />
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-3.5 sm:gap-4">
+          {Array.from({ length: 6 }).map((_, idx) => (
+            <div key={idx} className="aspect-[3/4] bg-slate-100 rounded-xl animate-pulse" />
+          ))}
+        </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-3.5 sm:gap-4">
           {books.map((book) => (
           <Link
             key={book.id}
@@ -92,16 +114,26 @@ export const NewArrivals = () => {
             className="group flex flex-col justify-between transition-all"
           >
             {/* Book Image Showcase Container */}
-            <div className="relative aspect-3/4 w-full overflow-hidden bg-[#e5e5e5] rounded-xs transition-transform duration-300 group-hover:scale-[1.02]">
+            <div className="relative aspect-3/4 w-full overflow-hidden bg-[#f8fafc] rounded-xl border border-slate-100 transition-transform duration-300 group-hover:scale-[1.02]">
               <img
                 src={book.image}
                 alt={book.title}
-                className="w-full h-full object-cover object-center"
+                referrerPolicy="no-referrer"
+                loading="lazy"
+                crossOrigin="anonymous"
+                className="w-full h-full object-contain object-center select-none"
                 onError={(e) => {
-                  e.currentTarget.onerror = null;
-                  e.currentTarget.src = '/book-placeholder.svg';
+                  if (!e.currentTarget.dataset.failed) {
+                    e.currentTarget.dataset.failed = 'true';
+                    e.currentTarget.src = '/book-placeholder.svg';
+                  }
                 }}
               />
+              {/* Top-Left Badge with reduced border-radius */}
+              <span className="absolute top-2 left-2 bg-[#10b981] text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs tracking-tight pointer-events-none">
+                New
+              </span>
+
               {/* Wishlist Heart Button */}
               <button
                 type="button"

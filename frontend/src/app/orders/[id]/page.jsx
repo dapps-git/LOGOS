@@ -88,30 +88,42 @@ export default function OrderTrackingPage({ params }) {
   const status = (order?.orderStatus || 'Processing').toLowerCase();
   const rawReturnStatus = (order?.returnRequest?.status || '').toLowerCase();
 
+  const isCOD = order?.paymentMethod === 'COD' || order?.paymentMethod === 'cod';
   const isReturnRequested = status === 'return requested' || status === 'requested' || rawReturnStatus === 'pending' || rawReturnStatus === 'requested';
   const isReturnUnderReview = status === 'under review' || status === 'return under review' || rawReturnStatus === 'under review';
   const isReturnApproved = ['return accepted', 'approved', 'return approved'].includes(status) || rawReturnStatus === 'approved';
-  const isPickupScheduled = status === 'pickup scheduled' || rawReturnStatus === 'pickup scheduled';
-  const isReceived = status === 'received' || status === 'return received' || rawReturnStatus === 'received';
+  const isReturnScheduled = ['return scheduled', 'pickup scheduled'].includes(status) || ['return scheduled', 'pickup scheduled'].includes(rawReturnStatus) || Boolean(order?.returnRequest?.scheduledDate);
+  const isReturned = ['returned', 'received', 'return received'].includes(status) || ['returned', 'received', 'return received'].includes(rawReturnStatus);
   const isRefundInitiated = status === 'refund initiated' || rawReturnStatus === 'refund initiated';
-  const isRefunded = ['refunded', 'returned'].includes(status) || ['refunded', 'returned'].includes(rawReturnStatus);
+  const isRefunded = ['refunded'].includes(status) || ['refunded'].includes(rawReturnStatus);
+  const isExchanged = ['exchanged', 'replacement dispatched'].includes(status) || ['exchanged', 'replacement dispatched'].includes(rawReturnStatus);
   const isReturnRejected = ['return rejected', 'rejected'].includes(status) || rawReturnStatus === 'rejected';
+
+  const scheduledDateFormatted = order?.returnRequest?.scheduledDate
+    ? new Date(order.returnRequest.scheduledDate).toLocaleDateString('en-IN', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      })
+    : '';
 
   const hasReturn = Boolean(
     order?.returnRequest?.reason ||
     isReturnRequested ||
     isReturnUnderReview ||
     isReturnApproved ||
-    isPickupScheduled ||
-    isReceived ||
+    isReturnScheduled ||
+    isReturned ||
     isRefundInitiated ||
     isRefunded ||
+    isExchanged ||
     isReturnRejected
   );
 
   // Timeline Step Calculations
   const isPlaced = true;
-  const isPaymentConfirmed = order?.paymentStatus?.toLowerCase() === 'paid' || order?.paymentMethod === 'COD' || true;
+  const isPaymentConfirmed = order?.paymentStatus?.toLowerCase() === 'paid' || isCOD || true;
   const isProcessing = hasReturn || ['processing', 'shipped', 'out for delivery', 'delivered'].includes(status);
   const isShipped = hasReturn || ['shipped', 'out for delivery', 'delivered'].includes(status);
   const isOutForDelivery = hasReturn || ['out for delivery', 'delivered'].includes(status);
@@ -137,6 +149,8 @@ export default function OrderTrackingPage({ params }) {
         minute: '2-digit'
       })
     : '28 Jun 2025, 11:18 AM';
+
+  const liveLocation = order?.currentLocation || order?.shippingLocation || '';
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAFC]">
@@ -318,7 +332,7 @@ export default function OrderTrackingPage({ params }) {
                 <div className="min-w-0">
                   <h4 className="text-xs font-semibold text-slate-900">Payment Confirmed</h4>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    {order?.paymentMethod === 'COD' ? 'Cash on Delivery (Pending)' : 'Verified via Gateway'}
+                    {isCOD ? (isDelivered ? 'Cash Collected on Delivery' : 'Cash on Delivery (Pending)') : 'Verified via Online Gateway / UPI'}
                   </p>
                 </div>
               </div>
@@ -335,7 +349,7 @@ export default function OrderTrackingPage({ params }) {
                     <h4 className="text-xs font-semibold text-rose-600">Order Cancelled</h4>
                     {cancelledAtStr && <p className="text-[11px] text-slate-400 mt-0.5">{cancelledAtStr}</p>}
                     <p className="text-[11px] text-slate-500 mt-0.5">
-                      {order?.paymentMethod === 'COD' ? 'No payment was collected.' : 'Refund will be processed to your original payment method.'}
+                      {isCOD ? 'No payment was collected.' : 'Refund will be processed to your original payment method.'}
                     </p>
                   </div>
                 </div>
@@ -370,7 +384,13 @@ export default function OrderTrackingPage({ params }) {
                 <div className="min-w-0">
                   <h4 className="text-xs font-semibold text-slate-900">Shipped</h4>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    {isShipped ? (order?.trackingNumber ? `Handed to courier (ID: ${order.trackingNumber})` : 'Dispatched with logistics partner') : 'Awaiting courier handover'}
+                    {isShipped
+                      ? liveLocation
+                        ? `In transit - ${liveLocation}${order?.trackingNumber ? ` (ID: ${order.trackingNumber})` : ''}`
+                        : order?.trackingNumber
+                        ? `Handed to courier (ID: ${order.trackingNumber})`
+                        : 'Dispatched with logistics partner'
+                      : 'Awaiting courier handover'}
                   </p>
                 </div>
               </div>
@@ -387,7 +407,9 @@ export default function OrderTrackingPage({ params }) {
                 <div className="min-w-0">
                   <h4 className="text-xs font-semibold text-slate-900">Out for Delivery</h4>
                   {isOutForDelivery ? (
-                    <p className="text-[11px] text-blue-600 font-medium mt-0.5">Courier is out for delivery today</p>
+                    <p className="text-[11px] text-blue-600 font-medium mt-0.5">
+                      {liveLocation ? `Out for delivery from ${liveLocation}` : 'Courier is out for delivery today'}
+                    </p>
                   ) : (
                     <p className="text-[11px] text-slate-400 mt-0.5">Pending arrival at local distribution facility</p>
                   )}
@@ -399,7 +421,7 @@ export default function OrderTrackingPage({ params }) {
                 {hasReturn && (
                   <div
                     className={`absolute left-3.5 top-7 bottom-0 w-[2px] ${
-                      isReturnRejected ? 'bg-rose-400' : isRefunded ? 'bg-emerald-500' : 'bg-amber-400'
+                      isReturnRejected ? 'bg-rose-400' : isRefunded || isExchanged ? 'bg-emerald-500' : 'bg-amber-400'
                     }`}
                     style={{ height: 'calc(100% + 8px)' }}
                   />
@@ -417,15 +439,15 @@ export default function OrderTrackingPage({ params }) {
                 </div>
               </div>
 
-              {/* Step 7: Return Lifecycle (Only rendered when return request exists) */}
+              {/* Step 7: Return & Resolution Lifecycle */}
               {hasReturn && (
                 <div className="flex items-start gap-4 relative">
                   <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 z-10 shadow-xs ${
                     isReturnRejected
                       ? 'bg-rose-600 text-white'
-                      : isRefunded
+                      : isRefunded || isExchanged
                       ? 'bg-emerald-600 text-white'
-                      : isReturnApproved || isPickupScheduled || isReceived
+                      : isReturnApproved || isReturnScheduled || isReturned
                       ? 'bg-blue-600 text-white'
                       : 'bg-amber-500 text-white'
                   }`}>
@@ -433,7 +455,7 @@ export default function OrderTrackingPage({ params }) {
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
                       </svg>
-                    ) : isRefunded || isReturnApproved ? (
+                    ) : isRefunded || isExchanged || isReturnApproved || isReturnScheduled ? (
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
                       </svg>
@@ -443,32 +465,36 @@ export default function OrderTrackingPage({ params }) {
                   </div>
                   <div className="min-w-0">
                     <h4 className={`text-xs font-semibold ${
-                      isReturnRejected ? 'text-rose-600' : isRefunded || isReturnApproved ? 'text-emerald-700' : 'text-amber-700'
+                      isReturnRejected ? 'text-rose-600' : isRefunded || isExchanged || isReturnApproved || isReturnScheduled ? 'text-emerald-700' : 'text-amber-700'
                     }`}>
                       {isReturnRejected
                         ? 'Return Request Declined'
                         : isRefunded
-                        ? 'Return Complete & Refunded'
-                        : isRefundInitiated
-                        ? 'Refund Initiated'
-                        : isReceived
-                        ? 'Book Received at Fulfillment Hub'
-                        : isPickupScheduled
-                        ? 'Courier Pickup Scheduled'
+                        ? 'Return Completed & Refunded'
+                        : isExchanged
+                        ? 'Replacement Book Dispatched'
+                        : isReturned
+                        ? 'Book Received & Inspected'
+                        : isReturnScheduled
+                        ? 'Return Pickup Scheduled'
                         : isReturnApproved
-                        ? 'Return Request Approved'
+                        ? 'Return Request Accepted'
                         : 'Return Request Under Review'}
                     </h4>
                     <p className="text-[11px] text-slate-500 mt-0.5">
                       {isReturnRejected
-                        ? (order.returnRequest?.adminNote ? `Admin note: ${order.returnRequest.adminNote}` : 'Does not meet return policy criteria.')
+                        ? (order.returnRequest?.note || order.returnRequest?.adminNote ? `Note: ${order.returnRequest?.note || order.returnRequest?.adminNote}` : 'Does not meet return policy criteria.')
                         : isRefunded
-                        ? 'Refund has been processed and credited.'
-                        : isPickupScheduled
-                        ? 'Courier partner assigned for item pickup.'
+                        ? `Refund of ₹${order.returnRequest?.refundAmount || order.finalTotal || order.totalAmount} credited to original payment account.`
+                        : isExchanged
+                        ? 'Replacement copy has been prepared & dispatched for COD order.'
+                        : isReturned
+                        ? 'Item verified at logistics hub. Processing resolution.'
+                        : isReturnScheduled && scheduledDateFormatted
+                        ? `Pickup scheduled for ${scheduledDateFormatted}. Courier will arrive at your address.`
                         : isReturnApproved
-                        ? 'Approved by admin. Courier partner will arrange pickup.'
-                        : 'Submitted to admin team. Awaiting verification.'}
+                        ? 'Return accepted. Logistics partner is scheduling pickup.'
+                        : 'Submitted and under verification.'}
                     </p>
                     {order.returnRequest?.requestedAt && (
                       <p className="text-[10px] text-slate-400 font-mono mt-0.5">
@@ -517,50 +543,69 @@ export default function OrderTrackingPage({ params }) {
             )}
 
             {/* 5. Status Feedback & Action Banners */}
-            {/* Case A: Return Requested / Under Review (Waiting Admin Approval) */}
-            {(isReturnRequested || isReturnUnderReview) && !isReturnApproved && !isReturnRejected && !isRefunded && (
+            {/* Case A: Return Requested / Under Review */}
+            {(isReturnRequested || isReturnUnderReview) && !isReturnApproved && !isReturnScheduled && !isReturnRejected && !isRefunded && !isExchanged && (
               <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-1.5">
                 <div className="flex items-center gap-2 font-semibold">
                   <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                   <span>Return Request Under Review</span>
                 </div>
                 <p className="text-[11px] text-amber-800/90 leading-relaxed">
-                  Your return request has been submitted to the admin team.
+                  Your return request has been submitted.
                   {order.returnRequest?.reason && (
                     <span className="block mt-1 font-medium italic">Reason: &ldquo;{order.returnRequest.reason}&rdquo;</span>
                   )}
-                  Returns are only accepted after admin verification. You will be notified once reviewed.
+                  You will be notified once reviewed.
                 </p>
               </div>
             )}
 
-            {/* Case B: Return Approved / Pickup Scheduled / Received / Refund Initiated / Refunded */}
-            {(isReturnApproved || isPickupScheduled || isReceived || isRefundInitiated || isRefunded) && (
-              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs space-y-1.5">
-                <div className="flex items-center gap-2 font-semibold text-emerald-800">
+            {/* Case B: Return Approved / Scheduled / Returned / Refunded / Exchanged */}
+            {(isReturnApproved || isReturnScheduled || isReturned || isRefunded || isExchanged) && (
+              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs space-y-2">
+                <div className="flex items-center gap-2 font-semibold text-emerald-800 text-xs sm:text-sm">
                   <span>✓</span>
                   <span>
                     {isRefunded
                       ? 'Return Completed & Refund Processed'
-                      : isRefundInitiated
-                      ? 'Refund Initiated'
-                      : isReceived
-                      ? 'Package Received at Warehouse'
-                      : isPickupScheduled
-                      ? 'Courier Pickup Scheduled'
-                      : 'Return Request Approved by Admin'}
+                      : isExchanged
+                      ? 'Return Completed & Replacement Dispatched'
+                      : isReturned
+                      ? 'Package Received at Facility'
+                      : isReturnScheduled && scheduledDateFormatted
+                      ? `Return Pickup Scheduled: ${scheduledDateFormatted}`
+                      : 'Return Request Accepted'}
                   </span>
                 </div>
+
+                {/* Return Scheduled Date Box */}
+                {scheduledDateFormatted && !isRefunded && !isExchanged && (
+                  <div className="p-2.5 bg-white/90 rounded-xl border border-emerald-200 text-emerald-900 flex items-center gap-2">
+                    <span className="text-base">📅</span>
+                    <div>
+                      <p className="text-[10px] uppercase font-bold text-emerald-700 tracking-wider">Scheduled Pickup Date</p>
+                      <p className="text-xs font-bold text-slate-800">{scheduledDateFormatted}</p>
+                    </div>
+                  </div>
+                )}
+
                 <p className="text-[11px] text-emerald-700/90 leading-relaxed">
                   {isRefunded
-                    ? 'The return process is complete. Your refund has been credited.'
-                    : isPickupScheduled
-                    ? 'Our courier partner will arrive soon to collect the package.'
-                    : 'Your return has been approved. Our courier partner will contact you for pickup, and refund/replacement will be processed.'}
-                  {order.returnRequest?.adminNote && (
-                    <span className="block mt-1 font-medium">Admin Note: {order.returnRequest.adminNote}</span>
-                  )}
+                    ? `The return is complete. Refund of ₹${order.returnRequest?.refundAmount || order.finalTotal || order.totalAmount} has been credited to your original payment account.`
+                    : isExchanged
+                    ? 'The return is complete. A replacement copy has been dispatched to your delivery address.'
+                    : isReturnScheduled
+                    ? 'Our courier partner will visit your shipping address on the scheduled date to collect the book.'
+                    : isCOD
+                    ? 'Your return has been approved. A replacement book exchange will be arranged upon courier pickup.'
+                    : 'Your return has been approved. Our courier partner will collect the item and refund will be processed.'}
                 </p>
+
+                {(order.returnRequest?.note || order.returnRequest?.adminNote) && (
+                  <div className="pt-1 text-[11px] text-slate-600 border-t border-emerald-200/60 font-medium">
+                    <span>Note: {order.returnRequest?.note || order.returnRequest?.adminNote}</span>
+                  </div>
+                )}
               </div>
             )}
 

@@ -13,6 +13,7 @@ const orderRoutes = require('./routes/orderRoutes');
 const cartRoutes = require('./routes/cartRoutes');
 const wishlistRoutes = require('./routes/wishlistRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
+const authorHighlightRoutes = require('./routes/authorHighlightRoutes');
 
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 
@@ -31,8 +32,6 @@ const allowedOrigins = [
   'https://logos-4n4d.vercel.app',
   'https://logos-2nkc.vercel.app',
   'https://logos-delta-eight.vercel.app',
-  'https://tweaki.pw',
-  'https://www.tweaki.pw',
   process.env.CLIENT_URL,
   process.env.ADMIN_URL
 ].filter(Boolean).map(url => url.replace(/\/$/, ''));
@@ -93,7 +92,8 @@ const routeList = [
   ['/orders', orderRoutes],
   ['/cart', cartRoutes],
   ['/wishlist', wishlistRoutes],
-  ['/reviews', reviewRoutes]
+  ['/reviews', reviewRoutes],
+  ['/author-highlights', authorHighlightRoutes]
 ];
 
 routeList.forEach(([path, router]) => {

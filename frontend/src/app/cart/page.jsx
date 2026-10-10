@@ -56,10 +56,6 @@ export default function CartPage() {
     if (e) e.preventDefault();
     const code = (codeToApply || couponInput).trim().toUpperCase();
     if (!code) return;
-    if (subtotal < 1000) {
-      setCouponMsg({ success: false, message: 'Coupons are applicable only on orders of ₹1,000 or more.' });
-      return;
-    }
     setApplyingCoupon(true);
     setCouponMsg(null);
     const res = await applyCouponCode(code);
@@ -67,12 +63,10 @@ export default function CartPage() {
     setApplyingCoupon(false);
   };
 
-  const eligibleCoupons = subtotal >= 1000
-    ? availableCoupons.filter((c) => {
-        const minVal = Number(c.minOrderValue ?? c.minOrderAmount ?? 0);
-        return subtotal >= minVal;
-      })
-    : [];
+  const eligibleCoupons = availableCoupons.filter((c) => {
+    const minVal = Number(c.minOrderValue ?? c.minOrderAmount ?? 0);
+    return subtotal >= minVal;
+  });
 
   const handleApplyReferral = async (e) => {
     e.preventDefault();
@@ -305,18 +299,8 @@ export default function CartPage() {
                   </p>
                 )}
 
-                {/* If subtotal is below ₹1000, show informative unlock note */}
-                {!appliedCoupon && subtotal < 1000 && (
-                  <div className="mt-3 pt-3 border-t border-slate-100">
-                    <div className="p-2.5 bg-amber-50/80 border border-amber-200/60 rounded-lg text-amber-900 text-[11px] leading-relaxed">
-                      <span className="font-semibold text-amber-700">Special Offers: </span>
-                      Coupons unlock on orders above <strong>₹1,000</strong>. Add <strong>₹{1000 - subtotal}</strong> more to your cart to see available discount offers!
-                    </div>
-                  </div>
-                )}
-
-                {/* Available Coupons Suggestions: Only show eligible coupons if subtotal >= 1000 */}
-                {!appliedCoupon && subtotal >= 1000 && eligibleCoupons.length > 0 && (
+                {/* Available Coupons Suggestions */}
+                {!appliedCoupon && eligibleCoupons.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                       Available Offers

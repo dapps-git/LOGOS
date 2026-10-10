@@ -204,7 +204,7 @@ function ProductFormContent() {
       isFeatured: formData.isFeatured,
       isHandpicked: formData.isHandpicked,
       isAuthorSpotlight: formData.isAuthorSpotlight,
-      isFeaturedSpotlight: formData.isFeaturedSpotlight,
+      isFeaturedSpotlight: formData.isFeaturedSpotlight || formData.isFeatured,
       isBestAuthor: formData.isBestAuthor,
       isActive: formData.isActive
     };
@@ -616,32 +616,17 @@ function ProductFormContent() {
                     <span className="text-[10px] text-slate-400 font-light block">From our editors&apos; desks</span>
                   </div>
                 </label>
-
-                <label className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
-                  formData.isAuthorSpotlight ? 'border-[#1E3A8A] bg-blue-50/50 text-[#1E3A8A]' : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
-                }`}>
-                  <input
-                    type="checkbox"
-                    checked={formData.isAuthorSpotlight}
-                    onChange={(e) => setFormData({ ...formData, isAuthorSpotlight: e.target.checked })}
-                    className="rounded border-slate-300 text-[#1E3A8A] focus:ring-[#1E3A8A] w-4 h-4"
-                  />
-                  <div>
-                    <span className="text-xs font-medium block">Author Spotlight ✍️</span>
-                    <span className="text-[10px] text-slate-400 font-light block">Meet the Author spotlight</span>
-                  </div>
-                </label>
               </div>
             </div>
           </div>
 
-          {/* SECTION 4: Homepage Spotlights & Author Highlights */}
+          {/* SECTION 4: Homepage Book Spotlight ("പരാജിതനായകർ") */}
           <div className="bg-white p-6 rounded-md border border-slate-200 shadow-2xs space-y-6">
             <div className="pb-3 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-500" />
                 <h3 className="text-sm font-bold text-slate-900">
-                  Homepage Spotlights &amp; Author Highlights
+                  Featured Book Spotlight (&ldquo;പരാജിതനായകർ&rdquo; Section)
                 </h3>
               </div>
               <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
@@ -649,96 +634,7 @@ function ProductFormContent() {
               </span>
             </div>
 
-            {/* 1. Author Spotlight ("Meet the author" Section) */}
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-4">
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.isAuthorSpotlight}
-                  onChange={(e) => setFormData({ ...formData, isAuthorSpotlight: e.target.checked })}
-                  className="mt-0.5 rounded border-slate-300 text-[#1E3A8A] focus:ring-[#1E3A8A] w-4 h-4"
-                />
-                <div>
-                  <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-[#1E3A8A]" />
-                    Feature this Author in &ldquo;Meet the author&rdquo; Spotlight
-                  </span>
-                  <span className="text-[11px] text-slate-500 block leading-relaxed mt-0.5">
-                    Displays author photo, name, and bio in the homepage spotlight. Clicking &ldquo;Shop Now&rdquo; in this section will give all books mapped under this author.
-                  </span>
-                </div>
-              </label>
-
-              {/* Author Photo & Bio Configuration */}
-              <div className="space-y-4 pt-3 border-t border-slate-200/80">
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-start">
-                  {/* Author Photo Preview & Input */}
-                  <div className="sm:col-span-4 flex flex-col items-center sm:items-start gap-2">
-                    <label className="text-[11px] font-bold text-slate-700 block">
-                      Author Portrait Photo
-                    </label>
-                    <div className="w-28 h-28 rounded-xl overflow-hidden border border-slate-300 bg-white shadow-xs relative flex items-center justify-center">
-                      {formData.authorPhoto ? (
-                        <img
-                          src={formData.authorPhoto}
-                          alt={formData.author || 'Author'}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.src = '/author_rajesh.png';
-                          }}
-                        />
-                      ) : (
-                        <User className="w-10 h-10 text-slate-300" />
-                      )}
-                    </div>
-                    <input
-                      type="text"
-                      value={formData.authorPhoto}
-                      onChange={(e) => setFormData({ ...formData, authorPhoto: e.target.value })}
-                      placeholder="Photo URL or /author_name.png"
-                      className="w-full px-2.5 py-1.5 bg-white border border-slate-300 focus:border-slate-900 rounded-md text-[11px] font-medium outline-hidden"
-                    />
-                    <div className="flex gap-2 flex-wrap text-[10px]">
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, authorPhoto: '/author_rajesh.png' })}
-                        className="text-blue-600 hover:underline"
-                      >
-                        Rajesh K.R Photo
-                      </button>
-                      {formData.images?.[0] && (
-                        <button
-                          type="button"
-                          onClick={() => setFormData({ ...formData, authorPhoto: formData.images[0] })}
-                          className="text-slate-600 hover:underline"
-                        >
-                          Use Book Cover
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Author Biography Textarea */}
-                  <div className="sm:col-span-8 space-y-1.5">
-                    <label className="text-[11px] font-bold text-slate-700 block">
-                      Author Biography / Description (Malayalam or English)
-                    </label>
-                    <textarea
-                      rows={5}
-                      value={formData.authorBio}
-                      onChange={(e) => setFormData({ ...formData, authorBio: e.target.value })}
-                      placeholder="e.g. പത്തനംതിട്ട സ്വദേശിയായ അധ്യാപകനും എഴുത്തുകാരനുമാണ്. 'ഘടോൽക്കചൻ' അദ്ദേഹത്തിന്റെ ആദ്യ നോവലാണ്. മഹാഭാരതത്തിലെ ഘടോൽക്കചന്റെയും മൗർവിയുടെയും ജീവിതത്തെ വ്യത്യസ്തമായ രീതിയിൽ അവതരിപ്പിക്കുന്നതാണ് ഈ കൃതി..."
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-300 focus:border-slate-900 rounded-md text-xs font-medium outline-hidden leading-relaxed"
-                    />
-                    <p className="text-[10px] text-slate-400">
-                      This biography and author photo appear on the user homepage in the &ldquo;Meet the author&rdquo; section.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 2. Featured Book Spotlight Section ("പരാജിതനായകർ" Section) */}
+            {/* Featured Book Spotlight Section */}
             <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-4">
               <label className="flex items-start gap-3 cursor-pointer">
                 <input

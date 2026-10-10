@@ -127,15 +127,25 @@ const orderSchema = new mongoose.Schema({
   orderStatus: {
     type: String,
     enum: [
-      'Pending', 'Confirmed', 'Processing', 'Shipped', 'Out for Delivery', 'Delivered', 'Cancelled', 'Returned', 'Refunded',
+      'Pending', 'Confirmed', 'Processing', 'Shipped', 'Out for Delivery', 'Delivered', 'Cancelled',
       'Return Requested', 'Requested', 'Under Review', 'Return Under Review', 'Approved', 'Return Approved', 'Return Accepted',
-      'Pickup Scheduled', 'Received', 'Return Received', 'Refund Initiated', 'Return Rejected', 'Rejected',
-      'pending', 'confirmed', 'processing', 'shipped', 'out for delivery', 'delivered', 'cancelled', 'returned', 'refunded',
+      'Return Scheduled', 'Pickup Scheduled', 'Returned', 'Received', 'Return Received', 'Refund Initiated', 'Refunded',
+      'Exchanged', 'Replacement Dispatched', 'Return Rejected', 'Rejected',
+      'pending', 'confirmed', 'processing', 'shipped', 'out for delivery', 'delivered', 'cancelled',
       'return requested', 'requested', 'under review', 'return under review', 'approved', 'return approved', 'return accepted',
-      'pickup scheduled', 'received', 'return received', 'refund initiated', 'return rejected', 'rejected'
+      'return scheduled', 'pickup scheduled', 'returned', 'received', 'return received', 'refund initiated', 'refunded',
+      'exchanged', 'replacement dispatched', 'return rejected', 'rejected'
     ],
     default: 'Pending',
     index: true
+  },
+  currentLocation: {
+    type: String,
+    default: ''
+  },
+  shippingLocation: {
+    type: String,
+    default: ''
   },
   cancellationReason: {
     type: String
@@ -144,22 +154,34 @@ const orderSchema = new mongoose.Schema({
     reason: { type: String },
     requestedAt: { type: Date },
     reviewedAt: { type: Date },
+    scheduledDate: { type: Date },
+    resolutionType: {
+      type: String,
+      enum: ['Refund', 'Exchange', 'Replacement', 'refund', 'exchange', 'replacement', null],
+      default: null
+    },
+    refundAmount: { type: Number },
+    refundTransactionId: { type: String },
     adminNote: { type: String },
+    note: { type: String },
     status: {
       type: String,
       enum: [
         'None', 'Pending', 'Requested', 'Return Requested', 'Under Review', 'Return Under Review',
-        'Approved', 'Return Approved', 'Return Accepted', 'Pickup Scheduled', 'Received',
-        'Return Received', 'Refund Initiated', 'Refunded', 'Returned', 'Return Rejected', 'Rejected',
+        'Approved', 'Return Approved', 'Return Accepted', 'Return Scheduled', 'Pickup Scheduled',
+        'Returned', 'Received', 'Return Received', 'Refund Initiated', 'Refunded', 'Exchanged', 'Replacement Dispatched',
+        'Return Rejected', 'Rejected',
         'none', 'pending', 'requested', 'return requested', 'under review', 'return under review',
-        'approved', 'return approved', 'return accepted', 'pickup scheduled', 'received',
-        'return received', 'refund initiated', 'refunded', 'returned', 'return rejected', 'rejected'
+        'approved', 'return approved', 'return accepted', 'return scheduled', 'pickup scheduled',
+        'returned', 'received', 'return received', 'refund initiated', 'refunded', 'exchanged', 'replacement dispatched',
+        'return rejected', 'rejected'
       ],
       default: 'None'
     }
   },
   statusHistory: [{
     status: { type: String },
+    location: { type: String },
     timestamp: { type: Date, default: Date.now },
     note: { type: String }
   }],

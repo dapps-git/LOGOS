@@ -1,21 +1,9 @@
 export const getApiBaseUrl = () => {
   const envUrl = typeof process !== 'undefined' ? (process.env?.NEXT_PUBLIC_API_URL || process.env?.NEXT_PUBLIC_API_BASE_URL) : null;
-  if (typeof window !== 'undefined') {
-    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    if (isLocal) {
-      return (envUrl && envUrl.includes('localhost')) ? envUrl.replace(/\/+$/, '') : 'http://localhost:5001/api';
-    }
-    // On production (e.g. Vercel), ignore any localhost env variables
-    if (envUrl && !envUrl.includes('localhost')) {
-      return envUrl.replace(/\/+$/, '');
-    }
-    return 'https://tweaki.pw/logos/api';
-  }
-  // Server-side / Build-time
-  if (envUrl && !envUrl.includes('localhost')) {
+  if (envUrl) {
     return envUrl.replace(/\/+$/, '');
   }
-  return 'https://tweaki.pw/logos/api';
+  return 'http://localhost:5001/api';
 };
 
 export const apiClient = async (endpoint, options = {}) => {
