@@ -6,32 +6,76 @@ import { Star, Heart } from 'lucide-react';
 import { fetchBestSellers } from '@/lib/api';
 import { useWishlist } from '@/context/WishlistContext';
 
-export const RecentlyViewed = () => {
+export const RecentlyViewed = ({ currentBook }) => {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const { toggleWishlist, isBookInWishlist } = useWishlist();
 
   useEffect(() => {
     let isMounted = true;
-    const loadBooks = async () => {
+
+    const loadRecentlyViewed = async () => {
       try {
-        const liveBooks = await fetchBestSellers();
-        if (isMounted) {
-          if (Array.isArray(liveBooks) && liveBooks.length > 0) {
-            const formatted = liveBooks.map((b) => ({
-              id: b._id,
+        const currentId = currentBook?._id || currentBook?.id;
+        const currentSlug = currentBook?.slug;
+
+        // 1. Fetch user's actual recently viewed books from localStorage
+        let storedItems = [];
+        try {
+          storedItems = JSON.parse(localStorage.getItem('logos_recently_viewed') || '[]');
+        } catch {}
+
+        // Filter out the book currently being viewed
+        const userViewed = storedItems.filter((item) => {
+          const itemId = item.id || item._id;
+          return itemId !== currentId && item.slug !== currentSlug;
+        });
+
+        if (userViewed.length >= 4) {
+          if (isMounted) {
+            setBooks(userViewed.slice(0, 4).map((b) => ({
+              id: b.id || b._id,
               title: b.title || b.name,
               author: b.author,
-              price: Number(b.discountPrice || b.price || 0),
-              originalPrice: b.discountPrice ? Number(b.price) : null,
+              price: Number(b.price || 0),
+              originalPrice: b.originalPrice ? Number(b.originalPrice) : null,
               rating: b.rating ? String(b.rating) : '5.0',
-              image: (b.images && b.images[0]) || '/book-placeholder.svg',
-              href: `/books/${b.slug || b._id}`
-            }));
-            setBooks(formatted.slice(0, 4));
-          } else {
-            setBooks([]);
+              image: (b.images && b.images[0]) || b.image || '/book-placeholder.svg',
+              href: `/books/${b.slug || b.id || b._id}`
+            })));
+            setLoading(false);
           }
+          return;
+        }
+
+        // 2. If fewer than 4 items viewed, blend with trending books (excluding current and already viewed)
+        const liveBooks = await fetchBestSellers();
+        if (isMounted) {
+          const viewedIds = new Set(userViewed.map((b) => String(b.id || b._id)));
+          if (currentId) viewedIds.add(String(currentId));
+
+          const fallbackBooks = (liveBooks || []).filter((b) => {
+            const id = String(b._id || b.id);
+            return !viewedIds.has(id) && b.slug !== currentSlug;
+          });
+
+          const combined = [
+            ...userViewed,
+            ...fallbackBooks
+          ].slice(0, 4);
+
+          const formatted = combined.map((b) => ({
+            id: b._id || b.id,
+            title: b.title || b.name,
+            author: b.author,
+            price: Number(b.discountPrice || b.price || 0),
+            originalPrice: b.discountPrice ? Number(b.price) : (b.originalPrice ? Number(b.originalPrice) : null),
+            rating: b.rating ? String(b.rating) : '5.0',
+            image: (b.images && b.images[0]) || b.image || '/book-placeholder.svg',
+            href: `/books/${b.slug || b._id || b.id}`
+          }));
+
+          setBooks(formatted);
           setLoading(false);
         }
       } catch (err) {
@@ -39,11 +83,11 @@ export const RecentlyViewed = () => {
       }
     };
 
-    loadBooks();
+    loadRecentlyViewed();
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [currentBook?._id, currentBook?.id, currentBook?.slug]);
 
   if (!loading && books.length === 0) return null;
 

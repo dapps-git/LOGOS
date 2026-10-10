@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -49,6 +49,40 @@ export const ProductDetail = ({ book }) => {
   const currentImage = imagesList[selectedImageIndex] || imagesList[0] || '/book-placeholder.svg';
 
   const rating = book?.rating ? Number(book.rating).toFixed(0) : '5';
+
+  // Dynamic Algorithm: Store recently viewed book in local storage
+  useEffect(() => {
+    if (typeof window === 'undefined' || !book) return;
+    const currentId = book._id || book.id;
+    if (!currentId && !book.slug) return;
+
+    try {
+      const stored = JSON.parse(localStorage.getItem('logos_recently_viewed') || '[]');
+      const filtered = stored.filter((item) => {
+        const itemId = item.id || item._id;
+        return itemId !== currentId && item.slug !== book.slug;
+      });
+
+      const entry = {
+        id: currentId,
+        _id: currentId,
+        slug: book.slug,
+        title: title,
+        name: book.name || title,
+        author: author,
+        price: price,
+        originalPrice: originalPrice,
+        rating: rating,
+        image: currentImage,
+        images: Array.isArray(book.images) && book.images.length > 0 ? book.images : [currentImage],
+        theme: book.theme || book.genre || '',
+        genre: book.genre || book.theme || '',
+        viewedAt: Date.now()
+      };
+
+      localStorage.setItem('logos_recently_viewed', JSON.stringify([entry, ...filtered].slice(0, 15)));
+    } catch {}
+  }, [book?._id, book?.id, book?.slug, title, author, price, currentImage]);
   const pageCount = book?.pageCount || book?.pages || 123;
   const theme = book?.theme || book?.genre || 'Humour';
   const language = (book?.languages && book.languages[0]) || book?.language || 'Malayalam';

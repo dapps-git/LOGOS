@@ -64,8 +64,8 @@ export default async function BookDetailPage({ params }) {
       {/* Main Product Content */}
       <main className="flex-1">
         <ProductDetail book={bookData} />
-        <RecentlyViewed />
-        <RecommendedBooks />
+        <RecentlyViewed currentBook={bookData} />
+        <RecommendedBooks currentBook={bookData} />
       </main>
 
       {/* Footer */}
