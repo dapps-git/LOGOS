@@ -140,7 +140,12 @@ function OrderPlacedContent() {
               items.map((item, idx) => {
                 const title = item.title || item.book?.titleMalayalam || item.book?.title || 'Book Item';
                 const author = item.author || item.book?.author || 'LOGOS';
-                const img = item.coverImage || item.image || item.book?.coverImage || '/book1.jpg';
+                const img = (Array.isArray(item.book?.images) && item.book.images[0]) ||
+                  item.image ||
+                  item.coverImage ||
+                  item.book?.coverImage ||
+                  item.book?.image ||
+                  '/book-placeholder.svg';
                 const price = item.price || 112;
 
                 return (
@@ -151,7 +156,7 @@ function OrderPlacedContent() {
                         alt={title}
                         onError={(e) => {
                           e.currentTarget.onerror = null;
-                          e.currentTarget.src = '/book1.jpg';
+                          e.currentTarget.src = '/book-placeholder.svg';
                         }}
                         className="w-full h-full object-cover"
                       />

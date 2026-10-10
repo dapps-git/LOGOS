@@ -144,7 +144,7 @@ export default function CartPage() {
                 const bookId = book._id || book.id || item.book;
                 const price = item.price || book.salePrice || book.price || 299;
                 const original = book.originalPrice || price + 60;
-                const image = book.coverImage || book.image || (book.images && book.images[0]) || '/book1.jpg';
+                const image = (Array.isArray(book.images) && book.images[0]) || book.coverImage || book.image || '/book-placeholder.svg';
                 const title = book.titleMalayalam || book.title || 'LOGOS Book';
                 const author = book.author || 'LOGOS Publications';
 
@@ -163,7 +163,7 @@ export default function CartPage() {
                         alt={title}
                         onError={(e) => {
                           e.currentTarget.onerror = null;
-                          e.currentTarget.src = '/book1.jpg';
+                          e.currentTarget.src = '/book-placeholder.svg';
                         }}
                         className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
                       />

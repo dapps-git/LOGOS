@@ -71,7 +71,7 @@ const createOrder = async (req, res) => {
     const validatedItems = [];
 
     for (const item of rawItems) {
-      const bookKey = item.bookId || item.book || item._id || item.id;
+      const bookKey = item.bookId || (typeof item.book === 'object' && item.book !== null ? item.book._id || item.book.id : item.book) || item._id || item.id;
       let book = null;
       if (bookKey) {
         try {
@@ -89,11 +89,19 @@ const createOrder = async (req, res) => {
       const itemSubtotal = unitPrice * qty;
       subtotal += itemSubtotal;
 
+      const itemImg = (book && Array.isArray(book.images) && book.images[0]) ||
+        (item.book && Array.isArray(item.book.images) && item.book.images[0]) ||
+        (Array.isArray(item.images) && item.images[0]) ||
+        item.coverImage ||
+        item.image ||
+        (book && book.coverImage) ||
+        '/book-placeholder.svg';
+
       validatedItems.push({
         book: book ? book._id : null,
-        title: book ? book.title : (item.title || 'LOGOS Book'),
+        title: book ? (book.titleMalayalam || book.title) : (item.title || 'LOGOS Book'),
         author: book ? book.author : (item.author || 'LOGOS Author'),
-        image: book && book.images && book.images[0] ? book.images[0] : (item.coverImage || item.image || '/book1.jpg'),
+        image: itemImg,
         price: unitPrice,
         quantity: qty,
         subtotal: itemSubtotal
@@ -253,11 +261,12 @@ const getOrderById = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    // IDOR Protection: Check ownership
+    // IDOR Protection: Check ownership or guest order
     const isOwner = req.customer && order.customer && order.customer._id.toString() === req.customer._id.toString();
     const isAdmin = Boolean(req.admin);
+    const isGuestOrder = !order.customer;
 
-    if (!isOwner && !isAdmin) {
+    if (!isOwner && !isAdmin && !isGuestOrder) {
       return res.status(403).json({ success: false, message: 'Not authorized to access this order' });
     }
 
@@ -833,7 +842,7 @@ const verifyRazorpayPayment = async (req, res) => {
     const validatedItems = [];
 
     for (const item of rawItems) {
-      const bookKey = item.bookId || item.book || item._id || item.id;
+      const bookKey = item.bookId || (typeof item.book === 'object' && item.book !== null ? item.book._id || item.book.id : item.book) || item._id || item.id;
       let book = null;
       if (bookKey) {
         try { book = await Book.findById(bookKey); } catch { book = null; }
@@ -847,11 +856,19 @@ const verifyRazorpayPayment = async (req, res) => {
       const itemSubtotal = unitPrice * qty;
       subtotal += itemSubtotal;
 
+      const itemImg = (book && Array.isArray(book.images) && book.images[0]) ||
+        (item.book && Array.isArray(item.book.images) && item.book.images[0]) ||
+        (Array.isArray(item.images) && item.images[0]) ||
+        item.coverImage ||
+        item.image ||
+        (book && book.coverImage) ||
+        '/book-placeholder.svg';
+
       validatedItems.push({
         book: book ? book._id : null,
-        title: book ? book.title : (item.title || 'LOGOS Book'),
+        title: book ? (book.titleMalayalam || book.title) : (item.title || 'LOGOS Book'),
         author: book ? book.author : (item.author || 'LOGOS Author'),
-        image: book && book.images && book.images[0] ? book.images[0] : (item.coverImage || item.image || '/book1.jpg'),
+        image: itemImg,
         price: unitPrice,
         quantity: qty,
         subtotal: itemSubtotal

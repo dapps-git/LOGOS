@@ -1,14 +1,27 @@
 'use client';
 
-import React, { useEffect, useState, use } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { apiGetOrderById, apiCancelOrder, apiRequestReturn } from '../../../lib/api';
 import Navbar from '../../../components/Navbar';
 import Footer from '../../../components/Footer';
 
 export default function OrderTrackingPage({ params }) {
-  const unwrappedParams = use(params);
-  const orderId = unwrappedParams.id;
+  const routeParams = useParams();
+  const [resolvedOrderId, setResolvedOrderId] = useState(routeParams?.id || null);
+
+  useEffect(() => {
+    if (routeParams?.id) {
+      setResolvedOrderId(routeParams.id);
+    } else if (params) {
+      Promise.resolve(params).then((p) => {
+        if (p?.id) setResolvedOrderId(p.id);
+      }).catch(() => {});
+    }
+  }, [routeParams?.id, params]);
+
+  const orderId = resolvedOrderId || routeParams?.id;
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -236,7 +249,7 @@ export default function OrderTrackingPage({ params }) {
                       ? 'bg-rose-50 text-rose-700 border-rose-200'
                       : isRefunded || isReturnApproved
                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                      : isPickupScheduled || isReceived
+                      : isReturnScheduled || isReturned
                       ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
                       : 'bg-amber-50 text-amber-800 border-amber-200'
                   }`}>
@@ -248,9 +261,9 @@ export default function OrderTrackingPage({ params }) {
                         ? 'Refunded'
                         : isRefundInitiated
                         ? 'Refund Initiated'
-                        : isReceived
+                        : isReturned
                         ? 'Return Received'
-                        : isPickupScheduled
+                        : isReturnScheduled
                         ? 'Pickup Scheduled'
                         : isReturnApproved
                         ? 'Return Approved'
@@ -271,7 +284,12 @@ export default function OrderTrackingPage({ params }) {
               {items.map((item, idx) => {
                 const title = item.title || item.book?.titleMalayalam || item.book?.title || 'Book Title';
                 const author = item.author || item.book?.author || 'LOGOS';
-                const img = item.coverImage || item.image || item.book?.coverImage || '/book1.jpg';
+                const img = (Array.isArray(item.book?.images) && item.book.images[0]) ||
+                  item.image ||
+                  item.coverImage ||
+                  item.book?.coverImage ||
+                  item.book?.image ||
+                  '/book-placeholder.svg';
                 const price = item.price || 112;
 
                 return (
@@ -283,7 +301,7 @@ export default function OrderTrackingPage({ params }) {
                           alt={title}
                           onError={(e) => {
                             e.currentTarget.onerror = null;
-                            e.currentTarget.src = '/book1.jpg';
+                            e.currentTarget.src = '/book-placeholder.svg';
                           }}
                           className="w-full h-full object-cover"
                         />

@@ -295,7 +295,12 @@ export default function CheckoutPage() {
         author: item.book?.author || 'LOGOS',
         quantity: item.quantity,
         price: item.price || item.book?.discountPrice || item.book?.salePrice || item.book?.price || 299,
-        coverImage: item.book?.coverImage || item.book?.image || ''
+        coverImage: (Array.isArray(item.book?.images) && item.book.images[0]) ||
+          item.book?.coverImage ||
+          item.book?.image ||
+          item.image ||
+          item.coverImage ||
+          ''
       }));
 
       const orderPayload = {
@@ -517,7 +522,12 @@ export default function CheckoutPage() {
               const book = item.book || {};
               const title = book.titleMalayalam || book.title || 'LOGOS Book';
               const author = book.author || 'LOGOS Publications';
-              const img = book.coverImage || book.image || '/book1.jpg';
+              const img = (Array.isArray(book.images) && book.images[0]) ||
+                book.coverImage ||
+                book.image ||
+                item.image ||
+                item.coverImage ||
+                '/book-placeholder.svg';
               const price = item.price || book.salePrice || book.price || 112;
               const original = book.originalPrice || price + 68;
 
@@ -529,7 +539,7 @@ export default function CheckoutPage() {
                       alt={title}
                       onError={(e) => {
                         e.currentTarget.onerror = null;
-                        e.currentTarget.src = '/book1.jpg';
+                        e.currentTarget.src = '/book-placeholder.svg';
                       }}
                       className="w-full h-full object-cover"
                     />
