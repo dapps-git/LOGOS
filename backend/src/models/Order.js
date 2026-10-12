@@ -68,8 +68,13 @@ const orderSchema = new mongoose.Schema({
   },
   paymentStatus: {
     type: String,
-    enum: ['Pending', 'Paid', 'Failed', 'Refunded'],
-    default: 'Pending'
+    enum: ['Pending', 'Pending (COD)', 'Paid', 'Failed', 'Refunded'],
+    default: 'Pending',
+    set: (v) => {
+      if (!v) return 'Pending';
+      if (v === 'Pending (COD)' || v === 'Pending COD') return 'Pending';
+      return v;
+    }
   },
   razorpayOrderId: {
     type: String,

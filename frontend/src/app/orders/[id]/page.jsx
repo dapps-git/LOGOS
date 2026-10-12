@@ -348,9 +348,11 @@ export default function OrderTrackingPage({ params }) {
                   </svg>
                 </div>
                 <div className="min-w-0">
-                  <h4 className="text-xs font-semibold text-slate-900">Payment Confirmed</h4>
+                  <h4 className="text-xs font-semibold text-slate-900">
+                    {isCOD ? (isDelivered ? 'Payment Collected (COD)' : 'Cash on Delivery (Pending Payment)') : 'Payment Confirmed'}
+                  </h4>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    {isCOD ? (isDelivered ? 'Cash Collected on Delivery' : 'Cash on Delivery (Pending)') : 'Verified via Online Gateway / UPI'}
+                    {isCOD ? (isDelivered ? 'Cash Collected on Delivery' : 'Pay cash to delivery partner upon arrival') : 'Verified via Online Gateway / UPI'}
                   </p>
                 </div>
               </div>

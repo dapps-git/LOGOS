@@ -413,6 +413,8 @@ const updateOrderStatusAdmin = async (req, res) => {
 
     if (status === 'Delivered' && order.paymentMethod === 'COD') {
       order.paymentStatus = 'Paid';
+    } else if (order.paymentMethod === 'COD' && ['Pending', 'Confirmed', 'Processing', 'Shipped', 'Out for Delivery'].includes(status) && order.paymentStatus === 'Paid') {
+      order.paymentStatus = 'Pending';
     }
 
     await order.save();
@@ -445,7 +447,8 @@ const updatePaymentStatusAdmin = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    order.paymentStatus = paymentStatus;
+    const normalizedPaymentStatus = (paymentStatus || '').toLowerCase().includes('pending') ? 'Pending' : paymentStatus;
+    order.paymentStatus = normalizedPaymentStatus;
     if (transactionId) {
       order.paymentDetails = {
         ...order.paymentDetails,

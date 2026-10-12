@@ -215,21 +215,56 @@ export default function OrdersPage() {
 
                         {/* Payment */}
                         <td className="py-3.5 px-4 text-center align-middle whitespace-nowrap">
-                          <select
-                            value={order.paymentStatus || 'Pending'}
-                            onChange={(e) => handlePaymentChange(order._id, e.target.value)}
-                            className="text-[11px] font-bold px-2 py-1 bg-slate-50 border border-slate-300 rounded-sm text-slate-800 focus:outline-hidden cursor-pointer"
-                          >
-                            <option value="Paid">Paid</option>
-                            <option value="Pending">Pending (COD)</option>
-                            <option value="Refunded">Refunded</option>
-                          </select>
+                          {(() => {
+                            const isCod = (order.paymentMethod || 'COD').toString().toUpperCase() === 'COD';
+                            const pStatus = (order.paymentStatus || (isCod ? 'Pending' : 'Paid')).toString();
+                            const isPaid = pStatus.toLowerCase() === 'paid';
+                            const isRefunded = pStatus.toLowerCase() === 'refunded';
+                            const isPending = !isPaid && !isRefunded;
+
+                            return (
+                              <div className="flex flex-col items-center justify-center gap-1">
+                                <select
+                                  value={isPaid ? 'Paid' : isRefunded ? 'Refunded' : 'Pending'}
+                                  onChange={(e) => handlePaymentChange(order._id, e.target.value)}
+                                  className={`text-[11px] font-bold px-2 py-1 border rounded-sm focus:outline-hidden cursor-pointer transition-colors ${
+                                    isPending
+                                      ? 'bg-amber-50 border-amber-300 text-amber-900 font-extrabold shadow-2xs'
+                                      : isPaid
+                                      ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                                      : 'bg-purple-50 border-purple-300 text-purple-800'
+                                  }`}
+                                >
+                                  {isCod ? (
+                                    <>
+                                      <option value="Pending">Pending (COD)</option>
+                                      <option value="Paid">Paid (Cash Collected)</option>
+                                      <option value="Refunded">Refunded</option>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <option value="Paid">Paid</option>
+                                      <option value="Pending">Pending</option>
+                                      <option value="Refunded">Refunded</option>
+                                    </>
+                                  )}
+                                </select>
+                                <span
+                                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded-xs tracking-wider uppercase ${
+                                    isCod ? 'text-amber-800 bg-amber-100/70 border border-amber-200' : 'text-blue-800 bg-blue-50 border border-blue-200'
+                                  }`}
+                                >
+                                  {isCod ? 'COD' : 'Online / UPI'}
+                                </span>
+                              </div>
+                            );
+                          })()}
                         </td>
 
                         {/* Order Status */}
                         <td className="py-3.5 px-4 text-center align-middle whitespace-nowrap">
                           <select
-                            value={order.orderStatus || 'Pending'}
+                            value={order.orderStatus || 'Confirmed'}
                             onChange={(e) => handleStatusChange(order._id, e.target.value)}
                             className={`text-[11px] font-bold px-2 py-1 border rounded-sm focus:outline-hidden cursor-pointer ${
                               order.orderStatus === 'Return Requested'
@@ -239,6 +274,7 @@ export default function OrdersPage() {
                                 : 'bg-slate-50 border-slate-300 text-slate-800'
                             }`}
                           >
+                            <option value="Confirmed">Confirmed</option>
                             <option value="Pending">Pending</option>
                             <option value="Processing">Processing</option>
                             <option value="Shipped">Shipped</option>
@@ -328,7 +364,25 @@ export default function OrdersPage() {
                   <p className="text-slate-700">
                     {selectedOrder.shippingAddress?.postOffice ? `${selectedOrder.shippingAddress.postOffice} P.O., ` : ''}{selectedOrder.shippingAddress?.city || ''}, {selectedOrder.shippingAddress?.state || ''} {selectedOrder.shippingAddress?.postalCode ? `- ${selectedOrder.shippingAddress.postalCode}` : ''}
                   </p>
-                  <p className="text-slate-700 font-semibold mt-1">Payment: {selectedOrder.paymentMethod || 'COD'}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-slate-700 font-semibold text-xs">Payment:</span>
+                    <span className="text-xs font-bold text-slate-900">
+                      {(selectedOrder.paymentMethod || 'COD').toUpperCase() === 'COD' ? 'Cash on Delivery (COD)' : 'Online / Prepaid'}
+                    </span>
+                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+                      (selectedOrder.paymentStatus || '').toLowerCase() === 'paid'
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        : (selectedOrder.paymentMethod || 'COD').toUpperCase() === 'COD'
+                        ? 'bg-amber-50 text-amber-900 border-amber-300'
+                        : 'bg-amber-50 text-amber-800 border-amber-200'
+                    }`}>
+                      {selectedOrder.paymentStatus === 'Paid'
+                        ? 'Paid'
+                        : (selectedOrder.paymentMethod || 'COD').toUpperCase() === 'COD'
+                        ? 'Pending (COD)'
+                        : 'Pending'}
+                    </span>
+                  </div>
                 </div>
               </div>
 
