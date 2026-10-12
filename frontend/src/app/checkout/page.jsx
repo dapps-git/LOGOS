@@ -334,7 +334,7 @@ export default function CheckoutPage() {
         }
 
         const options = {
-          key: rzpData.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_Tmsb3gQ2sQ69F9',
+          key: rzpData.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_TmuLmQnQzM9HtI',
           amount: rzpData.amount,
           currency: rzpData.currency || 'INR',
           name: 'LOGOS Bookstore',
@@ -375,6 +375,11 @@ export default function CheckoutPage() {
 
         if (typeof window !== 'undefined' && window.Razorpay) {
           const rzp = new window.Razorpay(options);
+          rzp.on('payment.failed', function (resp) {
+            console.error('Razorpay payment failed:', resp.error);
+            setError(resp.error?.description || resp.error?.reason || 'Payment failed. Please try another method.');
+            setLoading(false);
+          });
           rzp.open();
           setLoading(false);
           return;
