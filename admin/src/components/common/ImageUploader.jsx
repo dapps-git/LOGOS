@@ -201,11 +201,6 @@ export const ImageUploader = ({ images = [], onChange, minImages = 3, maxImages 
                   crossOrigin="anonymous"
                   className="w-full h-full object-cover select-none"
                   onError={(e) => {
-                    if (!e.currentTarget.dataset.retried && typeof imgUrl === 'string' && imgUrl.startsWith('/') && !imgUrl.startsWith('//')) {
-                      e.currentTarget.dataset.retried = '1';
-                      e.currentTarget.src = `http://localhost:3000${imgUrl}`;
-                      return;
-                    }
                     e.currentTarget.onerror = null;
                     e.currentTarget.src = '/book-placeholder.svg';
                   }}

@@ -31,65 +31,11 @@ export const StoreDataProvider = ({ children }) => {
     });
   };
 
-  const [books, setBooks] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('logos_admin_books');
-      if (saved) {
-        try {
-          return sanitizeList(JSON.parse(saved));
-        } catch {}
-      }
-    }
-    return initialMockBooks;
-  });
-
-  const [banners, setBanners] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('logos_admin_banners');
-      if (saved) {
-        try {
-          return sanitizeList(JSON.parse(saved));
-        } catch {}
-      }
-    }
-    return initialMockBanners;
-  });
-
-  const [orders, setOrders] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('logos_admin_orders');
-      if (saved) {
-        try {
-          return sanitizeList(JSON.parse(saved));
-        } catch {}
-      }
-    }
-    return initialMockOrders;
-  });
-
-  const [coupons, setCoupons] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('logos_admin_coupons');
-      if (saved) {
-        try {
-          return sanitizeList(JSON.parse(saved));
-        } catch {}
-      }
-    }
-    return initialMockCoupons;
-  });
-
-  const [referrals, setReferrals] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('logos_admin_referrals');
-      if (saved) {
-        try {
-          return sanitizeList(JSON.parse(saved));
-        } catch {}
-      }
-    }
-  });
-
+  const [books, setBooks] = useState(initialMockBooks);
+  const [banners, setBanners] = useState(initialMockBanners);
+  const [orders, setOrders] = useState(initialMockOrders);
+  const [coupons, setCoupons] = useState(initialMockCoupons);
+  const [referrals, setReferrals] = useState([]);
   const [referralStats, setReferralStats] = useState({
     totalLinksGenerated: 0,
     totalReferrals: 0,
@@ -97,89 +43,29 @@ export const StoreDataProvider = ({ children }) => {
     pendingReferrals: 0,
     totalRewardsIssued: 0
   });
+  const [returnsList, setReturnsList] = useState(initialMockReturns);
+  const [customers, setCustomers] = useState(initialMockCustomers);
+  const [authors, setAuthors] = useState([]);
 
-  const [returnsList, setReturnsList] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('logos_admin_returns');
-      if (saved) {
-        try {
-          return sanitizeList(JSON.parse(saved));
-        } catch {}
-      }
-    }
-    return initialMockReturns;
-  });
-
-  const [customers, setCustomers] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('logos_admin_customers');
-      if (saved) {
-        try {
-          return sanitizeList(JSON.parse(saved));
-        } catch {}
-      }
-    }
-    return initialMockCustomers;
-  });
-
-  const [authors, setAuthors] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('logos_admin_authors');
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch {}
-      }
-    }
-    return [];
-  });
-
-  // Safe localStorage helper to prevent QuotaExceededError
-  const safeSetItem = (key, data) => {
+  // Purge unwanted large data items from localStorage to prevent quota bloat & data leakage
+  useEffect(() => {
     if (typeof window === 'undefined') return;
-    try {
-      localStorage.setItem(key, JSON.stringify(data));
-    } catch (e) {
-      console.warn(`[StoreDataContext] LocalStorage quota reached for ${key}. Silently continuing with in-memory state.`);
+    const unwantedKeys = [
+      'logos_admin_books',
+      'logos_admin_banners',
+      'logos_admin_authors',
+      'logos_admin_orders',
+      'logos_admin_coupons',
+      'logos_admin_referrals',
+      'logos_admin_returns',
+      'logos_admin_customers'
+    ];
+    unwantedKeys.forEach((k) => {
       try {
-        localStorage.removeItem('logos_admin_banners');
-        localStorage.removeItem('logos_admin_books');
+        localStorage.removeItem(k);
       } catch {}
-    }
-  };
-
-  // Sync to localStorage
-  useEffect(() => {
-    safeSetItem('logos_admin_books', books);
-  }, [books]);
-
-  useEffect(() => {
-    safeSetItem('logos_admin_banners', banners);
-  }, [banners]);
-
-  useEffect(() => {
-    safeSetItem('logos_admin_authors', authors);
-  }, [authors]);
-
-  useEffect(() => {
-    safeSetItem('logos_admin_orders', orders);
-  }, [orders]);
-
-  useEffect(() => {
-    safeSetItem('logos_admin_coupons', coupons);
-  }, [coupons]);
-
-  useEffect(() => {
-    safeSetItem('logos_admin_referrals', referrals);
-  }, [referrals]);
-
-  useEffect(() => {
-    safeSetItem('logos_admin_returns', returnsList);
-  }, [returnsList]);
-
-  useEffect(() => {
-    safeSetItem('logos_admin_customers', customers);
-  }, [customers]);
+    });
+  }, []);
 
   // Fetch fresh data from backend API
   const fetchAllData = async () => {

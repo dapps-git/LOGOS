@@ -3,7 +3,10 @@ export const getApiBase = () => {
   if (envUrl) {
     return envUrl.replace(/\/+$/, '');
   }
-  return 'http://localhost:5001/api';
+  if (process.env.NODE_ENV !== 'production') {
+    return 'http://localhost:5001/api';
+  }
+  throw new Error('API URL is not configured. Please define NEXT_PUBLIC_API_URL in your environment.');
 };
 
 function getGuestSessionId() {

@@ -70,9 +70,7 @@ const sendEmail = async (options) => {
       console.log(`[Nodemailer] Email sent successfully to ${options.email}. MessageId: ${info.messageId}`);
       return { success: true, messageId: info.messageId };
     } catch (err) {
-      console.error('[Nodemailer Error]', err.message);
-      // Fallback in dev/error so user flow is not broken
-      return { success: false, error: err.message, otp: options.otp };
+      return { success: false, error: err.message };
     }
   } else {
     // Development fallback when SMTP_USER is not yet set in .env

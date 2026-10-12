@@ -13,7 +13,7 @@ const {
   requestReturn,
   reviewReturnAdmin
 } = require('../controllers/orderController');
-const { protectCustomer, optionalAuth } = require('../middleware/authMiddleware');
+const { protectCustomer, optionalAuth, protectCustomerOrAdmin } = require('../middleware/authMiddleware');
 const { protectAdmin } = require('../middleware/adminMiddleware');
 
 // Razorpay Payment Routes (must be before parameterized /:id)
@@ -30,8 +30,8 @@ router.put('/admin/:id/return-review', protectAdmin, reviewReturnAdmin);
 router.post('/', protectCustomer, createOrder);
 router.get('/my-orders', protectCustomer, getMyOrders);
 router.get('/:id', optionalAuth, getOrderById);
-router.put('/:id/cancel', optionalAuth, cancelOrder);
-router.post('/:id/return', optionalAuth, requestReturn);
+router.put('/:id/cancel', protectCustomerOrAdmin, cancelOrder);
+router.post('/:id/return', protectCustomerOrAdmin, requestReturn);
 
 module.exports = router;
 

@@ -76,26 +76,7 @@ export default function CheckoutPage() {
 
   // Restore saved address on initial load (persists in same system/browser)
   useEffect(() => {
-    let restored = false;
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = localStorage.getItem('logos_delivery_address');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (parsed && typeof parsed === 'object' && parsed.streetAddress) {
-            setAddressForm((prev) => ({
-              ...prev,
-              ...parsed,
-              fullName: parsed.fullName || user?.name || prev.fullName,
-              phone: parsed.phone || user?.phone || prev.phone
-            }));
-            restored = true;
-          }
-        }
-      } catch {}
-    }
-
-    if (!restored && user?.addresses && user.addresses.length > 0) {
+    if (user?.addresses && user.addresses.length > 0) {
       const saved = user.addresses[selectedAddressIndex] || user.addresses[0];
       setAddressForm((prev) => ({
         ...prev,
@@ -108,7 +89,7 @@ export default function CheckoutPage() {
         postalCode: saved.postalCode || prev.postalCode,
         country: 'India'
       }));
-    } else if (!restored && user) {
+    } else if (user) {
       setAddressForm((prev) => ({
         ...prev,
         fullName: user.name || prev.fullName,
@@ -116,15 +97,6 @@ export default function CheckoutPage() {
       }));
     }
   }, [user, selectedAddressIndex]);
-
-  // Continuously save address to localStorage so it persists in the same system
-  useEffect(() => {
-    if (typeof window !== 'undefined' && addressForm.streetAddress && addressForm.fullName) {
-      try {
-        localStorage.setItem('logos_delivery_address', JSON.stringify(addressForm));
-      } catch {}
-    }
-  }, [addressForm]);
 
   // Address Validator
   const validateAddress = (addr) => {
@@ -277,12 +249,6 @@ export default function CheckoutPage() {
         postalCode: cleanPin,
         country: 'India'
       };
-
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem('logos_delivery_address', JSON.stringify(finalShippingAddress));
-        } catch {}
-      }
 
       const customerName = user?.name || finalShippingAddress.fullName;
       const customerEmail = user?.email || addressForm.email || `${cleanPhone}@guest.logos.in`;

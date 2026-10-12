@@ -15,24 +15,17 @@ const DEFAULT_BANNER = {
 };
 
 export const HeroBanner = () => {
-  // Instant initial state: Immediately display default banner or cached banners
-  const [banners, setBanners] = useState(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const cached = localStorage.getItem('logos_cached_hero_banners');
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-        }
-      } catch {}
-    }
-    return [DEFAULT_BANNER];
-  });
+  // Instant initial state: Immediately display default banner
+  const [banners, setBanners] = useState([DEFAULT_BANNER]);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Background revalidation: Silently fetch latest banners without blocking initial display
+  // Background fetch: Silently fetch latest active banners from API
   useEffect(() => {
     let isMounted = true;
+    try {
+      localStorage.removeItem('logos_cached_hero_banners');
+    } catch {}
+
     async function load() {
       try {
         const data = await fetchBanners();
@@ -42,13 +35,10 @@ export const HeroBanner = () => {
           );
           if (heroBanners.length > 0) {
             setBanners(heroBanners);
-            try {
-              localStorage.setItem('logos_cached_hero_banners', JSON.stringify(heroBanners));
-            } catch {}
           }
         }
       } catch (err) {
-        // Keep current banner on error
+        // Keep default banner on error
       }
     }
     load();

@@ -1,7 +1,6 @@
 const jwt = require('jsonwebtoken');
 const Customer = require('../models/Customer');
-
-const JWT_SECRET = process.env.JWT_SECRET || 'logos_book_store_super_secure_jwt_secret_key_2026_xyz!';
+const { getJwtSecret } = require('../config/jwt');
 
 const protectCustomer = async (req, res, next) => {
   let token;
@@ -12,7 +11,7 @@ const protectCustomer = async (req, res, next) => {
   ) {
     try {
       token = req.headers.authorization.split(' ')[1];
-      const decoded = jwt.verify(token, JWT_SECRET);
+      const decoded = jwt.verify(token, getJwtSecret());
       
       const customer = await Customer.findById(decoded.id).select('-password');
       if (!customer) {
@@ -41,7 +40,7 @@ const optionalAuth = async (req, res, next) => {
   ) {
     try {
       token = req.headers.authorization.split(' ')[1];
-      const decoded = jwt.verify(token, JWT_SECRET);
+      const decoded = jwt.verify(token, getJwtSecret());
       const customer = await Customer.findById(decoded.id).select('-password');
       if (customer) {
         req.customer = customer;
@@ -54,7 +53,44 @@ const optionalAuth = async (req, res, next) => {
   next();
 };
 
+const protectCustomerOrAdmin = async (req, res, next) => {
+  let token;
+
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith('Bearer')
+  ) {
+    try {
+      token = req.headers.authorization.split(' ')[1];
+      const decoded = jwt.verify(token, getJwtSecret());
+
+      if (decoded.role === 'admin') {
+        const Admin = require('../models/Admin');
+        const admin = await Admin.findById(decoded.id).select('-password');
+        if (admin && admin.isActive) {
+          req.admin = admin;
+          return next();
+        }
+      }
+
+      const customer = await Customer.findById(decoded.id).select('-password');
+      if (customer) {
+        req.customer = customer;
+        req.user = customer;
+        return next();
+      }
+
+      return res.status(401).json({ success: false, message: 'Account not found or inactive' });
+    } catch (error) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired authorization token' });
+    }
+  }
+
+  return res.status(401).json({ success: false, message: 'Not authorized, no token provided' });
+};
+
 module.exports = {
   protectCustomer,
-  optionalAuth
+  optionalAuth,
+  protectCustomerOrAdmin
 };

@@ -8,13 +8,15 @@ const {
   deleteAuthorHighlight
 } = require('../controllers/authorHighlightController');
 
+const { protectAdmin } = require('../middleware/adminMiddleware');
+
 // Public route for storefront
 router.get('/', getAuthorHighlights);
 
-// Admin routes
-router.get('/admin/all', getAuthorHighlightsAdmin);
-router.post('/', createAuthorHighlight);
-router.put('/:id', updateAuthorHighlight);
-router.delete('/:id', deleteAuthorHighlight);
+// Admin routes (Protected with JWT)
+router.get('/admin/all', protectAdmin, getAuthorHighlightsAdmin);
+router.post('/', protectAdmin, createAuthorHighlight);
+router.put('/:id', protectAdmin, updateAuthorHighlight);
+router.delete('/:id', protectAdmin, deleteAuthorHighlight);
 
 module.exports = router;
