@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { fetchBanners } from '@/lib/api';
+import { fetchBanners, optimizeImageUrl } from '@/lib/api';
 import { ComboOfferBannerSkeleton } from '@/components/Skeletons';
 
 export const ComboOfferBanner = () => {
@@ -61,8 +61,10 @@ export const ComboOfferBanner = () => {
     <section className="w-full my-8 sm:my-12 overflow-hidden">
       <Link href={dealBanner.link || '/products'} className="block relative w-full group">
         <img
-          src={dealBanner.image || '/combo_banner.png'}
+          src={optimizeImageUrl(dealBanner.image || '/combo_banner.png', { width: 1400, quality: 'auto' })}
           alt={dealBanner.title || 'Special Combo Offer'}
+          loading="lazy"
+          decoding="async"
           onError={(e) => {
             e.currentTarget.src = '/combo_banner.png';
           }}

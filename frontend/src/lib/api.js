@@ -97,18 +97,43 @@ export async function fetchBookBySlugOrId(idOrSlug) {
   }
 }
 
-export async function fetchBanners() {
-  try {
-    const res = await fetch(`${getApiBase()}/banners`, {
-      cache: 'no-store'
-    });
-    if (!res.ok) throw new Error(`Failed to fetch banners: ${res.status}`);
-    const data = await res.json();
-    return data.banners || [];
-  } catch (err) {
-    console.warn('[LOGOS API] fetchBanners fallback:', err.message);
-    return [];
+// Helper to optimize Cloudinary and CDN image delivery (WebP/AVIF auto compression)
+export function optimizeImageUrl(url, { width = 1920, quality = 'auto' } = {}) {
+  if (!url || typeof url !== 'string') return url;
+  if (url.includes('res.cloudinary.com') && url.includes('/upload/')) {
+    if (url.includes('/upload/f_auto') || url.includes('/upload/q_auto') || url.includes('/upload/w_')) {
+      return url;
+    }
+    return url.replace('/upload/', `/upload/f_auto,q_${quality},w_${width},c_limit/`);
   }
+  return url;
+}
+
+let bannersCachePromise = null;
+let lastBannersCacheTime = 0;
+
+export async function fetchBanners() {
+  const now = Date.now();
+  if (bannersCachePromise && (now - lastBannersCacheTime < 20000)) {
+    return bannersCachePromise;
+  }
+
+  bannersCachePromise = (async () => {
+    try {
+      const res = await fetch(`${getApiBase()}/banners`, {
+        next: { revalidate: 60 }
+      });
+      if (!res.ok) throw new Error(`Failed to fetch banners: ${res.status}`);
+      const data = await res.json();
+      lastBannersCacheTime = Date.now();
+      return data.banners || [];
+    } catch (err) {
+      console.warn('[LOGOS API] fetchBanners fallback:', err.message);
+      return [];
+    }
+  })();
+
+  return bannersCachePromise;
 }
 
 // ----------------- Customer Auth APIs -----------------
