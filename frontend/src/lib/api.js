@@ -97,14 +97,20 @@ export async function fetchBookBySlugOrId(idOrSlug) {
   }
 }
 
-// Helper to optimize Cloudinary and CDN image delivery (WebP/AVIF auto compression)
+// Helper to optimize Cloudinary and CDN image delivery (Forces WebP and optimal compression)
 export function optimizeImageUrl(url, { width = 1920, quality = 'auto' } = {}) {
   if (!url || typeof url !== 'string') return url;
+
+  // Automatically convert local banners to high-efficiency WebP
+  if (url === '/banner.png') return '/banner.webp';
+  if (url === '/combo_banner.png') return '/combo_banner.webp';
+
+  // Cloudinary transformation: enforce WebP format & auto quality
   if (url.includes('res.cloudinary.com') && url.includes('/upload/')) {
-    if (url.includes('/upload/f_auto') || url.includes('/upload/q_auto') || url.includes('/upload/w_')) {
+    if (url.includes('/upload/f_') || url.includes('/upload/q_') || url.includes('/upload/w_')) {
       return url;
     }
-    return url.replace('/upload/', `/upload/f_auto,q_${quality},w_${width},c_limit/`);
+    return url.replace('/upload/', `/upload/f_webp,q_${quality},w_${width},c_limit/`);
   }
   return url;
 }

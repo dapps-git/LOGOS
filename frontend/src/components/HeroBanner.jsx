@@ -82,7 +82,7 @@ export const HeroBanner = () => {
   }, [currentIndex, banners]);
 
   const currentBanner = banners.length > 0 ? banners[currentIndex] : null;
-  const rawBannerImage = currentBanner?.image || '/banner.png';
+  const rawBannerImage = currentBanner?.image || '/banner.webp';
   const rawMobileBannerImage = currentBanner?.mobileImage || rawBannerImage;
 
   // Cloudinary compressed image URLs (WebP/AVIF auto formats)
@@ -108,7 +108,7 @@ export const HeroBanner = () => {
           crossOrigin="anonymous"
           onError={(e) => {
             e.currentTarget.onerror = null;
-            e.currentTarget.src = '/banner.png';
+            e.currentTarget.src = '/banner.webp';
           }}
           className="w-full h-full object-cover object-center block select-none transition-opacity duration-500 animate-in fade-in"
         />

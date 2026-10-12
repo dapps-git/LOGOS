@@ -800,41 +800,28 @@ export default function CheckoutPage() {
 
       {/* LOGOS Branded Order Placing Loading Modal Overlay */}
       {loading && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="relative bg-white rounded-3xl max-w-sm w-full p-8 text-center shadow-2xl border border-slate-100 flex flex-col items-center overflow-hidden">
-            {/* Top decorative gradient glow */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-2 bg-gradient-to-r from-transparent via-[#1044A5] to-transparent rounded-full opacity-80" />
-            <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-36 h-36 bg-blue-400/10 rounded-full blur-2xl pointer-events-none" />
-
-            {/* LOGOS Brand Emblem with soft animated pulse */}
-            <div className="relative mb-5">
-              <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-50 via-white to-sky-50 ring-8 ring-blue-50/70 border border-blue-100/60 shadow-lg shadow-blue-500/5 flex items-center justify-center p-3.5 transition-all">
+        <div className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="relative bg-white/95 backdrop-blur-md rounded-2xl max-w-[270px] sm:max-w-[290px] w-full py-7 px-6 text-center shadow-2xl border border-white/80 flex flex-col items-center">
+            {/* Animated Brand Emblem with soft spinning accent ring */}
+            <div className="relative mb-4 flex items-center justify-center">
+              <div className="absolute -inset-2.5 rounded-full border-2 border-slate-100 border-t-[#1044A5] animate-spin" />
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-b from-blue-50/60 to-white ring-1 ring-slate-100 shadow-sm flex items-center justify-center p-3.5">
                 <img
                   src="/logo.png"
                   alt="LOGOS Books"
-                  className="w-full h-full object-contain filter drop-shadow-xs"
+                  className="w-full h-full object-contain"
                 />
-              </div>
-              <div className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-[#1044A5] text-white flex items-center justify-center shadow-md ring-2 ring-white animate-bounce">
-                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
               </div>
             </div>
 
-            {/* Title and Subtitle */}
-            <h3 className="text-lg font-bold text-slate-900 tracking-tight">Placing Your Order...</h3>
-            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed max-w-[240px]">
-              Preparing your literary journey to your doorstep with care.
-            </p>
-
-            {/* Loading Indicator Bar */}
-            <div className="w-full mt-6 flex flex-col items-center gap-2.5">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50/80 border border-blue-100 text-xs text-[#1044A5] font-medium">
-                <div className="w-4 h-4 border-2 border-[#1044A5]/30 border-t-[#1044A5] rounded-full animate-spin" />
-                <span>Confirming Order &amp; Stock</span>
-              </div>
-              <p className="text-[10px] text-slate-400 font-medium flex items-center gap-1">
-                <span>🔒</span> Safe &amp; 256-Bit Encrypted Checkout
-              </p>
+            {/* Clean, Elegant Title with Animated Dots */}
+            <div className="flex items-center justify-center gap-1.5 text-base font-semibold text-slate-900 tracking-tight">
+              <span>Placing Order</span>
+              <span className="flex gap-1 pt-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#1044A5] animate-bounce [animation-delay:-0.3s]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[#1044A5] animate-bounce [animation-delay:-0.15s]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[#1044A5] animate-bounce" />
+              </span>
             </div>
           </div>
         </div>

@@ -61,12 +61,12 @@ export const ComboOfferBanner = () => {
     <section className="w-full my-8 sm:my-12 overflow-hidden">
       <Link href={dealBanner.link || '/products'} className="block relative w-full group">
         <img
-          src={optimizeImageUrl(dealBanner.image || '/combo_banner.png', { width: 1400, quality: 'auto' })}
+          src={optimizeImageUrl(dealBanner.image || '/combo_banner.webp', { width: 1400, quality: 'auto' })}
           alt={dealBanner.title || 'Special Combo Offer'}
           loading="lazy"
           decoding="async"
           onError={(e) => {
-            e.currentTarget.src = '/combo_banner.png';
+            e.currentTarget.src = '/combo_banner.webp';
           }}
           className="w-full h-auto object-cover select-none transition-transform duration-500 group-hover:scale-[1.01]"
         />
