@@ -334,7 +334,7 @@ export default function CheckoutPage() {
         }
 
         const options = {
-          key: rzpData.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_live_ThoKT60JX1kpL8',
+          key: rzpData.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_Tmsb3gQ2sQ69F9',
           amount: rzpData.amount,
           currency: rzpData.currency || 'INR',
           name: 'LOGOS Bookstore',
