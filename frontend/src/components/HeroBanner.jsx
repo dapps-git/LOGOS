@@ -5,54 +5,50 @@ import Link from 'next/link';
 import { fetchBanners, optimizeImageUrl } from '@/lib/api';
 import { HeroBannerSkeleton } from '@/components/Skeletons';
 
+const DEFAULT_BANNER = {
+  _id: 'default_hero_banner',
+  image: '/banner.webp',
+  mobileImage: '/banner.webp',
+  title: 'LOGOS Publications',
+  isActive: true,
+  position: 'hero'
+};
+
 export const HeroBanner = () => {
-  // Instant SWR state: Load cached banners from session if available
+  // Instant initial state: Immediately display default banner or cached banners
   const [banners, setBanners] = useState(() => {
     if (typeof window !== 'undefined') {
       try {
-        const cached = sessionStorage.getItem('logos_cached_hero_banners');
+        const cached = localStorage.getItem('logos_cached_hero_banners');
         if (cached) {
           const parsed = JSON.parse(cached);
           if (Array.isArray(parsed) && parsed.length > 0) return parsed;
         }
       } catch {}
     }
-    return [];
+    return [DEFAULT_BANNER];
   });
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [loading, setLoading] = useState(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const cached = sessionStorage.getItem('logos_cached_hero_banners');
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) return false;
-        }
-      } catch {}
-    }
-    return true;
-  });
 
+  // Background revalidation: Silently fetch latest banners without blocking initial display
   useEffect(() => {
     let isMounted = true;
     async function load() {
       try {
         const data = await fetchBanners();
-        if (isMounted && Array.isArray(data)) {
+        if (isMounted && Array.isArray(data) && data.length > 0) {
           const heroBanners = data.filter(
             (b) => b.isActive !== false && (b.position === 'hero' || !b.position)
           );
-          setBanners(heroBanners);
-          try {
-            sessionStorage.setItem('logos_cached_hero_banners', JSON.stringify(heroBanners));
-          } catch {}
+          if (heroBanners.length > 0) {
+            setBanners(heroBanners);
+            try {
+              localStorage.setItem('logos_cached_hero_banners', JSON.stringify(heroBanners));
+            } catch {}
+          }
         }
       } catch (err) {
-        if (isMounted && banners.length === 0) {
-          setBanners([]);
-        }
-      } finally {
-        if (isMounted) setLoading(false);
+        // Keep current banner on error
       }
     }
     load();
@@ -116,11 +112,7 @@ export const HeroBanner = () => {
     </div>
   );
 
-  if (loading && banners.length === 0) {
-    return <HeroBannerSkeleton />;
-  }
-
-  if (banners.length === 0) {
+  if (!banners || banners.length === 0) {
     return null;
   }
 
