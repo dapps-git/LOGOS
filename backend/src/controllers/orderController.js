@@ -779,8 +779,9 @@ const createRazorpayOrder = async (req, res) => {
       }
     });
   } catch (error) {
+    const errorMsg = error?.error?.description || error?.message || 'Failed to initialize Razorpay order';
     console.error('Razorpay create order error:', error);
-    return res.status(500).json({ success: false, message: error.message || 'Failed to initialize Razorpay order' });
+    return res.status(500).json({ success: false, message: errorMsg });
   }
 };
 

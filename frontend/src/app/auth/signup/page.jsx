@@ -77,29 +77,24 @@ function SignupForm() {
   };
 
   return (
-    <div className="relative z-10 w-full max-w-[430px] bg-white/98 backdrop-blur-md rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-2xl shadow-slate-900/10 border border-slate-100 my-auto">
+    <div className="relative z-10 w-full max-w-[380px] bg-white rounded-2xl p-4 sm:p-5 shadow-2xl shadow-slate-950/20 border border-slate-100 my-auto">
       {/* LOGOS Logo & Title */}
-      <div className="text-center mb-5">
+      <div className="text-center mb-2.5">
         <Link href="/" className="inline-block transition-transform hover:scale-105">
           <img
             src="/logo.png"
             alt="LOGOS Books"
-            className="h-10 sm:h-11 w-auto mx-auto object-contain"
+            className="h-8 sm:h-9 w-auto mx-auto object-contain"
           />
         </Link>
-        <h1 className="text-xl sm:text-2xl font-semibold text-slate-800 tracking-tight mt-3">
+        <h1 className="text-lg sm:text-xl font-semibold text-slate-800 tracking-tight mt-1">
           Create Account
         </h1>
-        {redirect === '/checkout' && (
-          <p className="text-[11px] text-[#1B365D] font-medium mt-1.5 bg-blue-50/70 border border-blue-100 rounded-md py-1 px-2.5">
-            Sign up to complete your purchase
-          </p>
-        )}
       </div>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-100 text-red-600 text-xs rounded-xl flex items-center gap-2">
-          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="mb-2.5 p-2 bg-red-50 border border-red-100 text-red-600 text-[11px] rounded-lg flex items-center gap-2">
+          <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span>{error}</span>
@@ -107,9 +102,9 @@ function SignupForm() {
       )}
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-3.5">
+      <form onSubmit={handleSubmit} className="space-y-2">
         <div>
-          <label className="block text-[11px] font-semibold text-slate-700 mb-1 tracking-wider uppercase">
+          <label className="block text-[10px] font-semibold text-slate-700 mb-0.5 tracking-wider uppercase">
             FULL NAME
           </label>
           <input
@@ -120,12 +115,12 @@ function SignupForm() {
             value={formData.name}
             onChange={handleChange}
             placeholder="Aifa Sana"
-            className="w-full px-3.5 py-2.5 bg-[#FAFBFD] border border-slate-200 rounded-xl text-[16px] sm:text-xs font-light text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1B365D]/20 focus:border-[#1B365D] transition-all"
+            className="w-full px-3 py-1.5 sm:py-2 bg-[#FAFBFD] border border-slate-200 rounded-lg text-[16px] sm:text-xs font-light text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1B365D]/20 focus:border-[#1B365D] transition-all"
           />
         </div>
 
         <div>
-          <label className="block text-[11px] font-semibold text-slate-700 mb-1 tracking-wider uppercase">
+          <label className="block text-[10px] font-semibold text-slate-700 mb-0.5 tracking-wider uppercase">
             EMAIL ADDRESS
           </label>
           <input
@@ -136,16 +131,16 @@ function SignupForm() {
             value={formData.email}
             onChange={handleChange}
             placeholder="you@example.com"
-            className="w-full px-3.5 py-2.5 bg-[#FAFBFD] border border-slate-200 rounded-xl text-[16px] sm:text-xs font-light text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1B365D]/20 focus:border-[#1B365D] transition-all"
+            className="w-full px-3 py-1.5 sm:py-2 bg-[#FAFBFD] border border-slate-200 rounded-lg text-[16px] sm:text-xs font-light text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1B365D]/20 focus:border-[#1B365D] transition-all"
           />
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="block text-[11px] font-semibold text-slate-700 tracking-wider uppercase">
+          <div className="flex items-center justify-between mb-0.5">
+            <label className="block text-[10px] font-semibold text-slate-700 tracking-wider uppercase">
               MOBILE NUMBER <span className="text-rose-500">*</span>
             </label>
-            <span className="text-[10px] text-slate-400 font-normal">10 digits required</span>
+            <span className="text-[9.5px] text-slate-400 font-normal">10 digits required</span>
           </div>
           <input
             type="tel"
@@ -156,12 +151,12 @@ function SignupForm() {
             value={formData.phone}
             onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value.replace(/\D/g, '').slice(0, 10) }))}
             placeholder="9876543210"
-            className="w-full px-3.5 py-2.5 bg-[#FAFBFD] border border-slate-200 rounded-xl text-[16px] sm:text-xs font-light text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1B365D]/20 focus:border-[#1B365D] transition-all"
+            className="w-full px-3 py-1.5 sm:py-2 bg-[#FAFBFD] border border-slate-200 rounded-lg text-[16px] sm:text-xs font-light text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1B365D]/20 focus:border-[#1B365D] transition-all"
           />
         </div>
 
         <div>
-          <label className="block text-[11px] font-semibold text-slate-700 mb-1 tracking-wider uppercase">
+          <label className="block text-[10px] font-semibold text-slate-700 mb-0.5 tracking-wider uppercase">
             PASSWORD <span className="text-rose-500">*</span>
           </label>
           <div className="relative">
@@ -174,12 +169,12 @@ function SignupForm() {
               value={formData.password}
               onChange={handleChange}
               placeholder="At least 6 characters"
-              className="w-full pl-3.5 pr-14 py-2.5 bg-[#FAFBFD] border border-slate-200 rounded-xl text-[16px] sm:text-xs font-light text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1B365D]/20 focus:border-[#1B365D] transition-all"
+              className="w-full pl-3 pr-12 py-1.5 sm:py-2 bg-[#FAFBFD] border border-slate-200 rounded-lg text-[16px] sm:text-xs font-light text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1B365D]/20 focus:border-[#1B365D] transition-all"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-medium px-1 select-none"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-[11px] font-medium px-1 select-none"
             >
               {showPassword ? 'Hide' : 'Show'}
             </button>
@@ -192,18 +187,18 @@ function SignupForm() {
             <button
               type="button"
               onClick={() => setShowReferralInput(true)}
-              className="text-xs text-[#1B365D] hover:underline font-light flex items-center gap-1"
+              className="text-[11px] text-[#1B365D] hover:underline font-light flex items-center gap-1"
             >
               <span>+ Have a friend&apos;s referral code? (15% OFF)</span>
             </button>
           ) : (
-            <div className="p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-xl space-y-1.5">
+            <div className="p-2 bg-emerald-50/70 border border-emerald-200/80 rounded-lg space-y-1">
               <div className="flex items-center justify-between">
-                <label className="text-[10px] font-semibold text-emerald-900 tracking-wider uppercase">
+                <label className="text-[9.5px] font-semibold text-emerald-900 tracking-wider uppercase">
                   Friend&apos;s Referral Code
                 </label>
-                <span className="text-[10px] text-emerald-700 font-semibold bg-white px-2 py-0.5 rounded border border-emerald-200 shadow-2xs">
-                  15% OFF 1st Order
+                <span className="text-[9.5px] text-emerald-700 font-semibold bg-white px-1.5 py-0.2 rounded border border-emerald-200 shadow-2xs">
+                  15% OFF
                 </span>
               </div>
               <input
@@ -213,11 +208,8 @@ function SignupForm() {
                 value={formData.referralCode}
                 onChange={(e) => setFormData((prev) => ({ ...prev, referralCode: e.target.value.toUpperCase() }))}
                 placeholder="LOGOS-XXXXX"
-                className="w-full px-3 py-2 bg-white border border-emerald-300 rounded-lg text-[16px] sm:text-xs font-mono uppercase text-emerald-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all font-semibold"
+                className="w-full px-2.5 py-1.5 bg-white border border-emerald-300 rounded-md text-[16px] sm:text-xs font-mono uppercase text-emerald-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all font-semibold"
               />
-              <p className="text-[10px] text-emerald-700/80 font-normal">
-                You will receive 15% discount on your first book order!
-              </p>
             </div>
           )}
         </div>
@@ -226,10 +218,10 @@ function SignupForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full mt-2 py-3 px-4 bg-[#1B365D] hover:bg-[#132847] text-white rounded-xl text-sm font-semibold tracking-wide transition-all shadow-md shadow-blue-950/20 hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+          className="w-full mt-1.5 py-2.5 px-4 bg-[#1B365D] hover:bg-[#132847] text-white rounded-lg text-xs font-semibold tracking-wide transition-all shadow-md shadow-blue-950/20 hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
         >
           {loading ? (
-            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           ) : (
             'Create Account'
           )}
@@ -237,11 +229,11 @@ function SignupForm() {
       </form>
 
       {/* Divider */}
-      <div className="relative my-4 text-center">
+      <div className="relative my-2.5 text-center">
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-slate-200" />
         </div>
-        <span className="relative px-3 bg-white text-[11px] font-light text-slate-400">
+        <span className="relative px-2.5 bg-white text-[10px] font-light text-slate-400">
           or continue with
         </span>
       </div>
@@ -254,7 +246,7 @@ function SignupForm() {
       />
 
       {/* Login Link */}
-      <div className="mt-4 text-center text-xs font-light text-slate-500">
+      <div className="mt-2.5 text-center text-[11px] font-light text-slate-500">
         Already have an account?{' '}
         <Link
           href={`/auth/login${redirect !== '/' ? `?redirect=${encodeURIComponent(redirect)}` : ''}`}
@@ -269,15 +261,15 @@ function SignupForm() {
 
 export default function SignupPage() {
   return (
-    <div className="relative min-h-screen flex items-center justify-center p-4 bg-[#F8FAFC] selection:bg-[#1B365D] selection:text-white overflow-hidden">
-      {/* Background with Bookstore Imagery */}
+    <div className="relative min-h-screen flex items-center justify-center p-3 sm:p-4 selection:bg-[#1B365D] selection:text-white overflow-hidden">
+      {/* Background with Warm Library Texture */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         <img
           src="/auth_bg.jpg"
           alt="LOGOS Study & Reading Room"
-          className="w-full h-full object-cover object-center"
+          className="w-full h-full object-cover object-center scale-105 filter blur-[2px]"
         />
-        <div className="absolute inset-0 bg-slate-900/10 backdrop-blur-[1px]" />
+        <div className="absolute inset-0 bg-slate-950/20 backdrop-blur-[1px]" />
       </div>
 
       <Suspense fallback={<div className="text-slate-400 text-xs">Loading...</div>}>

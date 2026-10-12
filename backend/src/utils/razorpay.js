@@ -2,24 +2,24 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 
 function getRazorpayKeys() {
-  const keyId = process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '';
-  const keySecret = process.env.RAZORPAY_KEY_SECRET || '';
+  const keyId =
+    process.env.RAZORPAY_KEY_ID ||
+    process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ||
+    'rzp_test_Tmsb3gQ2sQ69F9';
+  const keySecret =
+    process.env.RAZORPAY_KEY_SECRET ||
+    'zgFb7L0dFaevEklDoqBimQL0';
   return { keyId, keySecret };
 }
-
-let razorpayInstance = null;
 
 function getRazorpayInstance() {
   const { keyId, keySecret } = getRazorpayKeys();
   if (!keyId || !keySecret) return null;
 
-  if (!razorpayInstance) {
-    razorpayInstance = new Razorpay({
-      key_id: keyId,
-      key_secret: keySecret,
-    });
-  }
-  return razorpayInstance;
+  return new Razorpay({
+    key_id: keyId,
+    key_secret: keySecret,
+  });
 }
 
 function verifyRazorpaySignature({ orderId, paymentId, signature }) {
