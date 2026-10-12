@@ -951,12 +951,13 @@ export default function CheckoutPage() {
                     <input
                       type="text"
                       placeholder="e.g. Aifa Sana"
+                      autoFocus={false}
                       value={addressForm.fullName}
                       onChange={(e) => {
                         setAddressForm({ ...addressForm, fullName: e.target.value });
                         if (addressErrors.fullName) setAddressErrors({ ...addressErrors, fullName: '' });
                       }}
-                      className={`w-full pl-9 pr-3 py-2.5 bg-[#FAFBFD] border rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 ${
+                      className={`w-full pl-9 pr-3 py-2.5 bg-[#FAFBFD] border rounded-lg text-[16px] sm:text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 ${
                         addressErrors.fullName ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-[#1044A5]'
                       }`}
                     />
@@ -991,6 +992,7 @@ export default function CheckoutPage() {
                     <input
                       type="tel"
                       maxLength={10}
+                      autoFocus={false}
                       placeholder="9876543210"
                       value={addressForm.phone}
                       onChange={(e) => {
@@ -998,7 +1000,7 @@ export default function CheckoutPage() {
                         setAddressForm({ ...addressForm, phone: val });
                         if (addressErrors.phone) setAddressErrors({ ...addressErrors, phone: '' });
                       }}
-                      className={`w-full pl-16 pr-3 py-2.5 bg-[#FAFBFD] border rounded-lg text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 ${
+                      className={`w-full pl-16 pr-3 py-2.5 bg-[#FAFBFD] border rounded-lg text-[16px] sm:text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 ${
                         addressErrors.phone ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-[#1044A5]'
                       }`}
                     />
@@ -1022,12 +1024,13 @@ export default function CheckoutPage() {
                     <input
                       type="text"
                       placeholder="e.g. Umminikadavath House, Othukkungal"
+                      autoFocus={false}
                       value={addressForm.streetAddress}
                       onChange={(e) => {
                         setAddressForm({ ...addressForm, streetAddress: e.target.value });
                         if (addressErrors.streetAddress) setAddressErrors({ ...addressErrors, streetAddress: '' });
                       }}
-                      className={`w-full pl-9 pr-3 py-2.5 bg-[#FAFBFD] border rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 ${
+                      className={`w-full pl-9 pr-3 py-2.5 bg-[#FAFBFD] border rounded-lg text-[16px] sm:text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 ${
                         addressErrors.streetAddress ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-[#1044A5]'
                       }`}
                     />
@@ -1053,12 +1056,13 @@ export default function CheckoutPage() {
                       <input
                         type="text"
                         placeholder="e.g. Othukkungal P.O."
+                        autoFocus={false}
                         value={addressForm.postOffice}
                         onChange={(e) => {
                           setAddressForm({ ...addressForm, postOffice: e.target.value });
                           if (addressErrors.postOffice) setAddressErrors({ ...addressErrors, postOffice: '' });
                         }}
-                        className={`w-full pl-9 pr-3 py-2 bg-[#FAFBFD] border rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 ${
+                        className={`w-full pl-9 pr-3 py-2 bg-[#FAFBFD] border rounded-lg text-[16px] sm:text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 ${
                           addressErrors.postOffice ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-[#1044A5]'
                         }`}
                       />
@@ -1082,12 +1086,13 @@ export default function CheckoutPage() {
                       <input
                         type="text"
                         placeholder="e.g. Kottakkal"
+                        autoFocus={false}
                         value={addressForm.city}
                         onChange={(e) => {
                           setAddressForm({ ...addressForm, city: e.target.value });
                           if (addressErrors.city) setAddressErrors({ ...addressErrors, city: '' });
                         }}
-                        className={`w-full pl-9 pr-3 py-2 bg-[#FAFBFD] border rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 ${
+                        className={`w-full pl-9 pr-3 py-2 bg-[#FAFBFD] border rounded-lg text-[16px] sm:text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 ${
                           addressErrors.city ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-[#1044A5]'
                         }`}
                       />
@@ -1111,7 +1116,7 @@ export default function CheckoutPage() {
                         setAddressForm({ ...addressForm, state: e.target.value });
                         if (addressErrors.state) setAddressErrors({ ...addressErrors, state: '' });
                       }}
-                      className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 focus:border-[#1044A5] cursor-pointer"
+                      className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-lg text-[16px] sm:text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 focus:border-[#1044A5] cursor-pointer"
                     >
                       {INDIAN_STATES.map((st) => (
                         <option key={st} value={st}>
@@ -1147,6 +1152,7 @@ export default function CheckoutPage() {
                       <input
                         type="text"
                         maxLength={6}
+                        autoFocus={false}
                         placeholder="e.g. 676528"
                         value={addressForm.postalCode}
                         onChange={(e) => {
@@ -1154,7 +1160,7 @@ export default function CheckoutPage() {
                           setAddressForm({ ...addressForm, postalCode: val });
                           if (addressErrors.postalCode) setAddressErrors({ ...addressErrors, postalCode: '' });
                         }}
-                        className={`w-full pl-8 pr-3 py-2 bg-[#FAFBFD] border rounded-lg text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 ${
+                        className={`w-full pl-8 pr-3 py-2 bg-[#FAFBFD] border rounded-lg text-[16px] sm:text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 ${
                           addressErrors.postalCode ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-[#1044A5]'
                         }`}
                       />
