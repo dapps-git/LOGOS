@@ -129,7 +129,7 @@ const createOrder = async (req, res) => {
       if (coupon) {
         const meetsMin = !coupon.minOrderValue || subtotal >= coupon.minOrderValue;
         const alreadyUsedWelcome = coupon.isWelcomeCoupon && (customer.isWelcomeOfferUsed || customer.ordersCount > 0);
-        
+
         if (!alreadyUsedWelcome && meetsMin) {
           if (coupon.discountType === 'percentage') {
             couponDiscount = (subtotal * coupon.discountValue) / 100;
