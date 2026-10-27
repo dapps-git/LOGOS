@@ -411,7 +411,11 @@ const updateOrderStatusAdmin = async (req, res) => {
     if (trackingNumber) order.trackingNumber = trackingNumber;
     if (trackingUrl) order.trackingUrl = trackingUrl;
 
-    if (status === 'Delivered' && order.paymentMethod === 'COD') {
+    if (status === 'Refunded') {
+      order.paymentStatus = 'Refunded';
+    } else if (status === 'Refund Initiated') {
+      order.paymentStatus = 'Refund Initiated';
+    } else if (status === 'Delivered' && order.paymentMethod === 'COD') {
       order.paymentStatus = 'Paid';
     } else if (order.paymentMethod === 'COD' && ['Pending', 'Confirmed', 'Processing', 'Shipped', 'Out for Delivery'].includes(status) && order.paymentStatus === 'Paid') {
       order.paymentStatus = 'Pending';
@@ -469,7 +473,7 @@ const updatePaymentStatusAdmin = async (req, res) => {
   }
 };
 
-// @desc    Cancel order (Customer or Admin)
+// @desc    Cancel order (Customer or Admin) with automatic UPI / Online refund
 // @route   PUT /api/orders/:id/cancel
 // @access  Private (Customer / Admin)
 const cancelOrder = async (req, res) => {
@@ -500,14 +504,8 @@ const cancelOrder = async (req, res) => {
     const cancellationReason = req.body.cancellationReason || req.body.reason || 'Order cancelled by customer';
     order.orderStatus = 'Cancelled';
     order.cancellationReason = cancellationReason;
-    order.statusHistory.push({
-      status: 'Cancelled',
-      timestamp: new Date(),
-      note: `Order cancelled. Reason: ${cancellationReason}`
-    });
-    order.notes = (order.notes ? order.notes + ' | ' : '') + `Cancellation Note: ${cancellationReason}`;
 
-    // Restock books
+    // Restock books inventory
     for (const item of order.items) {
       if (item.book) {
         await Book.findByIdAndUpdate(item.book, {
@@ -516,15 +514,218 @@ const cancelOrder = async (req, res) => {
       }
     }
 
+    // Restore customer wallet rewards if points were used
+    if (order.customer) {
+      try {
+        const Customer = require('../models/Customer');
+        const walletUsed = (order.discount || 0) - (order.referralDiscount || 0) - (order.couponDiscount || 0);
+        if (walletUsed > 0) {
+          await Customer.findByIdAndUpdate(order.customer, {
+            $inc: { referralRewardBalance: walletUsed }
+          });
+        }
+      } catch (custErr) {
+        console.warn('Could not restore customer wallet balance:', custErr.message);
+      }
+    }
+
+    // Check if payment was completed via UPI / Razorpay / Online
+    const hasRazorpayPayment = Boolean(order.razorpayPaymentId);
+    const isOnlinePayment =
+      String(order.paymentMethod || '').toLowerCase() === 'online' ||
+      String(order.paymentMethod || '').toLowerCase() === 'upi' ||
+      String(order.paymentMethod || '').toLowerCase() === 'razorpay' ||
+      hasRazorpayPayment;
+    const isPaid = (order.paymentStatus || '').toLowerCase() === 'paid';
+
+    let refundResult = null;
+    let refundError = null;
+
+    if (hasRazorpayPayment && (isPaid || isOnlinePayment)) {
+      try {
+        const { createRazorpayRefund } = require('../utils/razorpay');
+        const refundAmountInRupees = order.finalTotal || order.totalAmount || 0;
+
+        const refund = await createRazorpayRefund({
+          paymentId: order.razorpayPaymentId,
+          amountInRupees: refundAmountInRupees > 0 ? refundAmountInRupees : undefined,
+          notes: {
+            orderId: order._id.toString(),
+            orderNumber: order.orderNumber || '',
+            reason: String(cancellationReason).slice(0, 100),
+            paymentMethod: 'UPI/Online'
+          }
+        });
+
+        order.paymentStatus = 'Refunded';
+        order.refundDetails = {
+          refundId: refund.id,
+          amount: refund.amount ? refund.amount / 100 : refundAmountInRupees,
+          status: refund.status || 'processed',
+          refundedAt: new Date(),
+          speed: refund.speed_processed || 'normal',
+          paymentId: order.razorpayPaymentId,
+          arn: refund.acquirer_data?.arn || '',
+          note: `Automatic UPI/Online refund initiated via Razorpay (Refund ID: ${refund.id})`
+        };
+
+        refundResult = order.refundDetails;
+
+        order.statusHistory.push({
+          status: 'Cancelled',
+          timestamp: new Date(),
+          note: `Order cancelled. Refund of ₹${order.refundDetails.amount} initiated to original UPI / payment source. Razorpay Refund ID: ${refund.id}`
+        });
+      } catch (err) {
+        console.error('Razorpay automatic refund error on cancellation:', err);
+        refundError = err?.error?.description || err?.message || 'Automatic gateway refund failed';
+
+        order.paymentStatus = 'Refund Initiated';
+        order.refundDetails = {
+          amount: order.finalTotal || order.totalAmount || 0,
+          status: 'Pending',
+          refundedAt: new Date(),
+          paymentId: order.razorpayPaymentId,
+          note: `Automatic gateway refund could not be completed immediately: ${refundError}. Flagged for administrative processing.`
+        };
+
+        order.statusHistory.push({
+          status: 'Cancelled',
+          timestamp: new Date(),
+          note: `Order cancelled. Refund of ₹${order.finalTotal || order.totalAmount} queued for processing (${refundError}).`
+        });
+      }
+    } else {
+      if (isPaid) {
+        order.paymentStatus = 'Refunded';
+        order.refundDetails = {
+          amount: order.finalTotal || order.totalAmount || 0,
+          status: 'Refunded',
+          refundedAt: new Date(),
+          note: 'Order marked refunded upon cancellation.'
+        };
+      }
+      order.statusHistory.push({
+        status: 'Cancelled',
+        timestamp: new Date(),
+        note: `Order cancelled. Reason: ${cancellationReason}`
+      });
+    }
+
+    order.notes = (order.notes ? order.notes + ' | ' : '') + `Cancellation Note: ${cancellationReason}${refundResult ? ` (Refund ID: ${refundResult.refundId})` : ''}`;
+
     await order.save();
+
+    let responseMessage = 'Order cancelled successfully and inventory restored.';
+    if (refundResult) {
+      responseMessage = `Order cancelled successfully. A full refund of ₹${refundResult.amount} has been initiated to your original UPI / bank account (Refund ID: ${refundResult.refundId}).`;
+    } else if (refundError) {
+      responseMessage = `Order cancelled successfully. Your refund of ₹${order.finalTotal || order.totalAmount} has been queued for verification.`;
+    }
 
     return res.json({
       success: true,
-      message: 'Order cancelled successfully and inventory restored',
+      message: responseMessage,
+      refund: refundResult,
       order
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Admin manually initiate/retry Razorpay refund
+// @route   POST /api/orders/admin/:id/refund
+// @access  Private (Admin)
+const triggerRefundAdmin = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    if (!order.razorpayPaymentId) {
+      return res.status(400).json({ success: false, message: 'This order does not have an online Razorpay payment ID to refund.' });
+    }
+
+    const { amount, reason = 'Admin initiated refund' } = req.body;
+    const { createRazorpayRefund } = require('../utils/razorpay');
+
+    const refundAmount = amount ? Number(amount) : (order.returnRequest?.refundAmount || order.finalTotal || order.totalAmount || 0);
+    const refund = await createRazorpayRefund({
+      paymentId: order.razorpayPaymentId,
+      amountInRupees: refundAmount,
+      notes: {
+        orderId: order._id.toString(),
+        orderNumber: order.orderNumber || '',
+        reason: String(reason).slice(0, 100),
+        refundType: 'UPI/Online Gateway'
+      }
+    });
+
+    const previousStatus = order.orderStatus;
+    order.paymentStatus = 'Refunded';
+
+    // If order was in a return lifecycle, progress it to Refunded
+    const returnStatuses = [
+      'Return Requested', 'Requested', 'Under Review', 'Return Under Review',
+      'Approved', 'Return Approved', 'Return Accepted', 'Return Scheduled',
+      'Pickup Scheduled', 'Returned', 'Received', 'Return Received', 'Refund Initiated'
+    ];
+    if (returnStatuses.includes(order.orderStatus)) {
+      order.orderStatus = 'Refunded';
+    }
+
+    if (!order.returnRequest && returnStatuses.includes(previousStatus)) {
+      order.returnRequest = { reason: 'Return and Refund', requestedAt: new Date() };
+    }
+
+    if (order.returnRequest) {
+      order.returnRequest.status = 'Refunded';
+      order.returnRequest.refundAmount = refundAmount;
+      order.returnRequest.refundTransactionId = refund.id;
+      order.returnRequest.reviewedAt = new Date();
+      order.returnRequest.resolutionType = 'Refund';
+      order.returnRequest.adminNote = reason || order.returnRequest.adminNote || 'Refund processed via Razorpay';
+    }
+
+    // Restore stock if not already restored
+    if (!['Cancelled', 'Returned', 'Return Accepted', 'Approved', 'Return Approved', 'Refunded'].includes(previousStatus)) {
+      for (const item of order.items) {
+        if (item.book) {
+          await Book.findByIdAndUpdate(item.book, { $inc: { stock: item.quantity } });
+        }
+      }
+    }
+
+    order.refundDetails = {
+      refundId: refund.id,
+      amount: refund.amount ? refund.amount / 100 : refundAmount,
+      status: refund.status || 'processed',
+      refundedAt: new Date(),
+      speed: refund.speed_processed || 'normal',
+      paymentId: order.razorpayPaymentId,
+      arn: refund.acquirer_data?.arn || '',
+      note: `Admin processed UPI refund via Razorpay (Refund ID: ${refund.id})`
+    };
+
+    order.statusHistory.push({
+      status: order.orderStatus,
+      timestamp: new Date(),
+      note: `Admin processed UPI refund of ₹${order.refundDetails.amount}. Razorpay Refund ID: ${refund.id}${order.refundDetails.arn ? ` (ARN: ${order.refundDetails.arn})` : ''}`
+    });
+
+    await order.save();
+
+    return res.json({
+      success: true,
+      message: `Refund of ₹${order.refundDetails.amount} processed successfully to original UPI / payment source (Refund ID: ${refund.id})`,
+      refund: order.refundDetails,
+      order
+    });
+  } catch (error) {
+    const errorMsg = error?.error?.description || error?.message || 'Refund processing failed';
+    return res.status(500).json({ success: false, message: errorMsg });
   }
 };
 
@@ -996,5 +1197,6 @@ module.exports = {
   updatePaymentStatusAdmin,
   cancelOrder,
   requestReturn,
-  reviewReturnAdmin
+  reviewReturnAdmin,
+  triggerRefundAdmin
 };

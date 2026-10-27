@@ -90,7 +90,15 @@ export const StoreDataProvider = ({ children }) => {
 
         // Derive and sync live return requests from actual store orders
         const returnOrders = orderData.orders.filter(
-          (o) => o.orderStatus === 'Return Requested' || o.orderStatus === 'Return Accepted' || o.orderStatus === 'Return Rejected' || o.returnRequest?.reason
+          (o) =>
+            Boolean(o.returnRequest?.reason) ||
+            [
+              'Return Requested', 'Requested', 'Under Review', 'Return Under Review',
+              'Approved', 'Return Approved', 'Return Accepted', 'Return Scheduled',
+              'Pickup Scheduled', 'Returned', 'Received', 'Return Received',
+              'Refund Initiated', 'Refunded', 'Exchanged', 'Replacement Dispatched',
+              'Return Rejected', 'Rejected'
+            ].includes(o.orderStatus)
         );
         if (returnOrders.length > 0) {
           const derivedReturns = returnOrders.map((o) => ({
@@ -104,6 +112,14 @@ export const StoreDataProvider = ({ children }) => {
             status: o.returnRequest?.status || (o.orderStatus === 'Return Accepted' ? 'Approved' : (o.orderStatus === 'Return Rejected' ? 'Rejected' : o.orderStatus || 'Return Requested')),
             requestedAt: o.returnRequest?.requestedAt || o.updatedAt || o.createdAt,
             totalAmount: o.finalTotal || o.totalAmount || 0,
+            refundAmount: o.returnRequest?.refundAmount || o.finalTotal || o.totalAmount || 0,
+            paymentMethod: o.paymentMethod || 'Online',
+            paymentStatus: o.paymentStatus || 'Pending',
+            razorpayPaymentId: o.razorpayPaymentId,
+            refundDetails: o.refundDetails,
+            resolutionType: o.returnRequest?.resolutionType || (o.paymentMethod === 'COD' ? 'Exchange' : 'Refund'),
+            scheduledDate: o.returnRequest?.scheduledDate,
+            adminNote: o.returnRequest?.adminNote || o.returnRequest?.note,
             items: o.items || []
           }));
           setReturnsList((prev) => {
@@ -438,6 +454,39 @@ export const StoreDataProvider = ({ children }) => {
     );
   };
 
+  // Manual / Return Gateway Refund Action (Razorpay / UPI)
+  const triggerOrderRefund = async (id, { amount, reason } = {}) => {
+    try {
+      const res = await apiClient(`/orders/admin/${id}/refund`, {
+        method: 'POST',
+        body: JSON.stringify({ amount, reason })
+      });
+      if (res && res.success && res.order) {
+        setOrders((prev) =>
+          prev.map((o) => (o._id === id ? { ...o, ...res.order } : o))
+        );
+        setReturnsList((prev) =>
+          prev.map((r) =>
+            r._id === id || r.orderId === id
+              ? {
+                  ...r,
+                  status: 'Refunded',
+                  paymentStatus: 'Refunded',
+                  refundAmount: res.refund?.amount || amount || r.refundAmount,
+                  refundDetails: res.refund
+                }
+              : r
+          )
+        );
+        return res;
+      }
+      throw new Error(res?.message || 'Refund could not be processed');
+    } catch (err) {
+      console.error('[StoreDataContext] Failed to trigger refund:', err.message);
+      throw err;
+    }
+  };
+
   return (
     <StoreDataContext.Provider
       value={{
@@ -464,6 +513,7 @@ export const StoreDataProvider = ({ children }) => {
         addCoupon,
         deleteCoupon,
         updateReturnStatus,
+        triggerOrderRefund,
         refreshData: fetchAllData,
         fetchAllData
       }}

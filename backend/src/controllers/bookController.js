@@ -32,14 +32,31 @@ const getBooks = async (req, res) => {
     const query = { isActive: true };
 
     if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { name: { $regex: search, $options: 'i' } },
-        { author: { $regex: search, $options: 'i' } },
-        { publisher: { $regex: search, $options: 'i' } },
-        { theme: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
+      const trimmedSearch = String(search).trim();
+      const escaped = trimmedSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const isbnDigits = trimmedSearch.replace(/[^0-9X]/gi, '');
+
+      const searchConditions = [
+        { title: { $regex: escaped, $options: 'i' } },
+        { name: { $regex: escaped, $options: 'i' } },
+        { titleMalayalam: { $regex: escaped, $options: 'i' } },
+        { author: { $regex: escaped, $options: 'i' } },
+        { publisher: { $regex: escaped, $options: 'i' } },
+        { theme: { $regex: escaped, $options: 'i' } },
+        { genre: { $regex: escaped, $options: 'i' } },
+        { category: { $regex: escaped, $options: 'i' } },
+        { tags: { $regex: escaped, $options: 'i' } },
+        { description: { $regex: escaped, $options: 'i' } },
+        { isbn: { $regex: escaped, $options: 'i' } },
+        { sku: { $regex: escaped, $options: 'i' } }
       ];
+
+      // If user typed digits that could match an ISBN (stripping dashes/spaces)
+      if (isbnDigits && isbnDigits.length >= 3) {
+        searchConditions.push({ isbn: { $regex: isbnDigits, $options: 'i' } });
+      }
+
+      query.$or = searchConditions;
     }
 
     if (theme) query.theme = { $regex: new RegExp(`^${theme}$`, 'i') };
@@ -754,6 +771,92 @@ const getAuthorsList = async (req, res) => {
   }
 };
 
+// @desc    Quick autocomplete / suggestions search for navbar
+// @route   GET /api/books/search/suggest
+// @access  Public
+const getBookSuggestions = async (req, res) => {
+  try {
+    const { q = '' } = req.query;
+    const trimmed = String(q).trim();
+    if (!trimmed || trimmed.length < 2) {
+      return res.json({ success: true, count: 0, suggestions: [] });
+    }
+
+    const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const isbnDigits = trimmed.replace(/[^0-9X]/gi, '');
+
+    const orConditions = [
+      { title: { $regex: escaped, $options: 'i' } },
+      { name: { $regex: escaped, $options: 'i' } },
+      { titleMalayalam: { $regex: escaped, $options: 'i' } },
+      { author: { $regex: escaped, $options: 'i' } },
+      { publisher: { $regex: escaped, $options: 'i' } },
+      { theme: { $regex: escaped, $options: 'i' } },
+      { genre: { $regex: escaped, $options: 'i' } },
+      { category: { $regex: escaped, $options: 'i' } },
+      { tags: { $regex: escaped, $options: 'i' } },
+      { isbn: { $regex: escaped, $options: 'i' } },
+      { sku: { $regex: escaped, $options: 'i' } }
+    ];
+
+    if (isbnDigits && isbnDigits.length >= 3) {
+      orConditions.push({ isbn: { $regex: isbnDigits, $options: 'i' } });
+    }
+
+    const books = await Book.find({
+      isActive: true,
+      $or: orConditions
+    })
+      .select('title name titleMalayalam author publisher images price discountPrice discountPercent slug isbn theme genre tags')
+      .limit(8)
+      .lean();
+
+    const lower = trimmed.toLowerCase();
+    const suggestions = books.map((b) => {
+      let matchedBy = 'Book';
+      const isbnStr = (b.isbn || '').toLowerCase();
+      const authorStr = (b.author || '').toLowerCase();
+      const titleStr = `${b.title || ''} ${b.name || ''} ${b.titleMalayalam || ''}`.toLowerCase();
+      const tagsStr = Array.isArray(b.tags) ? b.tags.join(' ').toLowerCase() : '';
+      const genreStr = `${b.theme || ''} ${b.genre || ''} ${b.category || ''} ${b.publisher || ''}`.toLowerCase();
+
+      if (isbnStr.includes(lower) || (isbnDigits.length >= 3 && isbnStr.replace(/[^0-9x]/gi, '').includes(isbnDigits.toLowerCase()))) {
+        matchedBy = 'ISBN';
+      } else if (authorStr.includes(lower)) {
+        matchedBy = 'Author';
+      } else if (titleStr.includes(lower)) {
+        matchedBy = 'Book';
+      } else if (tagsStr.includes(lower) || genreStr.includes(lower)) {
+        matchedBy = 'Keyword';
+      }
+
+      return {
+        _id: b._id,
+        slug: b.slug,
+        title: b.title || b.name,
+        titleMalayalam: b.titleMalayalam,
+        author: b.author,
+        publisher: b.publisher,
+        price: b.price,
+        discountPrice: b.discountPrice,
+        coverImage: (b.images && b.images[0]) || '/book-placeholder.svg',
+        isbn: b.isbn,
+        theme: b.theme,
+        matchedBy
+      };
+    });
+
+    return res.json({
+      success: true,
+      count: suggestions.length,
+      suggestions
+    });
+  } catch (error) {
+    console.error('Book suggestions error:', error);
+    return res.status(500).json({ success: false, message: error.message, suggestions: [] });
+  }
+};
+
 module.exports = {
   getBooks,
   getBookByIdOrSlug,
@@ -764,6 +867,7 @@ module.exports = {
   getSpotlightAuthor,
   getSpotlightBook,
   getAuthorsList,
+  getBookSuggestions,
   createBook,
   updateBook,
   deleteBook,

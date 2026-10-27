@@ -369,7 +369,11 @@ export default function OrderTrackingPage({ params }) {
                     <h4 className="text-xs font-semibold text-rose-600">Order Cancelled</h4>
                     {cancelledAtStr && <p className="text-[11px] text-slate-400 mt-0.5">{cancelledAtStr}</p>}
                     <p className="text-[11px] text-slate-500 mt-0.5">
-                      {isCOD ? 'No payment was collected.' : 'Refund will be processed to your original payment method.'}
+                      {isCOD
+                        ? 'No payment was collected.'
+                        : order.refundDetails?.refundId
+                        ? `Refund of ₹${order.refundDetails.amount || order.finalTotal || order.totalAmount} initiated to original UPI / payment source (Refund ID: ${order.refundDetails.refundId}).`
+                        : 'Refund will be processed to your original payment method.'}
                     </p>
                   </div>
                 </div>
@@ -505,7 +509,7 @@ export default function OrderTrackingPage({ params }) {
                       {isReturnRejected
                         ? (order.returnRequest?.note || order.returnRequest?.adminNote ? `Note: ${order.returnRequest?.note || order.returnRequest?.adminNote}` : 'Does not meet return policy criteria.')
                         : isRefunded
-                        ? `Refund of ₹${order.returnRequest?.refundAmount || order.finalTotal || order.totalAmount} credited to original payment account.`
+                        ? `Refund of ₹${order.refundDetails?.amount || order.returnRequest?.refundAmount || order.finalTotal || order.totalAmount} credited to original payment account${order.refundDetails?.refundId ? ` (Refund ID: ${order.refundDetails.refundId})` : ''}.`
                         : isExchanged
                         ? 'Replacement copy has been prepared & dispatched for COD order.'
                         : isReturned
@@ -653,6 +657,69 @@ export default function OrderTrackingPage({ params }) {
                 </p>
                 <p className="text-[11px] text-slate-500">
                   {order.cancellationReason || order.statusHistory?.find(h => h.status === 'Cancelled')?.note || 'This order was cancelled. Inventory was restored.'}
+                </p>
+              </div>
+            )}
+
+            {/* Case F: UPI / Online Refund Receipt Card */}
+            {Boolean(
+              order.refundDetails?.refundId ||
+              isRefunded ||
+              isRefundInitiated ||
+              (!isCOD && (order.paymentStatus || '').toLowerCase() === 'refunded')
+            ) && (
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50/40 to-slate-50 border border-emerald-200/90 text-slate-900 shadow-xs space-y-3">
+                <div className="flex items-center justify-between pb-2.5 border-b border-emerald-200/60">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold shadow-2xs">₹</span>
+                    <div>
+                      <h4 className="text-xs sm:text-sm font-bold text-emerald-950">
+                        {order.refundDetails?.status === 'processed' || isRefunded ? 'UPI Refund Credited & Settled' : 'UPI Refund Initiated'}
+                      </h4>
+                      <p className="text-[10px] sm:text-[11px] text-emerald-700 font-medium">
+                        Refunded back to original payment account (UPI / Bank)
+                      </p>
+                    </div>
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    {order.refundDetails?.status || (isRefunded ? 'Processed' : 'Initiated')}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-left pt-1">
+                  <div className="p-2.5 rounded-xl bg-white/80 border border-emerald-100">
+                    <span className="text-[10px] text-slate-400 block font-normal uppercase">Refund Amount</span>
+                    <span className="text-xs sm:text-sm font-bold font-mono text-emerald-700">
+                      ₹{Number(order.refundDetails?.amount || order.returnRequest?.refundAmount || order.finalTotal || order.totalAmount || 0).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-white/80 border border-emerald-100">
+                    <span className="text-[10px] text-slate-400 block font-normal uppercase">Razorpay Refund ID</span>
+                    <span className="text-[11px] font-mono font-bold text-slate-800 truncate block" title={order.refundDetails?.refundId || 'rfnd_auto_processed'}>
+                      {order.refundDetails?.refundId || 'rfnd_auto_processed'}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-white/80 border border-emerald-100">
+                    <span className="text-[10px] text-slate-400 block font-normal uppercase">Bank ARN / Ref</span>
+                    <span className="text-[11px] font-mono font-semibold text-slate-700 truncate block" title={order.refundDetails?.arn || 'Bank Acknowledgement'}>
+                      {order.refundDetails?.arn || 'UPI-REF-ACK'}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-white/80 border border-emerald-100">
+                    <span className="text-[10px] text-slate-400 block font-normal uppercase">Processed Date</span>
+                    <span className="text-[11px] font-medium text-slate-700 block">
+                      {order.refundDetails?.refundedAt
+                        ? new Date(order.refundDetails.refundedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                        : 'Recent'}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-[10px] sm:text-[11px] text-slate-500 leading-relaxed italic bg-emerald-50/60 p-2 rounded-lg border border-emerald-100/80">
+                  💡 UPI refunds typically reflect immediately or within 2-4 hours. For bank cards or net banking, standard bank processing takes 1-3 business days. If required, quote the <strong>Refund ID</strong> to your bank.
                 </p>
               </div>
             )}

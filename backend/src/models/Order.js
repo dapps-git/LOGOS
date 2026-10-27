@@ -68,7 +68,10 @@ const orderSchema = new mongoose.Schema({
   },
   paymentStatus: {
     type: String,
-    enum: ['Pending', 'Pending (COD)', 'Paid', 'Failed', 'Refunded'],
+    enum: [
+      'Pending', 'Pending (COD)', 'Paid', 'Failed', 'Refunded', 'Refund Initiated', 'Refund Failed',
+      'pending', 'paid', 'failed', 'refunded', 'refund initiated', 'refund failed'
+    ],
     default: 'Pending',
     set: (v) => {
       if (!v) return 'Pending';
@@ -93,6 +96,16 @@ const orderSchema = new mongoose.Schema({
     transactionId: String,
     paidAt: Date,
     gateway: String
+  },
+  refundDetails: {
+    refundId: { type: String },
+    amount: { type: Number },
+    status: { type: String },
+    refundedAt: { type: Date },
+    speed: { type: String },
+    paymentId: { type: String },
+    arn: { type: String },
+    note: { type: String }
   },
   subtotal: {
     type: Number,

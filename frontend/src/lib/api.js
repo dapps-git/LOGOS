@@ -44,6 +44,21 @@ export async function fetchBooks(params = {}) {
   }
 }
 
+export async function fetchBookSuggestions(q) {
+  if (!q || !q.trim() || q.trim().length < 2) return [];
+  try {
+    const res = await fetch(`${getApiBase()}/books/search/suggest?q=${encodeURIComponent(q.trim())}`, {
+      cache: 'no-store'
+    });
+    if (!res.ok) throw new Error(`Failed to fetch suggestions: ${res.status}`);
+    const data = await res.json();
+    return data.suggestions || [];
+  } catch (err) {
+    console.warn('[LOGOS API] fetchBookSuggestions error:', err.message);
+    return [];
+  }
+}
+
 export async function fetchNewArrivals() {
   try {
     const res = await fetch(`${getApiBase()}/books/collections/new-arrivals`, {

@@ -179,16 +179,44 @@ function ProductsContent() {
         if (b.stockStatus !== 'out_of_stock' && b.stock > 0) return false;
       }
 
-      // Search Query match
+      // Search Query match: book name, authors name, keywords, ISBN number
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
+        const qDigits = q.replace(/[^0-9x]/gi, '');
+
         const titleMatch = (b.title || '').toLowerCase().includes(q);
         const nameMatch = (b.name || '').toLowerCase().includes(q);
         const malayalamMatch = (b.titleMalayalam || '').toLowerCase().includes(q);
         const authorMatch = (b.author || '').toLowerCase().includes(q);
+        const publisherMatch = (b.publisher || '').toLowerCase().includes(q);
+        const themeMatch = (b.theme || '').toLowerCase().includes(q);
+        const genreMatch = (b.genre || '').toLowerCase().includes(q);
+        const categoryMatch = (b.category || '').toLowerCase().includes(q);
         const descMatch = (b.description || '').toLowerCase().includes(q);
-        const isbnMatch = (b.isbn || '').toLowerCase().includes(q);
-        if (!titleMatch && !nameMatch && !malayalamMatch && !authorMatch && !descMatch && !isbnMatch) return false;
+        const tagsMatch = Array.isArray(b.tags) && b.tags.some((t) => (t || '').toLowerCase().includes(q));
+
+        // ISBN match (both exact string and normalized digits)
+        const rawIsbn = (b.isbn || '').toLowerCase();
+        const isbnDigits = (b.isbn || '').replace(/[^0-9x]/gi, '');
+        const isbnMatch =
+          rawIsbn.includes(q) ||
+          (qDigits.length >= 3 && isbnDigits.includes(qDigits));
+
+        if (
+          !titleMatch &&
+          !nameMatch &&
+          !malayalamMatch &&
+          !authorMatch &&
+          !publisherMatch &&
+          !themeMatch &&
+          !genreMatch &&
+          !categoryMatch &&
+          !descMatch &&
+          !tagsMatch &&
+          !isbnMatch
+        ) {
+          return false;
+        }
       }
 
       return true;
@@ -257,7 +285,7 @@ function ProductsContent() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by title, author, genre, or ISBN..."
+                  placeholder="Search by book name, author, keywords, or ISBN..."
                   className="w-full pl-11 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-full text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-[#1E3A8A] focus:bg-white focus:ring-2 focus:ring-[#1E3A8A]/10 transition-all"
                 />
                 {searchQuery && (

@@ -5,10 +5,10 @@ function getRazorpayKeys() {
   const keyId =
     process.env.RAZORPAY_KEY_ID ||
     process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ||
-    'rzp_test_TmuLmQnQzM9HtI';
+    'rzp_live_TqU0ldixg2ZuQV';
   const keySecret =
     process.env.RAZORPAY_KEY_SECRET ||
-    '0QNcWu07XKl6hrky824pa9iz';
+    'CxahKfzuyvxGx1a4GV7m5JBz';
   return { keyId, keySecret };
 }
 
@@ -44,8 +44,46 @@ function verifyRazorpaySignature({ orderId, paymentId, signature }) {
   }
 }
 
+/**
+ * Initiates an automatic refund for a Razorpay payment (UPI, Card, Netbanking, etc.)
+ * @param {Object} options
+ * @param {string} options.paymentId - The razorpay payment ID (e.g. 'pay_...')
+ * @param {number} [options.amountInRupees] - Amount in Rupees to refund. If omitted, full payment is refunded.
+ * @param {Object} [options.notes] - Key-value metadata notes attached to refund
+ * @param {string} [options.receipt] - Optional receipt identifier
+ * @returns {Promise<Object>} Razorpay refund response object
+ */
+async function createRazorpayRefund({ paymentId, amountInRupees, notes = {}, receipt }) {
+  const razorpay = getRazorpayInstance();
+  if (!razorpay) {
+    throw new Error('Razorpay payment gateway is not properly configured');
+  }
+  if (!paymentId) {
+    throw new Error('Missing payment ID for refund');
+  }
+
+  const payload = {
+    notes: {
+      platform: 'LOGOS Bookstore',
+      ...notes
+    }
+  };
+
+  if (amountInRupees && Number(amountInRupees) > 0) {
+    payload.amount = Math.round(Number(amountInRupees) * 100);
+  }
+
+  if (receipt) {
+    payload.receipt = receipt;
+  }
+
+  const refund = await razorpay.payments.refund(paymentId, payload);
+  return refund;
+}
+
 module.exports = {
   getRazorpayKeys,
   getRazorpayInstance,
   verifyRazorpaySignature,
+  createRazorpayRefund
 };

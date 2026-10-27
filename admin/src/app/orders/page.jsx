@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 
 export default function OrdersPage() {
-  const { orders = [], updateOrderStatus, updatePaymentStatus } = useStoreData();
+  const { orders = [], updateOrderStatus, updatePaymentStatus, triggerOrderRefund } = useStoreData();
   const { showToast } = useToast();
 
   const [search, setSearch] = useState('');
@@ -31,6 +31,7 @@ export default function OrdersPage() {
   const [returnScheduleDate, setReturnScheduleDate] = useState('');
   const [returnResolution, setReturnResolution] = useState('Refund');
   const [returnNote, setReturnNote] = useState('');
+  const [isRefunding, setIsRefunding] = useState(false);
 
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
@@ -68,11 +69,45 @@ export default function OrdersPage() {
     showToast('Shipping tracking & live location updated', 'success');
   };
 
-  const handleScheduleReturn = (orderId, status = 'Return Scheduled') => {
+  const handleProcessDirectRefund = async (order) => {
+    if (!order?.razorpayPaymentId) {
+      alert('This order does not have an online Razorpay payment transaction ID to refund.');
+      return;
+    }
+    const refundAmt = order.returnRequest?.refundAmount || order.finalTotal || order.totalAmount || 0;
+    const confirm = window.confirm(`Initiate Razorpay UPI refund of ₹${refundAmt} directly to customer account for Order ${order.orderNumber}?`);
+    if (!confirm) return;
+
+    setIsRefunding(true);
+    try {
+      const res = await triggerOrderRefund(order._id, {
+        amount: refundAmt,
+        reason: order.returnRequest?.reason || 'Admin processed refund'
+      });
+      showToast(`UPI Refund of ₹${res.refund?.amount || refundAmt} processed! (Refund ID: ${res.refund?.refundId})`, 'success');
+      setSelectedOrder((prev) => ({
+        ...prev,
+        ...res.order,
+        orderStatus: 'Refunded',
+        paymentStatus: 'Refunded',
+        refundDetails: res.refund
+      }));
+    } catch (err) {
+      showToast(err.message || 'Refund processing failed. Check Razorpay credentials.', 'error');
+    } finally {
+      setIsRefunding(false);
+    }
+  };
+
+  const handleScheduleReturn = async (orderId, status = 'Return Scheduled') => {
     const defaultResolution = selectedOrder.paymentMethod === 'COD' ? 'Exchange' : 'Refund';
     const resolution = returnResolution || defaultResolution;
     const date = returnScheduleDate || new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const note = returnNote.trim() || (status === 'Return Scheduled' ? `Pickup scheduled on ${date}` : `Return status updated to ${status}`);
+
+    if (status === 'Refunded' && selectedOrder.razorpayPaymentId && selectedOrder.paymentStatus !== 'Refunded') {
+      return handleProcessDirectRefund(selectedOrder);
+    }
 
     updateOrderStatus(orderId, status, note, selectedOrder.trackingNumber, {
       scheduledDate: date,
@@ -83,6 +118,7 @@ export default function OrdersPage() {
     setSelectedOrder((prev) => ({
       ...prev,
       orderStatus: status,
+      paymentStatus: status === 'Refunded' ? 'Refunded' : prev.paymentStatus,
       returnRequest: {
         ...(prev.returnRequest || {}),
         status: status,
@@ -446,6 +482,69 @@ export default function OrdersPage() {
                   <p className="mt-1 font-medium text-xs">
                     {selectedOrder.cancellationReason || selectedOrder.notes || 'Order was cancelled by customer.'}
                   </p>
+                </div>
+              )}
+
+              {/* Razorpay Refund Receipt Badge if order is refunded */}
+              {selectedOrder.refundDetails?.refundId && (
+                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-md text-emerald-950 space-y-1.5">
+                  <div className="flex items-center justify-between font-bold text-xs text-emerald-900 pb-1 border-b border-emerald-200">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-4 h-4 rounded-full bg-emerald-600 text-white text-[10px] flex items-center justify-center font-bold">✓</span>
+                      Refund Settled via Razorpay UPI
+                    </span>
+                    <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900">
+                      {selectedOrder.refundDetails.status || 'Processed'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] pt-1">
+                    <div>
+                      <span className="text-slate-500 block text-[10px] uppercase">Refund ID</span>
+                      <span className="font-mono font-bold text-emerald-900 block truncate" title={selectedOrder.refundDetails.refundId}>
+                        {selectedOrder.refundDetails.refundId}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[10px] uppercase">Refund Amount</span>
+                      <span className="font-mono font-bold text-emerald-900 block">
+                        ₹{selectedOrder.refundDetails.amount || selectedOrder.finalTotal || selectedOrder.totalAmount}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[10px] uppercase">Bank ARN</span>
+                      <span className="font-mono text-slate-800 block truncate" title={selectedOrder.refundDetails.arn || 'Bank Acknowledgement'}>
+                        {selectedOrder.refundDetails.arn || 'UPI-ACKNOWLEDGED'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[10px] uppercase">Date</span>
+                      <span className="text-slate-700 block">
+                        {selectedOrder.refundDetails.refundedAt ? new Date(selectedOrder.refundDetails.refundedAt).toLocaleDateString('en-IN') : 'Recent'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Direct UPI Refund Action Card if online payment and not yet refunded */}
+              {selectedOrder.paymentMethod !== 'COD' && selectedOrder.razorpayPaymentId && (selectedOrder.paymentStatus || '').toLowerCase() !== 'refunded' && (
+                <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-md flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-bold text-xs text-emerald-950 flex items-center gap-1.5">
+                      <span>⚡</span> Instant Razorpay UPI Gateway Refund
+                    </p>
+                    <p className="text-[11px] text-emerald-800">
+                      Payment ID: <code className="font-mono">{selectedOrder.razorpayPaymentId}</code> • Total: ₹{selectedOrder.finalTotal || selectedOrder.totalAmount}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isRefunding}
+                    onClick={() => handleProcessDirectRefund(selectedOrder)}
+                    className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold rounded text-xs transition-colors shrink-0 shadow-2xs cursor-pointer"
+                  >
+                    {isRefunding ? 'Refunding...' : 'Process UPI Refund'}
+                  </button>
                 </div>
               )}
 

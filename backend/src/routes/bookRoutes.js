@@ -10,6 +10,7 @@ const {
   getSpotlightAuthor,
   getSpotlightBook,
   getAuthorsList,
+  getBookSuggestions,
   createBook,
   updateBook,
   deleteBook,
@@ -27,6 +28,7 @@ router.get('/spotlight/author', getSpotlightAuthor);
 router.get('/spotlight/book', getSpotlightBook);
 router.get('/authors/all', getAuthorsList);
 router.get('/filters/options', getFilterOptions);
+router.get('/search/suggest', getBookSuggestions);
 router.get('/:idOrSlug', getBookByIdOrSlug);
 
 // Admin Book Management

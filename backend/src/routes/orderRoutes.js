@@ -11,7 +11,8 @@ const {
   updatePaymentStatusAdmin,
   cancelOrder,
   requestReturn,
-  reviewReturnAdmin
+  reviewReturnAdmin,
+  triggerRefundAdmin
 } = require('../controllers/orderController');
 const { protectCustomer, optionalAuth, protectCustomerOrAdmin } = require('../middleware/authMiddleware');
 const { protectAdmin } = require('../middleware/adminMiddleware');
@@ -24,6 +25,7 @@ router.post('/razorpay/verify', protectCustomer, verifyRazorpayPayment);
 router.get('/admin/all', protectAdmin, getAllOrdersAdmin);
 router.put('/admin/:id/status', protectAdmin, updateOrderStatusAdmin);
 router.put('/admin/:id/payment', protectAdmin, updatePaymentStatusAdmin);
+router.post('/admin/:id/refund', protectAdmin, triggerRefundAdmin);
 router.put('/admin/:id/return-review', protectAdmin, reviewReturnAdmin);
 
 // Customer Orders (Must be logged in to place order)

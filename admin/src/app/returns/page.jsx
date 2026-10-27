@@ -32,7 +32,7 @@ const STATUS_TABS = [
 ];
 
 export default function ReturnsPage() {
-  const { returnsList = [], updateReturnStatus } = useStoreData();
+  const { returnsList = [], updateReturnStatus, triggerOrderRefund, orders = [] } = useStoreData();
   const { showToast } = useToast();
 
   const [search, setSearch] = useState('');
@@ -41,6 +41,7 @@ export default function ReturnsPage() {
   const [showPolicyModal, setShowPolicyModal] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
   const [mounted, setMounted] = useState(false);
+  const [isRefunding, setIsRefunding] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -94,11 +95,58 @@ export default function ReturnsPage() {
     }).length;
   };
 
-  const handleStatusTransition = (returnId, newStatus) => {
+  const handleProcessRefund = async (returnId, customAmount = null) => {
+    const ret = returnsList.find((r) => r._id === returnId) || selectedReturn;
+    const relatedOrder = orders.find((o) => o._id === returnId || o.orderNumber === ret?.orderNumber);
+    const orderData = relatedOrder || ret;
+    const amount = customAmount || ret?.refundAmount || orderData?.finalTotal || orderData?.totalAmount || 0;
+
+    const hasOnlinePayment = Boolean(orderData?.razorpayPaymentId || (orderData?.paymentMethod !== 'COD' && orderData?.paymentMethod !== 'cod'));
+
+    if (hasOnlinePayment && orderData?.razorpayPaymentId) {
+      const confirmRefund = window.confirm(`Initiate Razorpay UPI refund of ₹${amount} directly to customer's account?`);
+      if (!confirmRefund) return;
+
+      setIsRefunding(true);
+      try {
+        const res = await triggerOrderRefund(returnId, {
+          amount,
+          reason: ret?.reason || 'Approved customer return'
+        });
+        showToast(`UPI Refund of ₹${res.refund?.amount || amount} processed! (Refund ID: ${res.refund?.refundId})`, 'success');
+        if (selectedReturn && (selectedReturn._id === returnId || selectedReturn.orderId === returnId)) {
+          setSelectedReturn((prev) => ({
+            ...prev,
+            status: 'Refunded',
+            refundDetails: res.refund,
+            refundAmount: res.refund?.amount || amount
+          }));
+        }
+      } catch (err) {
+        showToast(err.message || 'Gateway refund failed. Check Razorpay credentials.', 'error');
+        handleStatusTransition(returnId, 'Refund Initiated');
+      } finally {
+        setIsRefunding(false);
+      }
+    } else {
+      handleStatusTransition(returnId, 'Refunded');
+      showToast(`Marked as Refunded (${orderData?.paymentMethod || 'COD'})`, 'success');
+    }
+  };
+
+  const handleStatusTransition = async (returnId, newStatus) => {
+    if (newStatus === 'Refunded') {
+      const ret = returnsList.find((r) => r._id === returnId) || selectedReturn;
+      const relatedOrder = orders.find((o) => o._id === returnId || o.orderNumber === ret?.orderNumber);
+      const orderData = relatedOrder || ret;
+      if (orderData?.razorpayPaymentId && orderData?.paymentStatus !== 'Refunded') {
+        return handleProcessRefund(returnId);
+      }
+    }
     updateReturnStatus(returnId, newStatus);
     showToast(`Request updated to "${newStatus}"`, 'success');
-    if (selectedReturn && selectedReturn._id === returnId) {
-      setSelectedReturn({ ...selectedReturn, status: newStatus });
+    if (selectedReturn && (selectedReturn._id === returnId || selectedReturn.orderId === returnId)) {
+      setSelectedReturn((prev) => ({ ...prev, status: newStatus }));
     }
   };
 
@@ -454,6 +502,51 @@ export default function ReturnsPage() {
                 </div>
               )}
 
+              {/* Razorpay Refund Receipt Badge if available */}
+              {selectedReturn.refundDetails?.refundId && (
+                <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200/90 text-slate-900 space-y-2">
+                  <div className="flex items-center justify-between font-bold text-xs text-emerald-900 pb-1.5 border-b border-emerald-200/60">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-4 h-4 rounded-full bg-emerald-600 text-white text-[10px] flex items-center justify-center font-bold">✓</span>
+                      Razorpay UPI Refund Settled
+                    </span>
+                    <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      {selectedReturn.refundDetails.status || 'Processed'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <div>
+                      <span className="text-slate-400 block text-[10px] uppercase">Refund ID</span>
+                      <span className="font-mono font-bold text-emerald-800 truncate block" title={selectedReturn.refundDetails.refundId}>
+                        {selectedReturn.refundDetails.refundId}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px] uppercase">Bank ARN / Ref</span>
+                      <span className="font-mono text-slate-700 truncate block" title={selectedReturn.refundDetails.arn || 'Bank Acknowledgement'}>
+                        {selectedReturn.refundDetails.arn || 'UPI-ACKNOWLEDGED'}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-emerald-700 italic">
+                    Credited back to customer's original UPI / payment source.
+                  </p>
+                </div>
+              )}
+
+              {/* Direct UPI Refund Action Button if not yet refunded */}
+              {selectedReturn.status !== 'Refunded' && (
+                <button
+                  type="button"
+                  disabled={isRefunding}
+                  onClick={() => handleProcessRefund(selectedReturn._id)}
+                  className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
+                >
+                  <span>⚡</span>
+                  <span>{isRefunding ? 'Processing Gateway Refund...' : `Process Razorpay UPI Refund (₹${selectedReturn.refundAmount})`}</span>
+                </button>
+              )}
+
               <div className="pt-3 border-t border-slate-100 space-y-2">
                 <span className="text-[10px] text-slate-400 uppercase font-semibold block">Update Lifecycle Status</span>
                 <div className="grid grid-cols-3 gap-2">
@@ -494,10 +587,10 @@ export default function ReturnsPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleStatusTransition(selectedReturn._id, 'Refunded')}
+                    onClick={() => handleProcessRefund(selectedReturn._id)}
                     className="py-2 px-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px]"
                   >
-                    ✓ Refunded
+                    ✓ Refund UPI
                   </button>
                 </div>
                 <div className="pt-1 text-center">
