@@ -75,7 +75,7 @@ export const HeroBanner = () => {
   const bannerLink = currentBanner?.link || null;
 
   const content = (
-    <div className="relative w-full aspect-[16/8.5] sm:aspect-[21/9] md:aspect-[21/8] overflow-hidden select-none bg-slate-900 flex items-center justify-center">
+    <div className="relative w-full aspect-[16/9] sm:aspect-[16/9] md:aspect-auto md:h-[100dvh] md:min-h-[100svh] overflow-hidden select-none bg-slate-900 flex items-center justify-center">
       <img
         key={bannerImage}
         src={bannerImage}
@@ -99,18 +99,14 @@ export const HeroBanner = () => {
   }
 
   return (
-    <section className="relative w-full pt-16 sm:pt-20 md:pt-24 bg-white overflow-hidden">
-      <div className="w-full max-w-[1440px] mx-auto px-0 sm:px-4 lg:px-6">
-        {bannerLink ? (
-          <Link href={bannerLink} className="block w-full h-full rounded-none sm:rounded-2xl overflow-hidden shadow-xs group">
-            {content}
-          </Link>
-        ) : (
-          <div className="rounded-none sm:rounded-2xl overflow-hidden shadow-xs">
-            {content}
-          </div>
-        )}
-      </div>
+    <section className="relative w-full pt-16 sm:pt-20 md:pt-0 md:h-[100dvh] md:min-h-[100svh] overflow-hidden bg-white">
+      {bannerLink ? (
+        <Link href={bannerLink} className="block w-full h-full">
+          {content}
+        </Link>
+      ) : (
+        content
+      )}
     </section>
   );
 };
