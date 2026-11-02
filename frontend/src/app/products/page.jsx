@@ -442,10 +442,12 @@ function ProductsContent() {
                   const rating = book.rating ? Number(book.rating).toFixed(1) : '5.0';
                   const reviewsCount = book.reviewsCount ? `${(book.reviewsCount / 1000).toFixed(1)}k` : '0.1k';
 
-                  // Determine Top-Left Badge: Bestseller > New > Discount
-                  const showBestseller = book.isBestSeller;
-                  const showNew = book.isNewArrival && !book.isBestSeller;
-                  const showDiscount = discountPercent > 0 && !showBestseller && !showNew;
+                  const isOutOfStock = book.stockStatus === 'out_of_stock' || (book.stock !== undefined && Number(book.stock) <= 0);
+
+                  // Determine Top-Left Badge: Out of Stock > Bestseller > New > Discount
+                  const showBestseller = !isOutOfStock && book.isBestSeller;
+                  const showNew = !isOutOfStock && book.isNewArrival && !book.isBestSeller;
+                  const showDiscount = !isOutOfStock && discountPercent > 0 && !showBestseller && !showNew;
 
                   return (
                     <div
@@ -467,11 +469,16 @@ function ProductsContent() {
                                 e.currentTarget.src = '/book-placeholder.svg';
                               }
                             }}
-                            className="w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-300 select-none"
+                            className={`w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-300 select-none ${isOutOfStock ? 'opacity-50 grayscale' : ''}`}
                           />
                         </Link>
 
                         {/* Top-Left Badges with reduced border-radius */}
+                        {isOutOfStock && (
+                          <span className="absolute top-2 left-2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs tracking-tight">
+                            Out of Stock
+                          </span>
+                        )}
                         {showBestseller && (
                           <span className="absolute top-2 left-2 bg-[#f59e0b] text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs tracking-tight">
                             Bestseller
@@ -549,18 +556,24 @@ function ProductsContent() {
 
                           <button
                             type="button"
-                            onClick={() => handleAddToCart(book)}
-                            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full text-white flex items-center justify-center shadow-xs hover:shadow-sm active:scale-95 shrink-0 transition-all ${
-                              addedItems[book?._id || book?.id || book?.slug]
-                                ? 'bg-emerald-500 hover:bg-emerald-600'
-                                : 'bg-[#1E3A8A] hover:bg-[#152e72]'
+                            disabled={isOutOfStock}
+                            onClick={() => !isOutOfStock && handleAddToCart(book)}
+                            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full text-white flex items-center justify-center shadow-xs shrink-0 transition-all ${
+                              isOutOfStock
+                                ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-60'
+                                : addedItems[book?._id || book?.id || book?.slug]
+                                ? 'bg-emerald-500 hover:bg-emerald-600 active:scale-95 cursor-pointer'
+                                : 'bg-[#1E3A8A] hover:bg-[#152e72] active:scale-95 cursor-pointer'
                             }`}
-                            title="Add to Cart"
+                            title={isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
                           >
-                            {addedItems[book?._id || book?.id || book?.slug]
-                              ? <Check className="w-3.5 h-3.5" />
-                              : <ShoppingCart className="w-3.5 h-3.5" />
-                            }
+                            {isOutOfStock ? (
+                              <span className="text-[10px] font-bold">✕</span>
+                            ) : addedItems[book?._id || book?.id || book?.slug] ? (
+                              <Check className="w-3.5 h-3.5" />
+                            ) : (
+                              <ShoppingCart className="w-3.5 h-3.5" />
+                            )}
                           </button>
                         </div>
                       </div>

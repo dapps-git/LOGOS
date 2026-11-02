@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
@@ -16,7 +16,7 @@ const SAMPLE_BANNER_PRESETS = [
   { name: 'Buy 1 Get 2 Combo (Above Bestsellers)', image: '/combo_banner.png', position: 'deal_of_day' }
 ];
 
-const EMPTY_FORM = { image: '', mobileImage: '', position: 'hero', link: '/products', isActive: true };
+const EMPTY_FORM = { image: '', position: 'hero', link: '/products', isActive: true };
 
 export default function BannersPage() {
   const { banners = [], addBanner, updateBanner, deleteBanner } = useStoreData();
@@ -38,7 +38,6 @@ export default function BannersPage() {
     setEditingBanner(banner);
     setFormData({
       image: banner.image || '',
-      mobileImage: banner.mobileImage || '',
       position: banner.position || 'hero',
       link: banner.link || '/products',
       isActive: banner.isActive !== false
@@ -55,7 +54,7 @@ export default function BannersPage() {
       const base64 = ev.target?.result;
       if (base64) {
         setFormData((prev) => ({ ...prev, [field]: base64 }));
-        showToast(field === 'mobileImage' ? 'Mobile banner image selected!' : 'Desktop banner image selected!', 'success');
+        showToast('Banner image selected!', 'success');
       }
     };
     reader.readAsDataURL(file);
@@ -63,8 +62,12 @@ export default function BannersPage() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.image) { showToast('Please upload a desktop banner image', 'error'); return; }
-    const payload = { ...formData, title: formData.position === 'hero' ? 'LOGOS Hero Banner' : 'LOGOS Promo Banner' };
+    if (!formData.image) { showToast('Please upload a banner image', 'error'); return; }
+    const payload = {
+      ...formData,
+      mobileImage: formData.image, // Keep mobileImage in sync with universal landscape image
+      title: formData.position === 'hero' ? 'LOGOS Hero Banner' : 'LOGOS Promo Banner'
+    };
     if (editingBanner) {
       updateBanner(editingBanner._id, payload);
       showToast('Banner updated successfully!', 'success');
@@ -92,7 +95,7 @@ export default function BannersPage() {
             <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Banner Management</h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
               Manage Home Hero slider (3 s auto-transition) and Promo banners.
-              Upload <strong>separate images</strong> for Desktop and Mobile views.
+              Upload a single landscape banner graphic — automatically formatted for both laptop and mobile views.
             </p>
           </div>
           <button type="button" onClick={handleOpenAdd}
@@ -118,8 +121,7 @@ export default function BannersPage() {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-50 text-slate-700 uppercase text-[10px] tracking-wider border-b border-slate-200">
-                  <th className="py-3 px-4 font-bold min-w-[160px]">Desktop Image</th>
-                  <th className="py-3 px-4 font-bold min-w-[100px]">Mobile Image</th>
+                  <th className="py-3 px-4 font-bold min-w-[200px]">Banner Graphic (Laptop &amp; Mobile Landscape)</th>
                   <th className="py-3 px-4 font-bold min-w-[160px]">Position</th>
                   <th className="py-3 px-4 font-bold min-w-[180px]">Redirect Link</th>
                   <th className="py-3 px-4 font-bold text-center min-w-[100px]">Status</th>
@@ -128,30 +130,18 @@ export default function BannersPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {banners.length === 0 ? (
-                  <tr><td colSpan={6} className="py-12 text-center text-slate-400">No banners yet. Click "Add Banner Image" to upload one.</td></tr>
+                  <tr><td colSpan={5} className="py-12 text-center text-slate-400">No banners yet. Click "Add Banner Image" to upload one.</td></tr>
                 ) : (
                   banners.map((b) => (
                     <tr key={b._id} className="hover:bg-slate-50/70 transition-colors">
-                      {/* Desktop */}
+                      {/* Universal Landscape Banner */}
                       <td className="py-3 px-4 align-middle">
-                        <div className="w-36 h-20 border border-slate-200 rounded-md bg-slate-100 overflow-hidden shadow-2xs">
+                        <div className="w-44 h-20 border border-slate-200 rounded-md bg-slate-100 overflow-hidden shadow-2xs">
                           {b.image
-                            ? <img src={b.image} alt="Desktop" className="w-full h-full object-cover object-center" />
+                            ? <img src={b.image} alt="Banner" className="w-full h-full object-cover object-center" />
                             : <div className="w-full h-full flex items-center justify-center text-slate-300"><ImageIcon className="w-5 h-5" /></div>}
                         </div>
-                        <p className="text-[10px] text-slate-400 mt-1">Desktop</p>
-                      </td>
-                      {/* Mobile */}
-                      <td className="py-3 px-4 align-middle">
-                        <div className="w-11 h-20 border border-slate-200 rounded-md bg-slate-100 overflow-hidden shadow-2xs">
-                          {b.mobileImage
-                            ? <img src={b.mobileImage} alt="Mobile" className="w-full h-full object-cover object-center" />
-                            : <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-0.5">
-                                <ImageIcon className="w-4 h-4" />
-                                <span className="text-[8px] text-slate-400">None</span>
-                              </div>}
-                        </div>
-                        <p className="text-[10px] text-slate-400 mt-1">Mobile</p>
+                        <p className="text-[10px] text-slate-400 mt-1">Universal Landscape</p>
                       </td>
                       {/* Position */}
                       <td className="py-3 px-4 align-middle">
@@ -191,7 +181,7 @@ export default function BannersPage() {
         {/* Add / Edit Modal */}
         <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}
           title={editingBanner ? 'Edit Banner Graphic' : 'Upload Banner Graphic'}
-          subtitle="Upload separate images for Desktop (landscape) and Mobile (portrait) views">
+          subtitle="Upload a landscape banner (16:9 / 21:9) — automatically adapted for both laptop and mobile views">
           <form onSubmit={handleSubmit} className="space-y-5 text-xs">
 
             {/* Position */}
@@ -206,32 +196,20 @@ export default function BannersPage() {
               </select>
             </div>
 
-            {/* Desktop Banner */}
+            {/* Universal Banner Graphic */}
             <BannerUploadSection
-              label="Desktop Banner Image"
-              sublabel="Landscape / wide — shown on tablet & desktop (≥ 768 px)"
+              label="Banner Image"
+              sublabel="Universal landscape format — seamlessly scaled for laptop, tablet, and mobile views"
               required
               value={formData.image}
               onChange={(val) => setFormData((p) => ({ ...p, image: val }))}
               onFileChange={(e) => handleFileUpload(e, 'image')}
-              previewClass="aspect-[21/8]"
+              previewClass="aspect-[16/8] sm:aspect-[21/8]"
               accentColor="emerald"
               showPresets={showPresets}
               onTogglePresets={() => setShowPresets(!showPresets)}
               presets={SAMPLE_BANNER_PRESETS}
               onSelectPreset={(p) => setFormData((prev) => ({ ...prev, image: p.image, position: p.position }))}
-            />
-
-            {/* Mobile Banner */}
-            <BannerUploadSection
-              label="Mobile Banner Image"
-              sublabel="Portrait / tall — shown on phones (< 768 px). Falls back to desktop image if not set."
-              required={false}
-              value={formData.mobileImage}
-              onChange={(val) => setFormData((p) => ({ ...p, mobileImage: val }))}
-              onFileChange={(e) => handleFileUpload(e, 'mobileImage')}
-              previewClass="aspect-[9/16] max-w-[160px] mx-auto"
-              accentColor="purple"
             />
 
             {/* Click link */}

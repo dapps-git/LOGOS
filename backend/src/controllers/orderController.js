@@ -9,6 +9,38 @@ const {
   processReferralRewardOnCompletion
 } = require('../utils/referralService');
 
+// Helper to safely deduct stock and sync stockStatus
+async function deductBookStock(bookId, qty) {
+  if (!bookId || !qty) return;
+  try {
+    const book = await Book.findById(bookId);
+    if (!book) return;
+    const currentStock = Math.max(0, parseInt(book.stock, 10) || 0);
+    const newStock = Math.max(0, currentStock - qty);
+    book.stock = newStock;
+    book.stockStatus = newStock === 0 ? 'out_of_stock' : newStock <= 5 ? 'low_stock' : 'in_stock';
+    await book.save();
+  } catch (err) {
+    console.error(`[deductBookStock] Error for book ${bookId}:`, err.message);
+  }
+}
+
+// Helper to safely restore stock and sync stockStatus on cancellation/return/refund
+async function restoreBookStock(bookId, qty) {
+  if (!bookId || !qty) return;
+  try {
+    const book = await Book.findById(bookId);
+    if (!book) return;
+    const currentStock = Math.max(0, parseInt(book.stock, 10) || 0);
+    const newStock = currentStock + qty;
+    book.stock = newStock;
+    book.stockStatus = newStock === 0 ? 'out_of_stock' : newStock <= 5 ? 'low_stock' : 'in_stock';
+    await book.save();
+  } catch (err) {
+    console.error(`[restoreBookStock] Error for book ${bookId}:`, err.message);
+  }
+}
+
 // @desc    Create a new book order
 // @route   POST /api/orders
 // @access  Private (Customer)
@@ -85,6 +117,15 @@ const createOrder = async (req, res) => {
       }
 
       const qty = parseInt(item.quantity || 1, 10);
+      if (book) {
+        const availableStock = Math.max(0, parseInt(book.stock, 10) || 0);
+        if (availableStock < qty || book.stockStatus === 'out_of_stock') {
+          return res.status(400).json({
+            success: false,
+            message: `Insufficient stock for "${book.title || book.name}". Only ${availableStock} units remaining.`
+          });
+        }
+      }
       const unitPrice = book ? ((book.discountPrice && book.discountPrice < book.price) ? book.discountPrice : book.price) : Number(item.price || 299);
       const itemSubtotal = unitPrice * qty;
       subtotal += itemSubtotal;
@@ -198,11 +239,11 @@ const createOrder = async (req, res) => {
       notes
     });
 
-    // Deduct stock for all purchased books
+    // Deduct stock for all purchased books and sync stockStatus
     for (const item of validatedItems) {
-      await Book.findByIdAndUpdate(item.book, {
-        $inc: { stock: -item.quantity }
-      });
+      if (item.book) {
+        await deductBookStock(item.book, item.quantity);
+      }
     }
 
     // Save updated customer states
@@ -505,12 +546,10 @@ const cancelOrder = async (req, res) => {
     order.orderStatus = 'Cancelled';
     order.cancellationReason = cancellationReason;
 
-    // Restock books inventory
+    // Restock books inventory and sync stockStatus
     for (const item of order.items) {
       if (item.book) {
-        await Book.findByIdAndUpdate(item.book, {
-          $inc: { stock: item.quantity }
-        });
+        await restoreBookStock(item.book, item.quantity);
       }
     }
 
@@ -693,7 +732,7 @@ const triggerRefundAdmin = async (req, res) => {
     if (!['Cancelled', 'Returned', 'Return Accepted', 'Approved', 'Return Approved', 'Refunded'].includes(previousStatus)) {
       for (const item of order.items) {
         if (item.book) {
-          await Book.findByIdAndUpdate(item.book, { $inc: { stock: item.quantity } });
+          await restoreBookStock(item.book, item.quantity);
         }
       }
     }
@@ -833,12 +872,10 @@ const reviewReturnAdmin = async (req, res) => {
         note: note || (scheduledDate ? `Return pickup scheduled for ${new Date(scheduledDate).toLocaleDateString('en-IN')}` : 'Return request accepted. Processing return.')
       });
 
-      // Restock books
+      // Restock books and sync stockStatus
       for (const item of order.items) {
         if (item.book) {
-          await Book.findByIdAndUpdate(item.book, {
-            $inc: { stock: item.quantity }
-          });
+          await restoreBookStock(item.book, item.quantity);
         }
       }
     } else if (action === 'reject') {
@@ -901,6 +938,15 @@ const createRazorpayOrder = async (req, res) => {
         book = await Book.findOne({ title: item.title });
       }
       const qty = parseInt(item.quantity || 1, 10);
+      if (book) {
+        const availableStock = Math.max(0, parseInt(book.stock, 10) || 0);
+        if (availableStock < qty || book.stockStatus === 'out_of_stock') {
+          return res.status(400).json({
+            success: false,
+            message: `"${book.title || book.name}" is out of stock (Available: ${availableStock} units). Please adjust your cart.`
+          });
+        }
+      }
       const unitPrice = book ? ((book.discountPrice && book.discountPrice < book.price) ? book.discountPrice : book.price) : Number(item.price || 299);
       subtotal += unitPrice * qty;
     }
@@ -1166,7 +1212,7 @@ const verifyRazorpayPayment = async (req, res) => {
 
     for (const item of validatedItems) {
       if (item.book) {
-        await Book.findByIdAndUpdate(item.book, { $inc: { stock: -item.quantity } });
+        await deductBookStock(item.book, item.quantity);
       }
     }
 

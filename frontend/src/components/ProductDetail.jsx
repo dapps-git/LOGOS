@@ -91,8 +91,12 @@ export const ProductDetail = ({ book }) => {
   const isbn = book?.isbn || '9789347536100';
   const description = book?.description || `${title} by ${author}.`;
 
+  const rawStock = book?.stock !== undefined ? Number(book.stock) : null;
+  const isOutOfStock = book?.stockStatus === 'out_of_stock' || (rawStock !== null && rawStock <= 0);
+  const isLowStock = !isOutOfStock && (book?.stockStatus === 'low_stock' || (rawStock !== null && rawStock > 0 && rawStock <= 5));
+
   const handleAddToCart = async () => {
-    if (!book || isAdding) return;
+    if (!book || isAdding || isOutOfStock) return;
     setIsAdding(true);
     try {
       const ok = await addToCart(book, quantity);
@@ -106,6 +110,7 @@ export const ProductDetail = ({ book }) => {
   };
 
   const handleBuyNow = async () => {
+    if (isOutOfStock) return;
     if (!user) {
       router.push('/auth/login?redirect=/checkout');
       return;
@@ -211,11 +216,21 @@ export const ProductDetail = ({ book }) => {
           {/* Right Column: Metadata, Specs, Description & Action Buttons */}
           <div className="lg:col-span-7 flex flex-col space-y-4">
             
-            {/* IN STOCK Badge */}
+            {/* Dynamic Stock Badge */}
             <div>
-              <span className="inline-block px-2.5 py-0.5 rounded text-[11px] font-bold tracking-wider uppercase bg-emerald-50 text-emerald-600">
-                IN STOCK
-              </span>
+              {isOutOfStock ? (
+                <span className="inline-block px-2.5 py-0.5 rounded text-[11px] font-bold tracking-wider uppercase bg-rose-50 text-rose-700 border border-rose-200">
+                  OUT OF STOCK
+                </span>
+              ) : isLowStock ? (
+                <span className="inline-block px-2.5 py-0.5 rounded text-[11px] font-bold tracking-wider uppercase bg-amber-50 text-amber-800 border border-amber-200">
+                  ONLY {rawStock} LEFT IN STOCK
+                </span>
+              ) : (
+                <span className="inline-block px-2.5 py-0.5 rounded text-[11px] font-bold tracking-wider uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  IN STOCK
+                </span>
+              )}
             </div>
 
             {/* Title */}
@@ -288,10 +303,16 @@ export const ProductDetail = ({ book }) => {
               <button
                 type="button"
                 onClick={handleAddToCart}
-                disabled={isAdding}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 sm:gap-2 border-2 border-[#1E3A8A] text-[#1E3A8A] hover:bg-blue-50/70 py-2.5 sm:py-3 px-3 sm:px-6 rounded-lg font-bold text-xs sm:text-sm transition-all active:scale-95 shadow-2xs whitespace-nowrap cursor-pointer disabled:opacity-60"
+                disabled={isAdding || isOutOfStock}
+                className={`flex-1 inline-flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 sm:py-3 px-3 sm:px-6 rounded-lg font-bold text-xs sm:text-sm transition-all shadow-2xs whitespace-nowrap ${
+                  isOutOfStock
+                    ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-70'
+                    : 'border-2 border-[#1E3A8A] text-[#1E3A8A] hover:bg-blue-50/70 active:scale-95 cursor-pointer disabled:opacity-60'
+                }`}
               >
-                {addedToCart ? (
+                {isOutOfStock ? (
+                  <span>Currently Unavailable</span>
+                ) : addedToCart ? (
                   <>
                     <Check className="w-4 h-4 text-emerald-600 shrink-0" />
                     <span className="text-emerald-700 font-bold truncate">Added!</span>
@@ -313,9 +334,14 @@ export const ProductDetail = ({ book }) => {
               <button
                 type="button"
                 onClick={handleBuyNow}
-                className="flex-1 inline-flex items-center justify-center bg-[#1B365D] hover:bg-[#142c4c] text-white py-2.5 sm:py-3 px-3 sm:px-6 rounded-lg font-bold text-xs sm:text-sm transition-all shadow-sm active:scale-95 whitespace-nowrap cursor-pointer"
+                disabled={isOutOfStock}
+                className={`flex-1 inline-flex items-center justify-center py-2.5 sm:py-3 px-3 sm:px-6 rounded-lg font-bold text-xs sm:text-sm transition-all shadow-sm whitespace-nowrap ${
+                  isOutOfStock
+                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-60'
+                    : 'bg-[#1B365D] hover:bg-[#142c4c] text-white active:scale-95 cursor-pointer'
+                }`}
               >
-                <span className="truncate">Buy Now</span>
+                <span className="truncate">{isOutOfStock ? 'Out of Stock' : 'Buy Now'}</span>
               </button>
             </div>
 

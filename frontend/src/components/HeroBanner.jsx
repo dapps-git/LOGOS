@@ -69,36 +69,28 @@ export const HeroBanner = () => {
 
   const currentBanner = banners.length > 0 ? banners[currentIndex] : null;
   const rawBannerImage = currentBanner?.image || '/banner.webp';
-  const rawMobileBannerImage = currentBanner?.mobileImage || rawBannerImage;
 
   // Cloudinary compressed image URLs (WebP/AVIF auto formats)
   const bannerImage = optimizeImageUrl(rawBannerImage, { width: 1920, quality: 'auto' });
-  const mobileBannerImage = optimizeImageUrl(rawMobileBannerImage, { width: 768, quality: 'auto' });
   const bannerLink = currentBanner?.link || null;
 
   const content = (
-    <div className="relative w-full h-[100dvh] min-h-[100svh] overflow-hidden select-none bg-slate-900 flex items-center justify-center">
-      <picture key={bannerImage} className="w-full h-full block">
-        {/* Mobile-specific image (< 768px) */}
-        {mobileBannerImage !== bannerImage && (
-          <source media="(max-width: 767px)" srcSet={mobileBannerImage} />
-        )}
-        {/* Desktop image (default / fallback) */}
-        <img
-          src={bannerImage}
-          alt={currentBanner?.title || 'LOGOS Banner'}
-          referrerPolicy="no-referrer"
-          loading="eager"
-          fetchPriority="high"
-          decoding="async"
-          crossOrigin="anonymous"
-          onError={(e) => {
-            e.currentTarget.onerror = null;
-            e.currentTarget.src = '/banner.webp';
-          }}
-          className="w-full h-full object-cover object-center block select-none transition-opacity duration-500 animate-in fade-in"
-        />
-      </picture>
+    <div className="relative w-full aspect-[16/8.5] sm:aspect-[21/9] md:aspect-[21/8] overflow-hidden select-none bg-slate-900 flex items-center justify-center">
+      <img
+        key={bannerImage}
+        src={bannerImage}
+        alt={currentBanner?.title || 'LOGOS Banner'}
+        referrerPolicy="no-referrer"
+        loading="eager"
+        fetchPriority="high"
+        decoding="async"
+        crossOrigin="anonymous"
+        onError={(e) => {
+          e.currentTarget.onerror = null;
+          e.currentTarget.src = '/banner.webp';
+        }}
+        className="w-full h-full object-cover object-center block select-none transition-opacity duration-500 animate-in fade-in"
+      />
     </div>
   );
 
@@ -107,14 +99,18 @@ export const HeroBanner = () => {
   }
 
   return (
-    <section className="relative w-full h-[100dvh] min-h-[100svh] overflow-hidden bg-white">
-      {bannerLink ? (
-        <Link href={bannerLink} className="block w-full h-full">
-          {content}
-        </Link>
-      ) : (
-        content
-      )}
+    <section className="relative w-full pt-16 sm:pt-20 md:pt-24 bg-white overflow-hidden">
+      <div className="w-full max-w-[1440px] mx-auto px-0 sm:px-4 lg:px-6">
+        {bannerLink ? (
+          <Link href={bannerLink} className="block w-full h-full rounded-none sm:rounded-2xl overflow-hidden shadow-xs group">
+            {content}
+          </Link>
+        ) : (
+          <div className="rounded-none sm:rounded-2xl overflow-hidden shadow-xs">
+            {content}
+          </div>
+        )}
+      </div>
     </section>
   );
 };

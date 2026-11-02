@@ -48,14 +48,18 @@ export const BookGridSkeleton = ({ count = 8 }) => {
  */
 export const HeroBannerSkeleton = () => {
   return (
-    <div className="relative w-full aspect-[3/4] sm:aspect-[1748/900] min-h-[460px] sm:min-h-[360px] md:min-h-[480px] bg-slate-100 overflow-hidden">
-      <div className="w-full h-full shimmer-effect" />
-      
-      {/* Subtle overlay shapes suggesting banner elements */}
-      <div className="absolute inset-0 flex flex-col justify-center px-6 sm:px-16 max-w-xl space-y-4 pointer-events-none opacity-40">
-        <div className="h-6 sm:h-9 bg-slate-300/60 rounded-xs w-3/4 shimmer-effect" />
-        <div className="h-4 sm:h-6 bg-slate-300/40 rounded-xs w-1/2 shimmer-effect" />
-        <div className="h-3 sm:h-4 bg-slate-300/30 rounded-xs w-2/3 shimmer-effect" />
+    <div className="w-full pt-16 sm:pt-20 md:pt-24 bg-white">
+      <div className="w-full max-w-[1440px] mx-auto px-0 sm:px-4 lg:px-6">
+        <div className="relative w-full aspect-[16/8.5] sm:aspect-[21/9] md:aspect-[21/8] bg-slate-100 overflow-hidden rounded-none sm:rounded-2xl">
+          <div className="w-full h-full shimmer-effect" />
+          
+          {/* Subtle overlay shapes suggesting banner elements */}
+          <div className="absolute inset-0 flex flex-col justify-center px-6 sm:px-16 max-w-xl space-y-4 pointer-events-none opacity-40">
+            <div className="h-6 sm:h-9 bg-slate-300/60 rounded-xs w-3/4 shimmer-effect" />
+            <div className="h-4 sm:h-6 bg-slate-300/40 rounded-xs w-1/2 shimmer-effect" />
+            <div className="h-3 sm:h-4 bg-slate-300/30 rounded-xs w-2/3 shimmer-effect" />
+          </div>
+        </div>
       </div>
     </div>
   );

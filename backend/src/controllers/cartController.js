@@ -114,6 +114,10 @@ const addToCart = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Book not found or unavailable' });
     }
 
+    if (book.stock <= 0 || book.stockStatus === 'out_of_stock') {
+      return res.status(400).json({ success: false, message: `"${book.title || book.name}" is currently out of stock.` });
+    }
+
     const cart = await findOrCreateCart(customerId, gId);
     if (!cart) {
       return res.status(400).json({ success: false, message: 'Could not create cart session' });

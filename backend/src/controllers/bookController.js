@@ -381,6 +381,12 @@ const updateBook = async (req, res) => {
       await Book.updateMany({ _id: { $ne: book._id } }, { $set: { isFeaturedSpotlight: false } });
     }
 
+    if (otherFields.stock !== undefined) {
+      const parsedStock = Math.max(0, parseInt(otherFields.stock, 10) || 0);
+      otherFields.stock = parsedStock;
+      otherFields.stockStatus = parsedStock === 0 ? 'out_of_stock' : parsedStock <= 5 ? 'low_stock' : 'in_stock';
+    }
+
     Object.assign(book, otherFields);
     await book.save();
 

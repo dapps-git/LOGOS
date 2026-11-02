@@ -208,11 +208,15 @@ bookSchema.pre('save', function (next) {
     this.slug = `${raw}-${Date.now().toString().slice(-6)}`;
   }
 
-  if (this.stock === 0) {
+  const numericStock = Number(this.stock);
+  if (isNaN(numericStock) || numericStock <= 0) {
+    this.stock = 0;
     this.stockStatus = 'out_of_stock';
-  } else if (this.stock <= 5) {
+  } else if (numericStock <= 5) {
+    this.stock = numericStock;
     this.stockStatus = 'low_stock';
   } else {
+    this.stock = numericStock;
     this.stockStatus = 'in_stock';
   }
 

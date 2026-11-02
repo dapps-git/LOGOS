@@ -23,7 +23,7 @@ const getMyReferralSummary = async (req, res) => {
       .populate('orderId', 'orderNumber totalAmount orderStatus paymentStatus')
       .sort({ createdAt: -1 });
 
-    const baseUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+    const baseUrl = (process.env.CLIENT_URL || (process.env.NODE_ENV === 'production' ? 'https://logos-2nkc.vercel.app' : 'http://localhost:3000')).replace(/\/$/, '');
     const referralLink = customer.referralEligible && customer.referralCode
       ? `${baseUrl}/register?ref=${customer.referralCode}`
       : null;

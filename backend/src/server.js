@@ -45,11 +45,11 @@ const corsOptions = {
     if (
       allowedOrigins.includes(cleanOrigin) ||
       cleanOrigin.endsWith('.vercel.app') ||
-      process.env.NODE_ENV === 'development'
+      (process.env.NODE_ENV === 'development' && (cleanOrigin.includes('localhost') || cleanOrigin.includes('127.0.0.1')))
     ) {
       callback(null, true);
     } else {
-      callback(null, true);
+      callback(new Error('Blocked by CORS policy: Origin not allowed'));
     }
   },
   credentials: true,
@@ -68,6 +68,14 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
+
+// Disable caching on API routes to ensure live stock updates and product changes are immediately reflected
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
 
 // Body Parsers
 app.use(express.json({ limit: '50mb' }));

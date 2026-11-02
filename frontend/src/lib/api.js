@@ -33,7 +33,7 @@ export async function fetchBooks(params = {}) {
     const finalParams = { limit: 500, ...params };
     const query = new URLSearchParams(finalParams).toString();
     const res = await fetch(`${getApiBase()}/books${query ? `?${query}` : ''}`, {
-      next: { revalidate: 60 }
+      cache: 'no-store'
     });
     if (!res.ok) throw new Error(`Failed to fetch books: ${res.status}`);
     const data = await res.json();
@@ -62,7 +62,7 @@ export async function fetchBookSuggestions(q) {
 export async function fetchNewArrivals() {
   try {
     const res = await fetch(`${getApiBase()}/books/collections/new-arrivals`, {
-      next: { revalidate: 60 }
+      cache: 'no-store'
     });
     if (!res.ok) throw new Error(`Failed to fetch new arrivals: ${res.status}`);
     const data = await res.json();
@@ -76,7 +76,7 @@ export async function fetchNewArrivals() {
 export async function fetchBestSellers() {
   try {
     const res = await fetch(`${getApiBase()}/books/collections/best-sellers`, {
-      next: { revalidate: 60 }
+      cache: 'no-store'
     });
     if (!res.ok) throw new Error(`Failed to fetch bestsellers: ${res.status}`);
     const data = await res.json();
@@ -90,7 +90,7 @@ export async function fetchBestSellers() {
 export async function fetchFeaturedBooks() {
   try {
     const res = await fetch(`${getApiBase()}/books/collections/featured`, {
-      next: { revalidate: 60 }
+      cache: 'no-store'
     });
     if (!res.ok) throw new Error(`Failed to fetch featured books: ${res.status}`);
     const data = await res.json();
@@ -104,7 +104,7 @@ export async function fetchFeaturedBooks() {
 export async function fetchBookBySlugOrId(idOrSlug) {
   try {
     const res = await fetch(`${getApiBase()}/books/${idOrSlug}`, {
-      next: { revalidate: 60 }
+      cache: 'no-store'
     });
     if (!res.ok) throw new Error(`Failed to fetch book: ${res.status}`);
     const data = await res.json();
@@ -133,31 +133,18 @@ export function optimizeImageUrl(url, { width = 1920, quality = 'auto' } = {}) {
   return url;
 }
 
-let bannersCachePromise = null;
-let lastBannersCacheTime = 0;
-
 export async function fetchBanners() {
-  const now = Date.now();
-  if (bannersCachePromise && (now - lastBannersCacheTime < 20000)) {
-    return bannersCachePromise;
+  try {
+    const res = await fetch(`${getApiBase()}/banners`, {
+      cache: 'no-store'
+    });
+    if (!res.ok) throw new Error(`Failed to fetch banners: ${res.status}`);
+    const data = await res.json();
+    return data.banners || [];
+  } catch (err) {
+    console.warn('[LOGOS API] fetchBanners fallback:', err.message);
+    return [];
   }
-
-  bannersCachePromise = (async () => {
-    try {
-      const res = await fetch(`${getApiBase()}/banners`, {
-        next: { revalidate: 60 }
-      });
-      if (!res.ok) throw new Error(`Failed to fetch banners: ${res.status}`);
-      const data = await res.json();
-      lastBannersCacheTime = Date.now();
-      return data.banners || [];
-    } catch (err) {
-      console.warn('[LOGOS API] fetchBanners fallback:', err.message);
-      return [];
-    }
-  })();
-
-  return bannersCachePromise;
 }
 
 // ----------------- Customer Auth APIs -----------------

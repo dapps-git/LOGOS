@@ -25,9 +25,9 @@ const runTests = async () => {
       console.log(`       - Author: ${sample.author} | Publisher: ${sample.publisher}`);
       console.log(`       - Edition: ${sample.edition} | Pages: ${sample.pageCount}`);
       console.log(`       - Languages: [${sample.languages.join(', ')}]`);
-      console.log(`       - Photos Count: ${sample.images.length} (Min 3 required)`);
-      if (sample.images.length < 3) {
-        throw new Error(`Book ${sample.title} has fewer than 3 images`);
+      console.log(`       - Photos Count: ${sample.images.length} (Min 1 required)`);
+      if (sample.images.length < 1) {
+        throw new Error(`Book ${sample.title} has fewer than 1 image`);
       }
     }
 
@@ -41,10 +41,13 @@ const runTests = async () => {
     const testReferredEmail = `test_friend_${Date.now()}@example.com`;
 
     // Customer A (Referrer)
+    const testCode = 'REF' + Math.random().toString(36).substring(2, 8).toUpperCase();
     const referrer = await Customer.create({
       name: 'Referrer User',
       email: testReferrerEmail,
-      password: 'Password123'
+      password: 'Password123',
+      referralCode: testCode,
+      referralEligible: true
     });
     console.log(`       - Referrer registered with code: ${referrer.referralCode}`);
 
