@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Star, Heart } from 'lucide-react';
-import { fetchFeaturedBooks, fetchBooks } from '@/lib/api';
+import { fetchFeaturedBooks, fetchBooks, optimizeImageUrl } from '@/lib/api';
 import { useWishlist } from '@/context/WishlistContext';
 import { HandpickedSkeleton } from '@/components/Skeletons';
 
@@ -16,49 +16,22 @@ export const HandpickedReads = () => {
     let isMounted = true;
     const loadBooks = async () => {
       try {
-        const [liveBooks, allBooks] = await Promise.all([
-          fetchFeaturedBooks().catch(() => []),
-          fetchBooks({ limit: 50 }).catch(() => [])
-        ]);
+        let list = await fetchFeaturedBooks().catch(() => []);
+        if (!Array.isArray(list) || list.length === 0) {
+          list = await fetchBooks({ isHandpicked: true, limit: 3 }).catch(() => []);
+        }
+        if (!Array.isArray(list) || list.length === 0) {
+          list = await fetchBooks({ limit: 3 }).catch(() => []);
+        }
 
         if (isMounted) {
-          const map = new Map();
-          if (Array.isArray(liveBooks)) {
-            liveBooks.forEach((b) => {
-              if (b && b._id) map.set(b._id, { ...b, priority: 3 });
-            });
-          }
-          if (Array.isArray(allBooks)) {
-            allBooks.forEach((b) => {
-              if (b && b._id) {
-                const existing = map.get(b._id);
-                if (!existing) {
-                  map.set(b._id, { ...b, priority: b.isHandpicked || b.isFeatured ? 3 : 1 });
-                }
-              }
-            });
-          }
-
-          const uniqueBooks = Array.from(map.values()).filter((b) => {
+          const uniqueBooks = (Array.isArray(list) ? list : []).filter((b) => {
             const img = (b.images && b.images[0]) || b.coverImage;
             return img && img !== '/book-placeholder.svg' && !img.includes('placeholder');
           });
 
-          // Prioritize handpicked/featured books and books with real cover images
-          const sorted = uniqueBooks.sort((a, b) => {
-            const aPri = a.isHandpicked ? 4 : (a.isFeatured || a.priority === 3 ? 3 : 1);
-            const bPri = b.isHandpicked ? 4 : (b.isFeatured || b.priority === 3 ? 3 : 1);
-            if (bPri !== aPri) return bPri - aPri;
-
-            const aHas = a.images && a.images.length > 0 && a.images[0] && a.images[0] !== '/book-placeholder.svg' ? 1 : 0;
-            const bHas = b.images && b.images.length > 0 && b.images[0] && b.images[0] !== '/book-placeholder.svg' ? 1 : 0;
-            if (bHas !== aHas) return bHas - aHas;
-
-            return (Number(b.rating) || 0) - (Number(a.rating) || 0);
-          });
-
-          if (sorted.length > 0) {
-            const formatted = sorted.slice(0, 3).map((b, idx) => ({
+          if (uniqueBooks.length > 0) {
+            const formatted = uniqueBooks.slice(0, 3).map((b, idx) => ({
               num: `0${idx + 1}`,
               id: b._id,
               title: b.title || b.name,
@@ -124,7 +97,7 @@ export const HandpickedReads = () => {
               {/* Book Image Showcase Container */}
               <div className="relative aspect-3/4 w-full overflow-hidden bg-slate-100 rounded-xs transition-transform duration-300 group-hover:scale-[1.02] shadow-sm">
                 <img
-                  src={book.image}
+                  src={optimizeImageUrl(book.image, { width: 500, quality: 'auto' })}
                   alt={book.title}
                   referrerPolicy="no-referrer"
                   loading="lazy"
@@ -133,7 +106,11 @@ export const HandpickedReads = () => {
                   onError={(e) => {
                     if (!e.currentTarget.dataset.failed) {
                       e.currentTarget.dataset.failed = 'true';
-                      e.currentTarget.src = '/book-placeholder.svg';
+                      if (e.currentTarget.src !== book.image && book.image && book.image.startsWith('http')) {
+                        e.currentTarget.src = book.image;
+                      } else {
+                        e.currentTarget.src = '/book-placeholder.svg';
+                      }
                     }
                   }}
                 />

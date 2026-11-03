@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Star, Heart } from 'lucide-react';
-import { fetchNewArrivals, fetchBooks } from '@/lib/api';
+import { fetchNewArrivals, fetchBooks, optimizeImageUrl } from '@/lib/api';
 import { useWishlist } from '@/context/WishlistContext';
 import { BookGridSkeleton } from '@/components/Skeletons';
 
@@ -16,51 +16,22 @@ export const NewArrivals = () => {
     let isMounted = true;
     const loadBooks = async () => {
       try {
-        const [liveBooks, allBooks] = await Promise.all([
-          fetchNewArrivals().catch(() => []),
-          fetchBooks({ limit: 50 }).catch(() => [])
-        ]);
+        let list = await fetchNewArrivals().catch(() => []);
+        if (!Array.isArray(list) || list.length === 0) {
+          list = await fetchBooks({ isNewArrival: true, limit: 6 }).catch(() => []);
+        }
+        if (!Array.isArray(list) || list.length === 0) {
+          list = await fetchBooks({ limit: 6 }).catch(() => []);
+        }
 
         if (isMounted) {
-          const map = new Map();
-          // First add new arrivals collection
-          if (Array.isArray(liveBooks)) {
-            liveBooks.forEach((b) => {
-              if (b && b._id) map.set(b._id, { ...b, priority: 2 });
-            });
-          }
-          // Then add all books
-          if (Array.isArray(allBooks)) {
-            allBooks.forEach((b) => {
-              if (b && b._id) {
-                const existing = map.get(b._id);
-                if (!existing) {
-                  map.set(b._id, { ...b, priority: b.isNewArrival ? 2 : 1 });
-                }
-              }
-            });
-          }
-
-          const uniqueBooks = Array.from(map.values()).filter((b) => {
+          const uniqueBooks = (Array.isArray(list) ? list : []).filter((b) => {
             const img = (b.images && b.images[0]) || b.coverImage;
             return img && img !== '/book-placeholder.svg' && !img.includes('placeholder');
           });
 
-          // Sort: new arrival flag first, then real cover images, then newest date
-          const sorted = uniqueBooks.sort((a, b) => {
-            const aPriority = a.isNewArrival || a.priority === 2 ? 2 : 1;
-            const bPriority = b.isNewArrival || b.priority === 2 ? 2 : 1;
-            if (bPriority !== aPriority) return bPriority - aPriority;
-
-            const aHasImg = a.images && a.images.length > 0 && a.images[0] && a.images[0] !== '/book-placeholder.svg' ? 1 : 0;
-            const bHasImg = b.images && b.images.length > 0 && b.images[0] && b.images[0] !== '/book-placeholder.svg' ? 1 : 0;
-            if (bHasImg !== aHasImg) return bHasImg - aHasImg;
-
-            return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-          });
-
-          if (sorted.length > 0) {
-            const formatted = sorted.slice(0, 6).map((b) => ({
+          if (uniqueBooks.length > 0) {
+            const formatted = uniqueBooks.slice(0, 6).map((b) => ({
               id: b._id,
               title: b.title || b.name,
               author: b.author,
@@ -116,7 +87,7 @@ export const NewArrivals = () => {
             {/* Book Image Showcase Container */}
             <div className="relative aspect-3/4 w-full overflow-hidden bg-[#f8fafc] rounded-xl border border-slate-100 transition-transform duration-300 group-hover:scale-[1.02]">
               <img
-                src={book.image}
+                src={optimizeImageUrl(book.image, { width: 450, quality: 'auto' })}
                 alt={book.title}
                 referrerPolicy="no-referrer"
                 loading="lazy"
@@ -125,7 +96,11 @@ export const NewArrivals = () => {
                 onError={(e) => {
                   if (!e.currentTarget.dataset.failed) {
                     e.currentTarget.dataset.failed = 'true';
-                    e.currentTarget.src = '/book-placeholder.svg';
+                    if (e.currentTarget.src !== book.image && book.image && book.image.startsWith('http')) {
+                      e.currentTarget.src = book.image;
+                    } else {
+                      e.currentTarget.src = '/book-placeholder.svg';
+                    }
                   }
                 }}
               />

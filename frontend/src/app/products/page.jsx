@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
-import { fetchBooksPaginated, fetchFilterOptions } from '../../lib/api';
+import { fetchBooksPaginated, fetchFilterOptions, optimizeImageUrl } from '../../lib/api';
 import { useWishlist } from '../../context/WishlistContext';
 import { useCart } from '../../context/CartContext';
 import { CatalogGridSkeleton } from '../../components/Skeletons';
@@ -481,7 +481,7 @@ function ProductsContent() {
                       <div className="relative aspect-[3/4] w-full bg-[#f8fafc] rounded-xl overflow-hidden mb-2.5 border border-slate-100 flex items-center justify-center p-2 group-hover:bg-[#f1f5f9] transition-colors">
                         <Link href={`/books/${book.slug || bookId}`} className="block w-full h-full">
                           <img
-                            src={image}
+                            src={optimizeImageUrl(image, { width: 450, quality: 'auto' })}
                             alt={title}
                             referrerPolicy="no-referrer"
                             loading="lazy"
@@ -489,7 +489,11 @@ function ProductsContent() {
                             onError={(e) => {
                               if (!e.currentTarget.dataset.failed) {
                                 e.currentTarget.dataset.failed = 'true';
-                                e.currentTarget.src = '/book-placeholder.svg';
+                                if (e.currentTarget.src !== image && image && image.startsWith('http')) {
+                                  e.currentTarget.src = image;
+                                } else {
+                                  e.currentTarget.src = '/book-placeholder.svg';
+                                }
                               }
                             }}
                             className={`w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-300 select-none ${isOutOfStock ? 'opacity-50 grayscale' : ''}`}
