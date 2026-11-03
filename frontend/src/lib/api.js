@@ -30,8 +30,11 @@ function getAuthHeaders() {
 
 export async function fetchBooks(params = {}) {
   try {
-    const finalParams = { limit: 500, ...params };
-    const query = new URLSearchParams(finalParams).toString();
+    const finalParams = { limit: 15, ...params };
+    const cleanParams = Object.entries(finalParams).filter(
+      ([_, v]) => v !== undefined && v !== null && v !== ''
+    );
+    const query = new URLSearchParams(cleanParams).toString();
     const res = await fetch(`${getApiBase()}/books${query ? `?${query}` : ''}`, {
       cache: 'no-store'
     });
@@ -41,6 +44,55 @@ export async function fetchBooks(params = {}) {
   } catch (err) {
     console.warn('[LOGOS API] fetchBooks error:', err.message);
     return [];
+  }
+}
+
+export async function fetchBooksPaginated(params = {}) {
+  try {
+    const finalParams = { page: 1, limit: 15, ...params };
+    const cleanParams = Object.entries(finalParams).filter(
+      ([_, v]) => v !== undefined && v !== null && v !== ''
+    );
+    const query = new URLSearchParams(cleanParams).toString();
+    const res = await fetch(`${getApiBase()}/books${query ? `?${query}` : ''}`, {
+      cache: 'no-store'
+    });
+    if (!res.ok) throw new Error(`Failed to fetch books: ${res.status}`);
+    const data = await res.json();
+    return {
+      books: data.books || [],
+      pagination: data.pagination || {
+        page: Number(finalParams.page) || 1,
+        limit: Number(finalParams.limit) || 15,
+        totalPages: 1,
+        totalItems: (data.books || []).length
+      }
+    };
+  } catch (err) {
+    console.warn('[LOGOS API] fetchBooksPaginated error:', err.message);
+    return {
+      books: [],
+      pagination: {
+        page: Number(params.page) || 1,
+        limit: Number(params.limit) || 15,
+        totalPages: 1,
+        totalItems: 0
+      }
+    };
+  }
+}
+
+export async function fetchFilterOptions() {
+  try {
+    const res = await fetch(`${getApiBase()}/books/filters/options`, {
+      next: { revalidate: 60 }
+    });
+    if (!res.ok) throw new Error(`Failed to fetch filter options: ${res.status}`);
+    const data = await res.json();
+    return data.options || { themes: [], authors: [], publishers: [], languages: [] };
+  } catch (err) {
+    console.warn('[LOGOS API] fetchFilterOptions error:', err.message);
+    return { themes: [], authors: [], publishers: [], languages: [] };
   }
 }
 
@@ -467,9 +519,13 @@ export async function fetchSpotlightBook() {
   }
 }
 
-export async function fetchAuthors() {
+export async function fetchAuthors(params = {}) {
   try {
-    const res = await fetch(`${getApiBase()}/books/authors/all`, {
+    const cleanParams = Object.entries(params).filter(
+      ([_, v]) => v !== undefined && v !== null && v !== ''
+    );
+    const query = new URLSearchParams(cleanParams).toString();
+    const res = await fetch(`${getApiBase()}/books/authors/all${query ? `?${query}` : ''}`, {
       next: { revalidate: 30 }
     });
     if (!res.ok) return [];

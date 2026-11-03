@@ -26,7 +26,7 @@ const getBooks = async (req, res) => {
       stockStatus,
       sortBy,
       page = 1,
-      limit = 12
+      limit = 15
     } = req.query;
 
     const query = { isActive: true };
@@ -59,12 +59,51 @@ const getBooks = async (req, res) => {
       query.$or = searchConditions;
     }
 
-    if (theme) query.theme = { $regex: new RegExp(`^${theme}$`, 'i') };
-    if (genre) query.$or = [{ theme: { $regex: new RegExp(`^${genre}$`, 'i') } }, { genre: { $regex: new RegExp(`^${genre}$`, 'i') } }];
-    if (category) query.category = category;
-    if (author) query.author = { $regex: new RegExp(`^${author}$`, 'i') };
-    if (publisher) query.publisher = { $regex: new RegExp(`^${publisher}$`, 'i') };
-    if (language) query.languages = { $in: [new RegExp(language, 'i')] };
+    if (theme && theme !== 'ALL' && theme !== 'All Categories') {
+      const escapedTheme = theme.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const themeRegex = new RegExp(`^${escapedTheme}$`, 'i');
+      const themeConditions = [
+        { theme: themeRegex },
+        { category: themeRegex },
+        { genre: themeRegex }
+      ];
+      if (query.$or) {
+        query.$and = (query.$and || []).concat([{ $or: query.$or }, { $or: themeConditions }]);
+        delete query.$or;
+      } else {
+        query.$or = themeConditions;
+      }
+    } else if (genre && genre !== 'ALL') {
+      const escapedGenre = genre.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const genreRegex = new RegExp(`^${escapedGenre}$`, 'i');
+      const genreConditions = [
+        { theme: genreRegex },
+        { genre: genreRegex }
+      ];
+      if (query.$or) {
+        query.$and = (query.$and || []).concat([{ $or: query.$or }, { $or: genreConditions }]);
+        delete query.$or;
+      } else {
+        query.$or = genreConditions;
+      }
+    }
+
+    if (category && category !== 'ALL' && category !== 'All Categories') {
+      query.category = category;
+    }
+
+    if (author && author !== 'ALL' && author !== 'All Authors') {
+      const escapedAuthor = author.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      query.author = { $regex: new RegExp(escapedAuthor, 'i') };
+    }
+
+    if (publisher && publisher !== 'ALL') {
+      query.publisher = { $regex: new RegExp(`^${publisher}$`, 'i') };
+    }
+
+    if (language && language !== 'ALL') {
+      query.languages = { $in: [new RegExp(language, 'i')] };
+    }
 
     if (isBestSeller === 'true') query.isBestSeller = true;
     if (isNewArrival === 'true') query.isNewArrival = true;
@@ -72,23 +111,53 @@ const getBooks = async (req, res) => {
     if (isHandpicked === 'true') query.isHandpicked = true;
     if (isAuthorSpotlight === 'true') query.isAuthorSpotlight = true;
     if (isBestAuthor === 'true') query.isBestAuthor = true;
-    if (stockStatus) query.stockStatus = stockStatus;
+
+    if (stockStatus && stockStatus !== 'ALL') {
+      if (stockStatus === 'in_stock') {
+        query.stockStatus = { $ne: 'out_of_stock' };
+        query.stock = { $gt: 0 };
+      } else if (stockStatus === 'out_of_stock') {
+        const outConditions = [{ stockStatus: 'out_of_stock' }, { stock: { $lte: 0 } }];
+        if (query.$or) {
+          query.$and = (query.$and || []).concat([{ $or: query.$or }, { $or: outConditions }]);
+          delete query.$or;
+        } else {
+          query.$or = outConditions;
+        }
+      } else {
+        query.stockStatus = stockStatus;
+      }
+    }
 
     if (minPrice || maxPrice) {
-      query.price = {};
-      if (minPrice) query.price.$gte = Number(minPrice);
-      if (maxPrice) query.price.$lte = Number(maxPrice);
+      const priceQuery = {};
+      if (minPrice && Number(minPrice) > 0) priceQuery.$gte = Number(minPrice);
+      if (maxPrice && Number(maxPrice) < 999999) priceQuery.$lte = Number(maxPrice);
+      if (Object.keys(priceQuery).length > 0) {
+        query.price = priceQuery;
+      }
     }
 
     let sort = { createdAt: -1 };
-    if (sortBy === 'price_asc' || sortBy === 'price-asc') sort = { price: 1 };
-    if (sortBy === 'price_desc' || sortBy === 'price-desc') sort = { price: -1 };
-    if (sortBy === 'rating') sort = { rating: -1, reviewsCount: -1 };
-    if (sortBy === 'popular' || sortBy === 'bestseller') sort = { isBestSeller: -1, rating: -1 };
-    if (sortBy === 'title') sort = { title: 1 };
+    if (sortBy === 'price_asc' || sortBy === 'price-asc' || sortBy === 'price-low') {
+      sort = { price: 1 };
+    } else if (sortBy === 'price_desc' || sortBy === 'price-desc' || sortBy === 'price-high') {
+      sort = { price: -1 };
+    } else if (sortBy === 'rating') {
+      sort = { rating: -1, reviewsCount: -1 };
+    } else if (sortBy === 'popular' || sortBy === 'bestseller' || sortBy === 'bestsellers') {
+      sort = { isBestSeller: -1, rating: -1, createdAt: -1 };
+    } else if (sortBy === 'newest' || sortBy === 'new') {
+      sort = { isNewArrival: -1, createdAt: -1 };
+    } else if (sortBy === 'title') {
+      sort = { title: 1 };
+    } else {
+      // 'featured' default: active bestseller first, then newest
+      sort = { isBestSeller: -1, createdAt: -1 };
+    }
 
-    const pageNum = parseInt(page, 10);
-    const limitNum = parseInt(limit, 10);
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.max(1, parseInt(limit, 10) || 15);
     const skip = (pageNum - 1) * limitNum;
 
     const [books, total] = await Promise.all([
@@ -102,7 +171,7 @@ const getBooks = async (req, res) => {
       pagination: {
         page: pageNum,
         limit: limitNum,
-        totalPages: Math.ceil(total / limitNum),
+        totalPages: Math.ceil(total / limitNum) || 1,
         totalItems: total
       }
     });
@@ -767,6 +836,23 @@ const getAuthorsList = async (req, res) => {
         lastBookSlug: bookInfo.slug
       };
     });
+
+    if (req.query.page || req.query.limit) {
+      const pageNum = Math.max(1, parseInt(req.query.page, 10) || 1);
+      const limitNum = Math.max(1, parseInt(req.query.limit, 10) || 15);
+      const skip = (pageNum - 1) * limitNum;
+      const paginatedAuthors = authorsList.slice(skip, skip + limitNum);
+      return res.json({
+        success: true,
+        authors: paginatedAuthors,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil(authorsList.length / limitNum) || 1,
+          totalItems: authorsList.length
+        }
+      });
+    }
 
     return res.json({
       success: true,

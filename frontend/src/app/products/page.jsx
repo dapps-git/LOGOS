@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
-import { fetchBooks } from '../../lib/api';
+import { fetchBooksPaginated, fetchFilterOptions } from '../../lib/api';
 import { useWishlist } from '../../context/WishlistContext';
 import { useCart } from '../../context/CartContext';
 import { CatalogGridSkeleton } from '../../components/Skeletons';
@@ -18,6 +18,8 @@ import {
   Star,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   RotateCcw,
   Check
 } from 'lucide-react';
@@ -46,10 +48,14 @@ function ProductsContent() {
   const { toggleWishlist, isBookInWishlist } = useWishlist();
   const { addToCart } = useCart();
 
-  const [rawBooks, setRawBooks] = useState([]);
+  const [books, setBooks] = useState([]);
+  const [pagination, setPagination] = useState({ page: 1, limit: 15, totalPages: 1, totalItems: 0 });
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
-  const [addedItems, setAddedItems] = useState({});  // bookId → true when just added
+  const [addedItems, setAddedItems] = useState({}); // bookId → true when just added
+
+  const isInitialMount = useRef(true);
 
   const handleAddToCart = async (book) => {
     const id = book?._id || book?.id || book?.slug;
@@ -61,13 +67,6 @@ function ProductsContent() {
     }
   };
 
-  // Collapsible sidebar accordion sections
-  const [catOpen, setCatOpen] = useState(true);
-  const [authorOpen, setAuthorOpen] = useState(true);
-  const [priceOpen, setPriceOpen] = useState(true);
-  const [langOpen, setLangOpen] = useState(true);
-  const [availOpen, setAvailOpen] = useState(true);
-
   // Filters State
   const [selectedTheme, setSelectedTheme] = useState(searchParams.get('theme') || 'ALL');
   const [selectedAuthor, setSelectedAuthor] = useState(searchParams.get('author') || 'ALL');
@@ -77,30 +76,46 @@ function ProductsContent() {
   const [selectedAvailability, setSelectedAvailability] = useState('ALL');
   const [sortBy, setSortBy] = useState(searchParams.get('sort') || 'featured');
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || searchParams.get('q') || '');
+  const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
 
-  // Load books from live API
+  // Available filters from backend
+  const [availableThemes, setAvailableThemes] = useState(['ALL', ...DEFAULT_CATEGORIES.slice(1)]);
+  const [availableAuthors, setAvailableAuthors] = useState(['ALL']);
+
+  // Debounce search input (300ms)
   useEffect(() => {
-    async function load() {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  // Load distinct filter options on mount
+  useEffect(() => {
+    let isCancelled = false;
+    async function loadOptions() {
       try {
-        setLoading(true);
-        const live = await fetchBooks({ limit: 500 });
-        if (Array.isArray(live) && live.length > 0) {
-          const validBooks = live.filter((b) => {
-            const img = (b.images && b.images[0]) || b.coverImage;
-            return img && img !== '/book-placeholder.svg' && !img.includes('placeholder');
-          });
-          setRawBooks(validBooks);
+        const opts = await fetchFilterOptions();
+        if (isCancelled || !opts) return;
+        if (Array.isArray(opts.themes) && opts.themes.length > 0) {
+          const merged = Array.from(new Set([...DEFAULT_CATEGORIES.slice(1), ...opts.themes.filter(Boolean)]));
+          setAvailableThemes(['ALL', ...merged]);
         }
-      } catch (err) {
-        console.warn('[ProductsPage] fallback to local catalog:', err);
-      } finally {
-        setLoading(false);
+        if (Array.isArray(opts.authors) && opts.authors.length > 0) {
+          const cleanAuthors = Array.from(new Set(opts.authors.map((a) => (a || '').trim()).filter(Boolean))).sort();
+          setAvailableAuthors(['ALL', ...cleanAuthors]);
+        }
+      } catch (e) {
+        console.warn('[ProductsPage] failed loading filter options:', e);
       }
     }
-    load();
+    loadOptions();
+    return () => {
+      isCancelled = true;
+    };
   }, []);
 
-  // Sync URL params if user changes navigation
+  // Sync URL search params
   useEffect(() => {
     const theme = searchParams.get('theme');
     const author = searchParams.get('author');
@@ -113,138 +128,90 @@ function ProductsContent() {
     if (q) setSearchQuery(q);
   }, [searchParams]);
 
-  // Extract unique categories & authors
-  const availableThemes = useMemo(() => {
-    const set = new Set(DEFAULT_CATEGORIES.slice(1));
-    rawBooks.forEach((b) => {
-      if (b.theme) set.add(b.theme);
-      if (b.category && b.category !== 'Books') set.add(b.category);
-      if (b.genre && b.genre !== 'Books') set.add(b.genre);
-    });
-    return ['ALL', ...Array.from(set)];
-  }, [rawBooks]);
+  // Reset to page 1 whenever filters or search query change
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    setCurrentPage(1);
+  }, [debouncedSearch, selectedTheme, selectedAuthor, selectedPriceRangeIndex, priceSlider, selectedLanguage, selectedAvailability, sortBy]);
 
-  const availableAuthors = useMemo(() => {
-    const set = new Set();
-    rawBooks.forEach((b) => {
-      if (b.author) set.add(b.author);
-    });
-    return ['ALL', ...Array.from(set)];
-  }, [rawBooks]);
+  // Fetch paginated books from live API (15 per page)
+  useEffect(() => {
+    let isCancelled = false;
 
-  // Filtered & Sorted books
-  const filteredBooks = useMemo(() => {
-    const priceRange = PRICE_RANGES[selectedPriceRangeIndex] || PRICE_RANGES[0];
+    async function loadBooks() {
+      try {
+        setLoading(true);
 
-    let list = rawBooks.filter((b) => {
-      const price = Number(b.discountPrice || b.salePrice || b.price || 0);
+        const params = {
+          page: currentPage,
+          limit: 15,
+          sortBy
+        };
 
-      // Category match
-      if (selectedTheme !== 'ALL' && selectedTheme !== 'All Categories') {
-        const themeMatch = (b.theme || '').toLowerCase() === selectedTheme.toLowerCase();
-        const catMatch = (b.category || '').toLowerCase() === selectedTheme.toLowerCase();
-        const genreMatch = (b.genre || '').toLowerCase() === selectedTheme.toLowerCase();
-        if (!themeMatch && !catMatch && !genreMatch) return false;
-      }
+        if (debouncedSearch && debouncedSearch.trim()) {
+          params.search = debouncedSearch.trim();
+        }
+        if (selectedTheme !== 'ALL' && selectedTheme !== 'All Categories') {
+          params.theme = selectedTheme;
+        }
+        if (selectedAuthor !== 'ALL' && selectedAuthor !== 'All Authors') {
+          params.author = selectedAuthor;
+        }
+        if (selectedLanguage !== 'ALL') {
+          params.language = selectedLanguage;
+        }
+        if (selectedAvailability !== 'ALL') {
+          params.stockStatus = selectedAvailability;
+        }
 
-      // Author match
-      if (selectedAuthor !== 'ALL' && selectedAuthor !== 'All Authors') {
-        const cleanA = (b.author || '').trim().toLowerCase();
-        const cleanSel = selectedAuthor.trim().toLowerCase();
-        if (cleanA !== cleanSel && !cleanA.includes(cleanSel) && !cleanSel.includes(cleanA)) return false;
-      }
+        const priceRange = PRICE_RANGES[selectedPriceRangeIndex] || PRICE_RANGES[0];
+        if (selectedPriceRangeIndex > 0) {
+          if (priceRange.min > 0) params.minPrice = priceRange.min;
+          if (priceRange.max < Infinity) params.maxPrice = priceRange.max;
+        }
+        if (priceSlider < 500) {
+          params.maxPrice = Math.min(params.maxPrice || Infinity, priceSlider);
+        }
 
-      // Price Dropdown match
-      if (selectedPriceRangeIndex > 0) {
-        if (price < priceRange.min || price > priceRange.max) {
-          return false;
+        const data = await fetchBooksPaginated(params);
+        if (!isCancelled) {
+          const validBooks = (data.books || []).filter((b) => {
+            const img = (b.images && b.images[0]) || b.coverImage;
+            return img && img !== '/book-placeholder.svg' && !img.includes('placeholder');
+          });
+          setBooks(validBooks);
+          setPagination(data.pagination || { page: currentPage, limit: 15, totalPages: 1, totalItems: validBooks.length });
+        }
+      } catch (err) {
+        console.warn('[ProductsPage] loadBooks error:', err);
+        if (!isCancelled) {
+          setBooks([]);
+          setPagination({ page: 1, limit: 15, totalPages: 1, totalItems: 0 });
+        }
+      } finally {
+        if (!isCancelled) {
+          setLoading(false);
         }
       }
-
-      // Price Slider match (if adjusted below 500)
-      if (priceSlider < 500 && price > priceSlider) {
-        return false;
-      }
-
-      // Language match
-      if (selectedLanguage !== 'ALL') {
-        const langs = Array.isArray(b.languages) ? b.languages.map((l) => l.toLowerCase()) : ['malayalam'];
-        if (!langs.includes(selectedLanguage.toLowerCase())) return false;
-      }
-
-      // Availability match
-      if (selectedAvailability === 'in_stock') {
-        if (b.stockStatus === 'out_of_stock' || b.stock === 0) return false;
-      } else if (selectedAvailability === 'out_of_stock') {
-        if (b.stockStatus !== 'out_of_stock' && b.stock > 0) return false;
-      }
-
-      // Search Query match: book name, authors name, keywords, ISBN number
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const qDigits = q.replace(/[^0-9x]/gi, '');
-
-        const titleMatch = (b.title || '').toLowerCase().includes(q);
-        const nameMatch = (b.name || '').toLowerCase().includes(q);
-        const malayalamMatch = (b.titleMalayalam || '').toLowerCase().includes(q);
-        const authorMatch = (b.author || '').toLowerCase().includes(q);
-        const publisherMatch = (b.publisher || '').toLowerCase().includes(q);
-        const themeMatch = (b.theme || '').toLowerCase().includes(q);
-        const genreMatch = (b.genre || '').toLowerCase().includes(q);
-        const categoryMatch = (b.category || '').toLowerCase().includes(q);
-        const descMatch = (b.description || '').toLowerCase().includes(q);
-        const tagsMatch = Array.isArray(b.tags) && b.tags.some((t) => (t || '').toLowerCase().includes(q));
-
-        // ISBN match (both exact string and normalized digits)
-        const rawIsbn = (b.isbn || '').toLowerCase();
-        const isbnDigits = (b.isbn || '').replace(/[^0-9x]/gi, '');
-        const isbnMatch =
-          rawIsbn.includes(q) ||
-          (qDigits.length >= 3 && isbnDigits.includes(qDigits));
-
-        if (
-          !titleMatch &&
-          !nameMatch &&
-          !malayalamMatch &&
-          !authorMatch &&
-          !publisherMatch &&
-          !themeMatch &&
-          !genreMatch &&
-          !categoryMatch &&
-          !descMatch &&
-          !tagsMatch &&
-          !isbnMatch
-        ) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-
-    // Sorting
-    if (sortBy === 'price-low' || sortBy === 'price_asc') {
-      list.sort((a, b) => (a.discountPrice || a.price || 0) - (b.discountPrice || b.price || 0));
-    } else if (sortBy === 'price-high' || sortBy === 'price_desc') {
-      list.sort((a, b) => (b.discountPrice || b.price || 0) - (a.discountPrice || a.price || 0));
-    } else if (sortBy === 'newest' || sortBy === 'new') {
-      list.sort((a, b) => (b.isNewArrival ? 1 : 0) - (a.isNewArrival ? 1 : 0));
-    } else if (sortBy === 'bestsellers' || sortBy === 'bestseller') {
-      list.sort((a, b) => (b.isBestSeller ? 1 : 0) - (a.isBestSeller ? 1 : 0));
-    } else if (sortBy === 'rating') {
-      list.sort((a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0));
-    } else {
-      // Default: prioritize real cover images & bestsellers
-      list.sort((a, b) => {
-        const aBest = a.isBestSeller ? 1 : 0;
-        const bBest = b.isBestSeller ? 1 : 0;
-        if (bBest !== aBest) return bBest - aBest;
-        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-      });
     }
 
-    return list;
-  }, [rawBooks, selectedTheme, selectedAuthor, selectedPriceRangeIndex, priceSlider, selectedLanguage, selectedAvailability, sortBy, searchQuery]);
+    loadBooks();
+    return () => {
+      isCancelled = true;
+    };
+  }, [currentPage, debouncedSearch, selectedTheme, selectedAuthor, selectedPriceRangeIndex, priceSlider, selectedLanguage, selectedAvailability, sortBy]);
+
+  const handlePageChange = (newPage) => {
+    const total = pagination.totalPages || 1;
+    if (newPage < 1 || newPage > total || newPage === currentPage) return;
+    setCurrentPage(newPage);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 100, behavior: 'smooth' });
+    }
+  };
 
   const handleResetFilters = () => {
     setSelectedTheme('ALL');
@@ -255,6 +222,7 @@ function ProductsContent() {
     setSelectedAvailability('ALL');
     setSearchQuery('');
     setSortBy('featured');
+    setCurrentPage(1);
   };
 
   const activeFiltersCount =
@@ -265,6 +233,61 @@ function ProductsContent() {
     (selectedLanguage !== 'ALL' ? 1 : 0) +
     (selectedAvailability !== 'ALL' ? 1 : 0) +
     (searchQuery.trim() ? 1 : 0);
+
+  const totalPages = pagination.totalPages || 1;
+  const totalItems = pagination.totalItems || books.length;
+
+  const renderPaginationButtons = () => {
+    if (totalPages <= 1) return null;
+
+    const pages = [];
+    const maxVisible = 5;
+    let start = Math.max(1, currentPage - 2);
+    let end = Math.min(totalPages, start + maxVisible - 1);
+
+    if (end - start < maxVisible - 1) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
+
+    if (start > 1) {
+      pages.push(1);
+      if (start > 2) pages.push('...');
+    }
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+
+    if (end < totalPages) {
+      if (end < totalPages - 1) pages.push('...');
+      pages.push(totalPages);
+    }
+
+    return pages.map((p, idx) => {
+      if (p === '...') {
+        return (
+          <span key={`ellipsis-${idx}`} className="px-2 py-1 text-slate-400 text-xs select-none">
+            •••
+          </span>
+        );
+      }
+      const isActive = p === currentPage;
+      return (
+        <button
+          key={`page-${p}`}
+          type="button"
+          onClick={() => handlePageChange(p)}
+          className={`min-w-[32px] h-8 px-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            isActive
+              ? 'bg-[#1E3A8A] text-white shadow-xs'
+              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 shadow-2xs'
+          }`}
+        >
+          {p}
+        </button>
+      );
+    });
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAFC]">
@@ -374,7 +397,7 @@ function ProductsContent() {
 
                 {/* Total Books Blue Pill Badge */}
                 <span className="text-xs font-semibold text-[#1E3A8A] bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100 whitespace-nowrap shadow-2xs">
-                  {filteredBooks.length} Books
+                  {totalItems} Books
                 </span>
               </div>
 
@@ -389,7 +412,7 @@ function ProductsContent() {
                   <span>Filter Books {activeFiltersCount > 0 && `(${activeFiltersCount})`}</span>
                 </button>
                 <span className="text-xs font-semibold text-[#1E3A8A] bg-blue-50 px-3 py-2 rounded-xl border border-blue-100">
-                  {filteredBooks.length} Books
+                  {totalItems} Books
                 </span>
               </div>
 
@@ -399,11 +422,11 @@ function ProductsContent() {
           {/* Product Cards Grid: 6 in One Row on Laptop/Desktop (xl:grid-cols-6) */}
           {loading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-3 sm:gap-4">
-              {Array.from({ length: 12 }).map((_, idx) => (
+              {Array.from({ length: 15 }).map((_, idx) => (
                 <div key={idx} className="aspect-[3/4] bg-slate-100 rounded-2xl animate-pulse" />
               ))}
             </div>
-          ) : filteredBooks.length === 0 ? (
+          ) : books.length === 0 ? (
             /* Empty Catalog State */
             <div className="bg-white rounded-3xl p-10 text-center border border-slate-200/80 shadow-xs max-w-lg mx-auto my-8">
               <div className="w-14 h-14 bg-blue-50 text-[#1E3A8A] rounded-full flex items-center justify-center mx-auto mb-3.5">
@@ -426,7 +449,7 @@ function ProductsContent() {
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-3 sm:gap-4">
-                {filteredBooks.map((book) => {
+                {books.map((book) => {
                   const bookId = book._id || book.id;
                   const title = book.title || book.name || book.titleMalayalam || 'LOGOS Book';
                   const author = book.author || 'LOGOS Publications';
@@ -580,6 +603,47 @@ function ProductsContent() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* Pagination Bar */}
+            {totalPages > 1 && (
+              <div className="mt-8 pt-6 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <p className="text-xs text-slate-500 font-medium order-2 sm:order-1">
+                  Showing{' '}
+                  <span className="font-bold text-slate-800">
+                    {Math.min((currentPage - 1) * 15 + 1, totalItems)}
+                  </span>{' '}
+                  to{' '}
+                  <span className="font-bold text-slate-800">
+                    {Math.min(currentPage * 15, totalItems)}
+                  </span>{' '}
+                  of <span className="font-bold text-slate-800">{totalItems}</span> books
+                </p>
+
+                <div className="flex items-center gap-1.5 order-1 sm:order-2">
+                  <button
+                    type="button"
+                    disabled={currentPage <= 1 || loading}
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer shadow-2xs"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Previous</span>
+                  </button>
+
+                  {renderPaginationButtons()}
+
+                  <button
+                    type="button"
+                    disabled={currentPage >= totalPages || loading}
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer shadow-2xs"
+                  >
+                    <span className="hidden sm:inline">Next</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             )}
           </div>
