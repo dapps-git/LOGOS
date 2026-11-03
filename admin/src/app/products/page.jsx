@@ -16,9 +16,12 @@ import {
   Star,
   AlertTriangle,
   Package,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 import { BulkImportModal } from '@/components/products/BulkImportModal';
+import { apiClient } from '@/api/client';
 
 export default function ProductsPage() {
   const { books = [], deleteBook, updateBook } = useStoreData();
@@ -33,6 +36,23 @@ export default function ProductsPage() {
   const [previewBook, setPreviewBook] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+
+  // Helper to optimize image thumbnail delivery (Forces WebP and small dimensions)
+  const optimizeAdminImage = (url) => {
+    if (!url || typeof url !== 'string') return '/book-placeholder.svg';
+    if (url.includes('res.cloudinary.com') && url.includes('/upload/')) {
+      if (url.includes('/upload/f_') || url.includes('/upload/w_')) {
+        return url.replace(/\/upload\/[^/]+\//, '/upload/f_webp,q_auto,w_100,c_limit/');
+      }
+      return url.replace('/upload/', '/upload/f_webp,q_auto,w_100,c_limit/');
+    }
+    if (url.includes('googleusercontent.com/d/') || url.includes('googleusercontent.com/')) {
+      return `${url.split('=')[0]}=w100-rw`;
+    }
+    return url;
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -87,10 +107,42 @@ export default function ProductsPage() {
     return matchesSearch && matchesTheme && matchesStock && matchesAuthor && matchesFeature;
   });
 
+  // Reset page to 1 whenever search or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, themeFilter, stockFilter, featureFilter, authorFilter]);
+
+  const totalPages = Math.ceil(filteredBooks.length / itemsPerPage) || 1;
+  const paginatedBooks = filteredBooks.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   const handleDelete = (id) => {
     deleteBook(id);
     setDeleteConfirmId(null);
     showToast('Book removed from catalog successfully', 'info');
+  };
+
+  const [migratingImages, setMigratingImages] = useState(false);
+
+  const handleConvertImagesToWebp = async () => {
+    if (!confirm('This will convert all book images into WebP format and store them in Cloudinary for ultra-fast loading. Proceed?')) return;
+    try {
+      setMigratingImages(true);
+      showToast('Converting images to Cloudinary WebP... please wait', 'info');
+      const res = await apiClient('/books/admin/convert-images-to-webp');
+      if (res?.success) {
+        showToast(res.message || 'Images converted to WebP successfully!', 'success');
+        if (typeof window !== 'undefined') window.location.reload();
+      } else {
+        showToast(res?.message || 'Failed to convert images', 'error');
+      }
+    } catch (e) {
+      showToast(`Error converting images: ${e.message}`, 'error');
+    } finally {
+      setMigratingImages(false);
+    }
   };
 
   const handleToggleActive = (book) => {
@@ -111,6 +163,26 @@ export default function ProductsPage() {
           </div>
 
           <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={handleConvertImagesToWebp}
+              disabled={migratingImages}
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-sky-700 hover:bg-sky-800 disabled:opacity-60 text-white font-bold text-xs rounded-md shadow-xs transition-all active:scale-95 cursor-pointer"
+              title="Convert all catalog images to high-performance WebP stored in Cloudinary"
+            >
+              {migratingImages ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Converting...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  <span>Convert Images to WebP</span>
+                </>
+              )}
+            </button>
+
             <button
               type="button"
               onClick={() => setBulkModalOpen(true)}
@@ -294,7 +366,7 @@ export default function ProductsPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredBooks.map((book) => {
+                  paginatedBooks.map((book) => {
                     const cover = book.coverImage || book.image || (book.images && book.images[0]) || '/book-placeholder.svg';
                     const photosCount = (book.images?.length) || (book.coverImage ? 1 : 0);
 
@@ -305,7 +377,7 @@ export default function ProductsPage() {
                           <div className="flex items-center gap-3">
                             <div className="relative flex-shrink-0">
                               <img
-                                src={cover}
+                                src={optimizeAdminImage(cover)}
                                 alt={book.title || book.name}
                                 referrerPolicy="no-referrer"
                                 loading="lazy"
@@ -457,6 +529,72 @@ export default function ProductsPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Admin Table Pagination Controls (15 items per page) */}
+          {filteredBooks.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-slate-50 border-t border-slate-200 text-xs text-slate-600">
+              <div className="text-slate-500">
+                Showing <span className="font-semibold text-slate-800">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                <span className="font-semibold text-slate-800">{Math.min(currentPage * itemsPerPage, filteredBooks.length)}</span> of{' '}
+                <span className="font-semibold text-slate-800">{filteredBooks.length}</span> products
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentPage((p) => Math.max(1, p - 1));
+                      if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1.5 border border-slate-200 rounded-md bg-white text-slate-700 font-semibold hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-2xs"
+                  >
+                    Previous
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                      .map((p, idx, arr) => {
+                        const prev = arr[idx - 1];
+                        return (
+                          <React.Fragment key={p}>
+                            {prev && p - prev > 1 && <span className="px-1 text-slate-400">...</span>}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCurrentPage(p);
+                                if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+                              }}
+                              className={`min-w-[32px] h-8 px-2 rounded-md font-bold text-xs cursor-pointer transition-colors ${
+                                currentPage === p
+                                  ? 'bg-slate-900 text-white shadow-xs'
+                                  : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          </React.Fragment>
+                        );
+                      })}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentPage((p) => Math.min(totalPages, p + 1));
+                      if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1.5 border border-slate-200 rounded-md bg-white text-slate-700 font-semibold hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-2xs"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Book Preview Modal */}

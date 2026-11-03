@@ -2,6 +2,24 @@ const Book = require('../models/Book');
 const AuthorHighlight = require('../models/AuthorHighlight');
 const cloudinary = require('../config/cloudinary');
 
+// Helper to upload base64 or remote URL images to Cloudinary in WebP format
+const uploadToCloudinaryWebp = async (imageInput, folder = 'logos_books') => {
+  if (!imageInput || typeof imageInput !== 'string') return imageInput;
+  if (imageInput.includes('res.cloudinary.com') && (imageInput.includes('f_webp') || imageInput.endsWith('.webp'))) {
+    return imageInput;
+  }
+
+  const uploadResponse = await cloudinary.uploader.upload(imageInput, {
+    folder,
+    format: 'webp',
+    transformation: [
+      { width: 1200, crop: 'limit' },
+      { quality: 'auto', fetch_format: 'webp' }
+    ]
+  });
+  return uploadResponse.secure_url;
+};
+
 // @desc    Get all books with rich filters, search, pagination, and sorting
 // @route   GET /api/books
 // @access  Public
@@ -161,13 +179,29 @@ const getBooks = async (req, res) => {
     const skip = (pageNum - 1) * limitNum;
 
     const [books, total] = await Promise.all([
-      Book.find(query).sort(sort).skip(skip).limit(limitNum),
+      Book.find(query).sort(sort).skip(skip).limit(limitNum).lean(),
       Book.countDocuments(query)
     ]);
 
+    // Sanitize any massive base64 payloads to keep JSON lightweight & fast
+    const sanitizedBooks = books.map((book) => {
+      if (Array.isArray(book.images)) {
+        book.images = book.images.map((img) => {
+          if (typeof img === 'string' && (img.startsWith('data:image') || img.length > 2000)) {
+            return '/book-placeholder.svg';
+          }
+          return img;
+        });
+      }
+      if (typeof book.coverImage === 'string' && (book.coverImage.startsWith('data:image') || book.coverImage.length > 2000)) {
+        book.coverImage = '/book-placeholder.svg';
+      }
+      return book;
+    });
+
     return res.json({
       success: true,
-      books,
+      books: sanitizedBooks,
       pagination: {
         page: pageNum,
         limit: limitNum,
@@ -500,18 +534,68 @@ const uploadBookImage = async (req, res) => {
       return res.status(400).json({ success: false, message: 'No image data provided' });
     }
 
-    const uploadResponse = await cloudinary.uploader.upload(image, {
-      folder: 'logos_books',
-      transformation: [{ width: 1000, crop: 'limit' }]
-    });
+    const webpUrl = await uploadToCloudinaryWebp(image, 'logos_books');
 
     return res.json({
       success: true,
-      url: uploadResponse.secure_url,
-      public_id: uploadResponse.public_id
+      url: webpUrl
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Convert and upload all book images (Google Drive, base64) to Cloudinary in WebP format
+// @route   POST or GET /api/books/admin/convert-images-to-webp
+// @access  Public / Private (Admin)
+const convertImagesToCloudinaryWebp = async (req, res) => {
+  try {
+    const books = await Book.find({});
+    let totalUpdated = 0;
+    const report = [];
+
+    for (const book of books) {
+      let changed = false;
+      const newImages = [];
+
+      for (const img of book.images || []) {
+        if (
+          typeof img === 'string' &&
+          (img.startsWith('data:image') ||
+            img.includes('googleusercontent.com') ||
+            img.includes('drive.google.com') ||
+            (img.includes('res.cloudinary.com') && !img.includes('f_webp')))
+        ) {
+          try {
+            const webpUrl = await uploadToCloudinaryWebp(img, 'logos_books');
+            newImages.push(webpUrl);
+            changed = true;
+          } catch (e) {
+            console.warn(`[MigrateWebP] Skipped for book ${book._id}:`, e.message);
+            newImages.push(img);
+          }
+        } else {
+          newImages.push(img);
+        }
+      }
+
+      if (changed) {
+        book.images = newImages;
+        if (newImages[0]) book.coverImage = newImages[0];
+        await book.save();
+        totalUpdated++;
+        report.push({ id: book._id, title: book.title, imagesCount: newImages.length });
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: `Successfully migrated ${totalUpdated} books to Cloudinary WebP format!`,
+      totalUpdated,
+      report
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -964,5 +1048,6 @@ module.exports = {
   updateBook,
   deleteBook,
   uploadBookImage,
-  bulkImportBooks
+  bulkImportBooks,
+  convertImagesToCloudinaryWebp
 };

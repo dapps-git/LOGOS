@@ -14,6 +14,7 @@ const cartRoutes = require('./routes/cartRoutes');
 const wishlistRoutes = require('./routes/wishlistRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const authorHighlightRoutes = require('./routes/authorHighlightRoutes');
+const newsRoutes = require('./routes/newsRoutes');
 
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 
@@ -138,7 +139,8 @@ const routeList = [
   ['/cart', cartRoutes],
   ['/wishlist', wishlistRoutes],
   ['/reviews', reviewRoutes],
-  ['/author-highlights', authorHighlightRoutes]
+  ['/author-highlights', authorHighlightRoutes],
+  ['/news', newsRoutes]
 ];
 
 routeList.forEach(([path, router]) => {

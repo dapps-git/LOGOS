@@ -70,11 +70,13 @@ export const StoreDataProvider = ({ children }) => {
   // Fetch fresh data from backend API
   const fetchAllData = async () => {
     try {
-      const bookData = await apiClient('/books?limit=1000');
+      const bookData = await apiClient('/books?limit=500');
       if (Array.isArray(bookData?.books)) {
         setBooks(bookData.books);
       }
-    } catch {}
+    } catch (err) {
+      console.warn('[StoreDataContext] Failed to fetch books:', err.message);
+    }
 
     try {
       const bannerData = await apiClient('/banners/admin/all');

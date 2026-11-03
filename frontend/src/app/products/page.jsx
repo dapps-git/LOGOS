@@ -56,6 +56,7 @@ function ProductsContent() {
   const [addedItems, setAddedItems] = useState({}); // bookId → true when just added
 
   const isInitialMount = useRef(true);
+  const requestIdRef = useRef(0);
 
   const handleAddToCart = async (book) => {
     const id = book?._id || book?.id || book?.slug;
@@ -139,7 +140,7 @@ function ProductsContent() {
 
   // Fetch paginated books from live API (15 per page)
   useEffect(() => {
-    let isCancelled = false;
+    const currentReqId = ++requestIdRef.current;
 
     async function loadBooks() {
       try {
@@ -177,31 +178,25 @@ function ProductsContent() {
         }
 
         const data = await fetchBooksPaginated(params);
-        if (!isCancelled) {
-          const validBooks = (data.books || []).filter((b) => {
-            const img = (b.images && b.images[0]) || b.coverImage;
-            return img && img !== '/book-placeholder.svg' && !img.includes('placeholder');
-          });
-          setBooks(validBooks);
-          setPagination(data.pagination || { page: currentPage, limit: 15, totalPages: 1, totalItems: validBooks.length });
+        if (currentReqId === requestIdRef.current) {
+          const list = Array.isArray(data.books) ? data.books : [];
+          setBooks(list);
+          setPagination(data.pagination || { page: currentPage, limit: 15, totalPages: 1, totalItems: list.length });
         }
       } catch (err) {
         console.warn('[ProductsPage] loadBooks error:', err);
-        if (!isCancelled) {
+        if (currentReqId === requestIdRef.current) {
           setBooks([]);
           setPagination({ page: 1, limit: 15, totalPages: 1, totalItems: 0 });
         }
       } finally {
-        if (!isCancelled) {
+        if (currentReqId === requestIdRef.current) {
           setLoading(false);
         }
       }
     }
 
     loadBooks();
-    return () => {
-      isCancelled = true;
-    };
   }, [currentPage, debouncedSearch, selectedTheme, selectedAuthor, selectedPriceRangeIndex, priceSlider, selectedLanguage, selectedAvailability, sortBy]);
 
   const handlePageChange = (newPage) => {

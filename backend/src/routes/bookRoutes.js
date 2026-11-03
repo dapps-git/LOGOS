@@ -15,7 +15,8 @@ const {
   updateBook,
   deleteBook,
   uploadBookImage,
-  bulkImportBooks
+  bulkImportBooks,
+  convertImagesToCloudinaryWebp
 } = require('../controllers/bookController');
 const { protectAdmin } = require('../middleware/adminMiddleware');
 
@@ -29,6 +30,10 @@ router.get('/spotlight/book', getSpotlightBook);
 router.get('/authors/all', getAuthorsList);
 router.get('/filters/options', getFilterOptions);
 router.get('/search/suggest', getBookSuggestions);
+
+// Cloudinary WebP Image Batch Migration (Admin / Maintenance)
+router.all('/admin/convert-images-to-webp', convertImagesToCloudinaryWebp);
+
 router.get('/:idOrSlug', getBookByIdOrSlug);
 
 // Admin Book Management

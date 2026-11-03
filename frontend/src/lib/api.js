@@ -564,5 +564,51 @@ export async function fetchTestimonials() {
   }
 }
 
+// ----------------- News & Blog APIs -----------------
+export async function fetchNews(params = {}) {
+  try {
+    const cleanParams = Object.entries(params).filter(
+      ([_, v]) => v !== undefined && v !== null && v !== ''
+    );
+    const query = new URLSearchParams(cleanParams).toString();
+    const res = await fetch(`${getApiBase()}/news${query ? `?${query}` : ''}`, {
+      cache: 'no-store'
+    });
+    if (!res.ok) return { articles: [], pagination: { totalItems: 0 } };
+    return await res.json();
+  } catch (err) {
+    console.warn('[LOGOS API] fetchNews error:', err.message);
+    return { articles: [], pagination: { totalItems: 0 } };
+  }
+}
+
+export async function fetchRecentNews(limit = 4) {
+  try {
+    const res = await fetch(`${getApiBase()}/news/recent?limit=${limit}`, {
+      next: { revalidate: 15 }
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.articles || [];
+  } catch (err) {
+    console.warn('[LOGOS API] fetchRecentNews error:', err.message);
+    return [];
+  }
+}
+
+export async function fetchNewsBySlug(idOrSlug) {
+  try {
+    const res = await fetch(`${getApiBase()}/news/${idOrSlug}`, {
+      cache: 'no-store'
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.warn(`[LOGOS API] fetchNewsBySlug (${idOrSlug}) error:`, err.message);
+    return null;
+  }
+}
+
+
 
 

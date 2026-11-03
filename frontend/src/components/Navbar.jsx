@@ -129,6 +129,7 @@ export const Navbar = () => {
   const navLinks = [
     { name: 'Home', href: '/' },
     { name: 'Books', href: '/products' },
+    { name: 'News', href: '/news' },
     { name: 'About Us', href: '/about' },
     { name: 'Contact Us', href: '/contact' }
   ];
