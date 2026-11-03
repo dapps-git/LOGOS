@@ -23,33 +23,65 @@ const app = express();
 connectDB();
 
 // CORS Configuration
-const allowedOrigins = [
+const envOrigins = [
+  process.env.CLIENT_URL,
+  process.env.ADMIN_URL,
+  process.env.ALLOWED_ORIGINS
+]
+  .filter(Boolean)
+  .flatMap(val => val.split(','))
+  .map(url => url.trim().replace(/\/$/, ''))
+  .filter(Boolean);
+
+const defaultAllowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:3002',
   'http://localhost:3003',
   'http://localhost:3004',
   'http://localhost:5173',
+  'https://logosbooks.in',
+  'https://www.logosbooks.in',
+  'https://admin.logosbooks.in',
+  'https://tweaki.pw',
+  'https://www.tweaki.pw',
   'https://logos-chi-ten.vercel.app',
   'https://logos-4n4d.vercel.app',
   'https://logos-2nkc.vercel.app',
-  'https://logos-delta-eight.vercel.app',
-  process.env.CLIENT_URL,
-  process.env.ADMIN_URL
-].filter(Boolean).map(url => url.replace(/\/$/, ''));
+  'https://logos-delta-eight.vercel.app'
+];
+
+const allowedOrigins = [...new Set([...defaultAllowedOrigins, ...envOrigins])];
+
+const isOriginAllowed = (origin) => {
+  if (!origin) return true;
+  const cleanOrigin = origin.replace(/\/$/, '').toLowerCase();
+
+  // 1. Check exact match in allowed origins list
+  if (allowedOrigins.some(o => o.toLowerCase() === cleanOrigin)) return true;
+
+  // 2. Allow any domain/subdomain of logosbooks.in (e.g. logosbooks.in, www.logosbooks.in, admin.logosbooks.in)
+  if (/^https?:\/\/([a-z0-9-]+\.)*logosbooks\.in$/i.test(cleanOrigin)) return true;
+
+  // 3. Allow Vercel preview/production deployments
+  if (cleanOrigin.endsWith('.vercel.app')) return true;
+
+  // 4. Allow tweaki.pw domains
+  if (/^https?:\/\/([a-z0-9-]+\.)*tweaki\.pw$/i.test(cleanOrigin)) return true;
+
+  // 5. Allow localhost & 127.0.0.1 in development or local testing
+  if (cleanOrigin.includes('localhost') || cleanOrigin.includes('127.0.0.1')) return true;
+
+  return false;
+};
 
 const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    const cleanOrigin = origin.replace(/\/$/, '');
-    if (
-      allowedOrigins.includes(cleanOrigin) ||
-      cleanOrigin.endsWith('.vercel.app') ||
-      (process.env.NODE_ENV === 'development' && (cleanOrigin.includes('localhost') || cleanOrigin.includes('127.0.0.1')))
-    ) {
+    if (isOriginAllowed(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('Blocked by CORS policy: Origin not allowed'));
+      console.warn(`[CORS] Blocked request from unauthorized origin: ${origin}`);
+      callback(new Error(`Blocked by CORS policy: Origin ${origin} not allowed`));
     }
   },
   credentials: true,
@@ -59,6 +91,9 @@ const corsOptions = {
     'Authorization',
     'X-Requested-With',
     'Accept',
+    'Origin',
+    'Cache-Control',
+    'Pragma',
     'x-guest-id',
     'x-guest-session-id',
     'X-Guest-Id',
@@ -70,7 +105,7 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
 // Disable caching on API routes to ensure live stock updates and product changes are immediately reflected
-app.use('/api', (req, res, next) => {
+app.use(['/api', '/logos/api'], (req, res, next) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
