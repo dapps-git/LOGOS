@@ -972,7 +972,7 @@ const getBookSuggestions = async (req, res) => {
   try {
     const { q = '' } = req.query;
     const trimmed = String(q).trim();
-    if (!trimmed || trimmed.length < 2) {
+    if (!trimmed || trimmed.length < 1) {
       return res.json({ success: true, count: 0, suggestions: [] });
     }
 

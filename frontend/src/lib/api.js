@@ -97,7 +97,7 @@ export async function fetchFilterOptions() {
 }
 
 export async function fetchBookSuggestions(q) {
-  if (!q || !q.trim() || q.trim().length < 2) return [];
+  if (!q || !q.trim()) return [];
   try {
     const res = await fetch(`${getApiBase()}/books/search/suggest?q=${encodeURIComponent(q.trim())}`, {
       cache: 'no-store'

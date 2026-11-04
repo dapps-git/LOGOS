@@ -83,11 +83,11 @@ function ProductsContent() {
   const [availableThemes, setAvailableThemes] = useState(['ALL', ...DEFAULT_CATEGORIES.slice(1)]);
   const [availableAuthors, setAvailableAuthors] = useState(['ALL']);
 
-  // Debounce search input (300ms)
+  // Instant debounce search input (120ms for real-time live filtering as typing)
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(searchQuery);
-    }, 300);
+    }, 120);
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
@@ -305,17 +305,22 @@ function ProductsContent() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search by book name, author, keywords, or ISBN..."
-                  className="w-full pl-11 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-full text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-[#1E3A8A] focus:bg-white focus:ring-2 focus:ring-[#1E3A8A]/10 transition-all"
+                  className="w-full pl-11 pr-12 py-2 bg-slate-50 border border-slate-200 rounded-full text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-[#1E3A8A] focus:bg-white focus:ring-2 focus:ring-[#1E3A8A]/10 transition-all"
                 />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
+                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                  {loading && searchQuery && (
+                    <div className="w-3.5 h-3.5 border-2 border-[#1E3A8A] border-t-transparent rounded-full animate-spin" />
+                  )}
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="text-slate-400 hover:text-slate-600 p-0.5"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Right Controls: Sort By + Author Dropdown + Genre Dropdown + Price Range Dropdown + Count Pill */}
