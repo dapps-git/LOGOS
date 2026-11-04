@@ -46,6 +46,7 @@ export const StoreDataProvider = ({ children }) => {
   const [returnsList, setReturnsList] = useState(initialMockReturns);
   const [customers, setCustomers] = useState(initialMockCustomers);
   const [authors, setAuthors] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Purge unwanted large data items from localStorage to prevent quota bloat & data leakage
   useEffect(() => {
@@ -69,19 +70,47 @@ export const StoreDataProvider = ({ children }) => {
 
   // Fetch fresh data from backend API
   const fetchAllData = async () => {
+    setIsLoading(true);
     try {
-      const bookData = await apiClient('/books?limit=500');
-      if (Array.isArray(bookData?.books)) {
+      const bookData = await apiClient('/books?limit=100');
+      if (Array.isArray(bookData?.books) && bookData.books.length > 0) {
         setBooks(bookData.books);
+
+        // Fetch remaining books in the background if there are more
+        if (bookData?.pagination?.totalPages > 1) {
+          apiClient('/books?page=2&limit=100')
+            .then((p2) => {
+              if (Array.isArray(p2?.books) && p2.books.length > 0) {
+                setBooks((prev) => {
+                  const map = new Map(prev.map((b) => [b._id, b]));
+                  p2.books.forEach((b) => map.set(b._id, b));
+                  return Array.from(map.values());
+                });
+              }
+            })
+            .catch(() => {});
+        }
       }
     } catch (err) {
       console.warn('[StoreDataContext] Failed to fetch books:', err.message);
+    } finally {
+      setIsLoading(false);
     }
 
     try {
-      const bannerData = await apiClient('/banners/admin/all');
+      let bannerData = await apiClient('/banners/admin/all').catch(() => null);
+      if (!bannerData || !Array.isArray(bannerData?.banners)) {
+        bannerData = await apiClient('/banners').catch(() => null);
+      }
       if (Array.isArray(bannerData?.banners)) {
         setBanners(bannerData.banners);
+      }
+    } catch {}
+
+    try {
+      const authorsData = await apiClient('/books/authors/all').catch(() => null);
+      if (Array.isArray(authorsData?.authors)) {
+        setAuthors(authorsData.authors);
       }
     } catch {}
 
@@ -170,7 +199,7 @@ export const StoreDataProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    if (token) fetchAllData();
+    fetchAllData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -517,7 +546,8 @@ export const StoreDataProvider = ({ children }) => {
         updateReturnStatus,
         triggerOrderRefund,
         refreshData: fetchAllData,
-        fetchAllData
+        fetchAllData,
+        isLoading
       }}
     >
       {children}

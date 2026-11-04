@@ -480,7 +480,6 @@ function ProductsContent() {
                             alt={title}
                             referrerPolicy="no-referrer"
                             loading="lazy"
-                            crossOrigin="anonymous"
                             onError={(e) => {
                               if (!e.currentTarget.dataset.failed) {
                                 e.currentTarget.dataset.failed = 'true';
@@ -491,7 +490,7 @@ function ProductsContent() {
                                 }
                               }
                             }}
-                            className={`w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-300 select-none ${isOutOfStock ? 'opacity-50 grayscale' : ''}`}
+                            className={`w-full h-full object-contain object-center drop-shadow-sm group-hover:scale-105 transition-transform duration-300 select-none ${isOutOfStock ? 'opacity-50 grayscale' : ''}`}
                           />
                         </Link>
 

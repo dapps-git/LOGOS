@@ -24,7 +24,7 @@ import { BulkImportModal } from '@/components/products/BulkImportModal';
 import { apiClient } from '@/api/client';
 
 export default function ProductsPage() {
-  const { books = [], deleteBook, updateBook } = useStoreData();
+  const { books = [], deleteBook, updateBook, isLoading, refreshData } = useStoreData();
   const { showToast } = useToast();
 
   const [mounted, setMounted] = useState(false);
@@ -359,7 +359,16 @@ export default function ProductsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredBooks.length === 0 ? (
+                {isLoading && books.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-16 text-center text-slate-500">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Loader2 className="w-6 h-6 animate-spin text-[#1E3A8A]" />
+                        <span className="text-sm font-medium">Loading books catalog...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredBooks.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-12 text-center text-slate-400">
                       No books found in catalog matching your criteria.

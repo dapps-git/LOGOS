@@ -11,7 +11,7 @@ const getActiveBanners = async (req, res) => {
 
     const banners = await Banner.find(query)
       .sort({ order: 1, createdAt: -1 })
-      .populate('bookRef', 'title author price discountPrice images slug');
+      .lean();
 
     return res.json({
       success: true,
@@ -30,7 +30,7 @@ const getAllBannersAdmin = async (req, res) => {
   try {
     const banners = await Banner.find()
       .sort({ order: 1, createdAt: -1 })
-      .populate('bookRef', 'title author price discountPrice images slug');
+      .lean();
 
     return res.json({
       success: true,

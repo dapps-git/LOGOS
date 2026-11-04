@@ -816,6 +816,11 @@ const getSpotlightAuthor = async (req, res) => {
       author: { $regex: new RegExp(`^${authorName.trim()}$`, 'i') }
     }).select('title name slug price discountPrice images coverImage author').limit(8);
 
+    // Sanitize authorPhoto to prevent huge base64 strings from bloating response
+    if (authorPhoto && typeof authorPhoto === 'string' && authorPhoto.startsWith('data:image') && authorPhoto.length > 1000) {
+      authorPhoto = '/author_benyamin.webp';
+    }
+
     return res.json({
       success: true,
       author: {
@@ -907,7 +912,7 @@ const getAuthorsList = async (req, res) => {
     });
 
     // Only return authors explicitly created in the Admin Authors section
-    const authorsList = highlights.map((h) => {
+    let authorsList = highlights.map((h) => {
       const key = (h.name || '').trim().toLowerCase();
       const bookInfo = bookCountMap.get(key) || { count: 0, slug: '' };
       return {
@@ -920,6 +925,19 @@ const getAuthorsList = async (req, res) => {
         lastBookSlug: bookInfo.slug
       };
     });
+
+    // If no manual highlights exist yet, derive authors from actual bookstore catalog
+    if (authorsList.length === 0 && Array.isArray(bookAuthors) && bookAuthors.length > 0) {
+      authorsList = bookAuthors.map((b, idx) => ({
+        id: b._id || `auth-${idx}`,
+        name: (b._id || '').trim(),
+        photo: '',
+        bio: '',
+        isSpotlight: false,
+        booksCount: b.booksCount || 1,
+        lastBookSlug: b.lastBookSlug || ''
+      }));
+    }
 
     if (req.query.page || req.query.limit) {
       const pageNum = Math.max(1, parseInt(req.query.page, 10) || 1);
