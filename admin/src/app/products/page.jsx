@@ -74,6 +74,11 @@ export default function ProductsPage() {
     newArrivals: books.filter((b) => b.isNewArrival).length
   };
 
+  // Dynamic stock counts
+  const inStockCount = books.filter((b) => Number(b.stock) > 5).length;
+  const lowStockCount = books.filter((b) => Number(b.stock) > 0 && Number(b.stock) <= 5 && b.stockStatus !== 'out_of_stock').length;
+  const outOfStockCount = books.filter((b) => !b.stock || Number(b.stock) <= 0 || b.stockStatus === 'out_of_stock').length;
+
   const filteredBooks = books.filter((book) => {
     const matchesSearch =
       book.title?.toLowerCase().includes(search.toLowerCase()) ||
@@ -83,11 +88,15 @@ export default function ProductsPage() {
 
     const matchesTheme = themeFilter === 'ALL' || book.theme === themeFilter;
 
+    const isOut = !book.stock || Number(book.stock) <= 0 || book.stockStatus === 'out_of_stock';
+    const isLow = Number(book.stock) > 0 && Number(book.stock) <= 5 && book.stockStatus !== 'out_of_stock';
+    const isIn = Number(book.stock) > 5;
+
     const matchesStock =
       stockFilter === 'ALL' ||
-      (stockFilter === 'in_stock' && book.stock > 5) ||
-      (stockFilter === 'low_stock' && book.stock > 0 && book.stock <= 5) ||
-      (stockFilter === 'out_of_stock' && book.stock === 0);
+      (stockFilter === 'in_stock' && isIn) ||
+      (stockFilter === 'low_stock' && isLow) ||
+      (stockFilter === 'out_of_stock' && isOut);
 
     const matchesAuthor = authorFilter === 'ALL' || (book.author || '').trim().toLowerCase() === authorFilter.trim().toLowerCase();
 
@@ -263,6 +272,18 @@ export default function ProductsPage() {
           >
             🚀 New Arrivals <span className="text-[10px] opacity-75 font-mono">({counts.newArrivals})</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setStockFilter(stockFilter === 'out_of_stock' ? 'ALL' : 'out_of_stock')}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+              stockFilter === 'out_of_stock'
+                ? 'bg-rose-700 text-white shadow-xs'
+                : 'bg-rose-50 text-rose-900 border border-rose-200 hover:bg-rose-100'
+            }`}
+          >
+            ⚠️ Out of Stock <span className="text-[10px] opacity-75 font-mono">({outOfStockCount})</span>
+          </button>
         </div>
 
         {/* Filter & Search Bar */}
@@ -335,10 +356,10 @@ export default function ProductsPage() {
               onChange={(e) => setStockFilter(e.target.value)}
               className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-xs font-semibold text-slate-700 focus:outline-hidden"
             >
-              <option value="ALL">All Stock</option>
-              <option value="in_stock">In Stock (&gt;5)</option>
-              <option value="low_stock">Low Stock (≤5)</option>
-              <option value="out_of_stock">Out of Stock (0)</option>
+              <option value="ALL">All Stock ({books.length})</option>
+              <option value="in_stock">In Stock ({inStockCount})</option>
+              <option value="low_stock">Low Stock ({lowStockCount})</option>
+              <option value="out_of_stock">Out of Stock ({outOfStockCount})</option>
             </select>
           </div>
         </div>
