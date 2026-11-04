@@ -171,6 +171,7 @@ function ProductsContent() {
         const priceRange = PRICE_RANGES[selectedPriceRangeIndex] || PRICE_RANGES[0];
         if (selectedPriceRangeIndex > 0) {
           if (priceRange.min > 0) params.minPrice = priceRange.min;
+          
           if (priceRange.max < Infinity) params.maxPrice = priceRange.max;
         }
         if (priceSlider < 500) {
