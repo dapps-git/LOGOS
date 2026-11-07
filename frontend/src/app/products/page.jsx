@@ -69,6 +69,7 @@ function ProductsContent() {
   };
 
   // Filters State
+  const [collectionFilter, setCollectionFilter] = useState(searchParams.get('collection') || searchParams.get('filter') || 'ALL');
   const [selectedTheme, setSelectedTheme] = useState(searchParams.get('theme') || 'ALL');
   const [selectedAuthor, setSelectedAuthor] = useState(searchParams.get('author') || 'ALL');
   const [selectedPriceRangeIndex, setSelectedPriceRangeIndex] = useState(0);
@@ -122,11 +123,13 @@ function ProductsContent() {
     const author = searchParams.get('author');
     const sort = searchParams.get('sort');
     const q = searchParams.get('search') || searchParams.get('q');
+    const collection = searchParams.get('collection') || searchParams.get('filter');
 
     if (theme) setSelectedTheme(theme);
     if (author) setSelectedAuthor(author);
     if (sort) setSortBy(sort);
     if (q) setSearchQuery(q);
+    if (collection) setCollectionFilter(collection);
   }, [searchParams]);
 
   // Reset to page 1 whenever filters or search query change
@@ -136,7 +139,7 @@ function ProductsContent() {
       return;
     }
     setCurrentPage(1);
-  }, [debouncedSearch, selectedTheme, selectedAuthor, selectedPriceRangeIndex, priceSlider, selectedLanguage, selectedAvailability, sortBy]);
+  }, [debouncedSearch, selectedTheme, selectedAuthor, selectedPriceRangeIndex, priceSlider, selectedLanguage, selectedAvailability, sortBy, collectionFilter]);
 
   // Fetch paginated books from live API (15 per page)
   useEffect(() => {
@@ -151,6 +154,12 @@ function ProductsContent() {
           limit: 15,
           sortBy
         };
+
+        if (collectionFilter === 'new-arrivals') {
+          params.isNewArrival = 'true';
+        } else if (collectionFilter === 'bestsellers') {
+          params.isBestSeller = 'true';
+        }
 
         if (debouncedSearch && debouncedSearch.trim()) {
           params.search = debouncedSearch.trim();
@@ -171,7 +180,7 @@ function ProductsContent() {
         const priceRange = PRICE_RANGES[selectedPriceRangeIndex] || PRICE_RANGES[0];
         if (selectedPriceRangeIndex > 0) {
           if (priceRange.min > 0) params.minPrice = priceRange.min;
-          
+
           if (priceRange.max < Infinity) params.maxPrice = priceRange.max;
         }
         if (priceSlider < 500) {
@@ -183,6 +192,7 @@ function ProductsContent() {
           const list = Array.isArray(data.books) ? data.books : [];
           setBooks(list);
           setPagination(data.pagination || { page: currentPage, limit: 15, totalPages: 1, totalItems: list.length });
+
         }
       } catch (err) {
         console.warn('[ProductsPage] loadBooks error:', err);
@@ -198,7 +208,7 @@ function ProductsContent() {
     }
 
     loadBooks();
-  }, [currentPage, debouncedSearch, selectedTheme, selectedAuthor, selectedPriceRangeIndex, priceSlider, selectedLanguage, selectedAvailability, sortBy]);
+  }, [currentPage, debouncedSearch, selectedTheme, selectedAuthor, selectedPriceRangeIndex, priceSlider, selectedLanguage, selectedAvailability, sortBy, collectionFilter]);
 
   const handlePageChange = (newPage) => {
     const total = pagination.totalPages || 1;
@@ -210,6 +220,7 @@ function ProductsContent() {
   };
 
   const handleResetFilters = () => {
+    setCollectionFilter('ALL');
     setSelectedTheme('ALL');
     setSelectedAuthor('ALL');
     setSelectedPriceRangeIndex(0);
@@ -222,6 +233,7 @@ function ProductsContent() {
   };
 
   const activeFiltersCount =
+    (collectionFilter !== 'ALL' ? 1 : 0) +
     (selectedTheme !== 'ALL' && selectedTheme !== 'All Categories' ? 1 : 0) +
     (selectedAuthor !== 'ALL' && selectedAuthor !== 'All Authors' ? 1 : 0) +
     (selectedPriceRangeIndex !== 0 ? 1 : 0) +
@@ -273,11 +285,10 @@ function ProductsContent() {
           key={`page-${p}`}
           type="button"
           onClick={() => handlePageChange(p)}
-          className={`min-w-[32px] h-8 px-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            isActive
+          className={`min-w-[32px] h-8 px-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${isActive
               ? 'bg-[#1E3A8A] text-white shadow-xs'
               : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 shadow-2xs'
-          }`}
+            }`}
         >
           {p}
         </button>
@@ -292,11 +303,48 @@ function ProductsContent() {
       {/* Main Container Starting from Left Side (No Excessive Spacing) */}
       <main className="flex-1 w-full px-3 sm:px-6 lg:px-8 pt-20 sm:pt-24 pb-16">
         <div className="w-full space-y-4">
-          
+
+          {/* Quick Collection Switcher Tabs */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            <button
+              type="button"
+              onClick={() => setCollectionFilter('ALL')}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                collectionFilter === 'ALL'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              All Books
+            </button>
+            <button
+              type="button"
+              onClick={() => setCollectionFilter('new-arrivals')}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+                collectionFilter === 'new-arrivals'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-white text-emerald-800 border border-emerald-200 hover:bg-emerald-50'
+              }`}
+            >
+              <span>🚀 New Arrivals</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCollectionFilter('bestsellers')}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+                collectionFilter === 'bestsellers'
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'bg-white text-amber-800 border border-amber-200 hover:bg-amber-50'
+              }`}
+            >
+              <span>🔥 Bestsellers</span>
+            </button>
+          </div>
+
           {/* Search & Multi-Filter Control Bar */}
           <div className="bg-white rounded-2xl p-3 sm:p-3.5 border border-slate-200/90 shadow-2xs">
             <div className="flex flex-col lg:flex-row items-center justify-between gap-3">
-              
+
               {/* Search Input Bar */}
               <div className="relative w-full lg:flex-1">
                 <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
@@ -325,7 +373,7 @@ function ProductsContent() {
 
               {/* Right Controls: Sort By + Author Dropdown + Genre Dropdown + Price Range Dropdown + Count Pill */}
               <div className="hidden sm:flex flex-wrap items-center gap-2.5 shrink-0 w-full lg:w-auto justify-end">
-                
+
                 {/* Sort By Dropdown */}
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs text-slate-500 whitespace-nowrap">Sort:</span>
@@ -450,207 +498,204 @@ function ProductsContent() {
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-3 sm:gap-4">
-                {books.map((book) => {
-                  const bookId = book._id || book.id;
-                  const title = book.title || book.name || book.titleMalayalam || 'LOGOS Book';
-                  const author = book.author || 'LOGOS Publications';
-                  const price = Number(book.discountPrice || book.salePrice || book.price || 299);
-                  const originalPrice = book.discountPrice && Number(book.discountPrice) < Number(book.price)
-                    ? Number(book.price)
-                    : null;
-                  const image = (book.images && book.images[0]) || book.coverImage || book.image || '/book-placeholder.svg';
-                  const inWishlist = isBookInWishlist(bookId);
-                  const discountPercent = originalPrice && originalPrice > price
-                    ? Math.round(((originalPrice - price) / originalPrice) * 100)
-                    : 0;
-                  const rating = book.rating ? Number(book.rating).toFixed(1) : '5.0';
-                  const reviewsCount = book.reviewsCount ? `${(book.reviewsCount / 1000).toFixed(1)}k` : '0.1k';
+              {books.map((book) => {
+                const bookId = book._id || book.id;
+                const title = book.title || book.name || book.titleMalayalam || 'LOGOS Book';
+                const author = book.author || 'LOGOS Publications';
+                const price = Number(book.discountPrice || book.salePrice || book.price || 299);
+                const originalPrice = book.discountPrice && Number(book.discountPrice) < Number(book.price)
+                  ? Number(book.price)
+                  : null;
+                const image = (book.images && book.images[0]) || book.coverImage || book.image || '/book-placeholder.svg';
+                const inWishlist = isBookInWishlist(bookId);
+                const discountPercent = originalPrice && originalPrice > price
+                  ? Math.round(((originalPrice - price) / originalPrice) * 100)
+                  : 0;
+                const rating = book.rating ? Number(book.rating).toFixed(1) : '5.0';
+                const reviewsCount = book.reviewsCount ? `${(book.reviewsCount / 1000).toFixed(1)}k` : '0.1k';
 
-                  const isOutOfStock = book.stockStatus === 'out_of_stock' || (book.stock !== undefined && Number(book.stock) <= 0);
+                const isOutOfStock = book.stockStatus === 'out_of_stock' || (book.stock !== undefined && Number(book.stock) <= 0);
 
-                  // Determine Top-Left Badge: Out of Stock > Bestseller > New > Discount
-                  const showBestseller = !isOutOfStock && book.isBestSeller;
-                  const showNew = !isOutOfStock && book.isNewArrival && !book.isBestSeller;
-                  const showDiscount = !isOutOfStock && discountPercent > 0 && !showBestseller && !showNew;
+                // Determine Top-Left Badge: Out of Stock > Bestseller > New > Discount
+                const showBestseller = !isOutOfStock && book.isBestSeller;
+                const showNew = !isOutOfStock && book.isNewArrival && !book.isBestSeller;
+                const showDiscount = !isOutOfStock && discountPercent > 0 && !showBestseller && !showNew;
 
-                  return (
-                    <div
-                      key={`card-${bookId}`}
-                      className="group bg-white rounded-2xl border border-slate-200/90 hover:border-slate-300 shadow-2xs hover:shadow-md transition-all duration-300 p-2.5 sm:p-3 flex flex-col justify-between"
-                    >
-                      {/* Book Cover Image Container (Portrait 3:4 Aspect Ratio) */}
-                      <div className="relative aspect-[3/4] w-full bg-[#f8fafc] rounded-xl overflow-hidden mb-2.5 border border-slate-100 flex items-center justify-center p-2 group-hover:bg-[#f1f5f9] transition-colors">
-                        <Link href={`/books/${book.slug || bookId}`} className="block w-full h-full">
-                          <img
-                            src={optimizeImageUrl(image, { width: 450, quality: 'auto' })}
-                            alt={title}
-                            referrerPolicy="no-referrer"
-                            loading="lazy"
-                            onError={(e) => {
-                              if (!e.currentTarget.dataset.failed) {
-                                e.currentTarget.dataset.failed = 'true';
-                                if (e.currentTarget.src !== image && image && image.startsWith('http')) {
-                                  e.currentTarget.src = image;
-                                } else {
-                                  e.currentTarget.src = '/book-placeholder.svg';
-                                }
+                return (
+                  <div
+                    key={`card-${bookId}`}
+                    className="group bg-white rounded-2xl border border-slate-200/90 hover:border-slate-300 shadow-2xs hover:shadow-md transition-all duration-300 p-2.5 sm:p-3 flex flex-col justify-between"
+                  >
+                    {/* Book Cover Image Container (Portrait 3:4 Aspect Ratio) */}
+                    <div className="relative aspect-[3/4] w-full bg-[#f8fafc] rounded-xl overflow-hidden mb-2.5 border border-slate-100 flex items-center justify-center p-2 group-hover:bg-[#f1f5f9] transition-colors">
+                      <Link href={`/books/${book.slug || bookId}`} className="block w-full h-full">
+                        <img
+                          src={optimizeImageUrl(image, { width: 450, quality: 'auto' })}
+                          alt={title}
+                          referrerPolicy="no-referrer"
+                          loading="lazy"
+                          onError={(e) => {
+                            if (!e.currentTarget.dataset.failed) {
+                              e.currentTarget.dataset.failed = 'true';
+                              if (e.currentTarget.src !== image && image && image.startsWith('http')) {
+                                e.currentTarget.src = image;
+                              } else {
+                                e.currentTarget.src = '/book-placeholder.svg';
                               }
-                            }}
-                            className={`w-full h-full object-contain object-center drop-shadow-sm group-hover:scale-105 transition-transform duration-300 select-none ${isOutOfStock ? 'opacity-50 grayscale' : ''}`}
-                          />
+                            }
+                          }}
+                          className={`w-full h-full object-contain object-center drop-shadow-sm group-hover:scale-105 transition-transform duration-300 select-none ${isOutOfStock ? 'opacity-50 grayscale' : ''}`}
+                        />
+                      </Link>
+
+                      {/* Top-Left Badges with reduced border-radius */}
+                      {isOutOfStock && (
+                        <span className="absolute top-2 left-2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs tracking-tight">
+                          Out of Stock
+                        </span>
+                      )}
+                      {showBestseller && (
+                        <span className="absolute top-2 left-2 bg-[#f59e0b] text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs tracking-tight">
+                          Bestseller
+                        </span>
+                      )}
+                      {showNew && (
+                        <span className="absolute top-2 left-2 bg-[#10b981] text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs tracking-tight">
+                          New
+                        </span>
+                      )}
+                      {showDiscount && (
+                        <span className="absolute top-2 left-2 bg-[#f43f5e] text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs tracking-tight">
+                          {discountPercent}% OFF
+                        </span>
+                      )}
+
+                      {/* Top-Right Wishlist Heart Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleWishlist(book);
+                        }}
+                        className={`absolute top-2 right-2 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shadow-xs border border-slate-200/70 backdrop-blur-md transition-all z-10 ${inWishlist
+                            ? 'bg-white text-rose-500 shadow-rose-200'
+                            : 'bg-white/90 text-slate-400 hover:text-rose-500 hover:bg-white'
+                          }`}
+                        title={inWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'}
+                      >
+                        <Heart
+                          className={`w-3.5 h-3.5 ${inWishlist ? 'fill-rose-500 text-rose-500' : ''
+                            }`}
+                        />
+                      </button>
+                    </div>
+
+                    {/* Book Metadata, Rating & Purchase Row */}
+                    <div className="space-y-1 flex-1 flex flex-col justify-between">
+                      <div>
+                        {/* Title */}
+                        <Link href={`/books/${book.slug || bookId}`} className="block">
+                          <h3 className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-[#1E3A8A] transition-colors line-clamp-1 leading-snug">
+                            {title}
+                          </h3>
                         </Link>
 
-                        {/* Top-Left Badges with reduced border-radius */}
-                        {isOutOfStock && (
-                          <span className="absolute top-2 left-2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs tracking-tight">
-                            Out of Stock
-                          </span>
-                        )}
-                        {showBestseller && (
-                          <span className="absolute top-2 left-2 bg-[#f59e0b] text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs tracking-tight">
-                            Bestseller
-                          </span>
-                        )}
-                        {showNew && (
-                          <span className="absolute top-2 left-2 bg-[#10b981] text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs tracking-tight">
-                            New
-                          </span>
-                        )}
-                        {showDiscount && (
-                          <span className="absolute top-2 left-2 bg-[#f43f5e] text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs tracking-tight">
-                            {discountPercent}% OFF
-                          </span>
-                        )}
+                        {/* Author */}
+                        <p className="text-[11px] font-normal text-slate-500 truncate mt-0.5">
+                          {author}
+                        </p>
 
-                        {/* Top-Right Wishlist Heart Button */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            toggleWishlist(book);
-                          }}
-                          className={`absolute top-2 right-2 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shadow-xs border border-slate-200/70 backdrop-blur-md transition-all z-10 ${
-                            inWishlist
-                              ? 'bg-white text-rose-500 shadow-rose-200'
-                              : 'bg-white/90 text-slate-400 hover:text-rose-500 hover:bg-white'
-                          }`}
-                          title={inWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'}
-                        >
-                          <Heart
-                            className={`w-3.5 h-3.5 ${
-                              inWishlist ? 'fill-rose-500 text-rose-500' : ''
-                            }`}
-                          />
-                        </button>
+                        {/* Star Rating Row */}
+                        <div className="flex items-center gap-1 text-[11px] font-medium text-slate-600 mt-1">
+                          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                          <span className="font-bold text-slate-800">{rating}</span>
+                          <span className="text-slate-400">({reviewsCount})</span>
+                        </div>
                       </div>
 
-                      {/* Book Metadata, Rating & Purchase Row */}
-                      <div className="space-y-1 flex-1 flex flex-col justify-between">
-                        <div>
-                          {/* Title */}
-                          <Link href={`/books/${book.slug || bookId}`} className="block">
-                            <h3 className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-[#1E3A8A] transition-colors line-clamp-1 leading-snug">
-                              {title}
-                            </h3>
-                          </Link>
-
-                          {/* Author */}
-                          <p className="text-[11px] font-normal text-slate-500 truncate mt-0.5">
-                            {author}
-                          </p>
-
-                          {/* Star Rating Row */}
-                          <div className="flex items-center gap-1 text-[11px] font-medium text-slate-600 mt-1">
-                            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                            <span className="font-bold text-slate-800">{rating}</span>
-                            <span className="text-slate-400">({reviewsCount})</span>
-                          </div>
+                      {/* Price & Add to Cart Button */}
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 mt-2">
+                        <div className="flex items-baseline gap-1.5 shrink-0">
+                          <span className="text-sm sm:text-base font-bold text-[#1E3A8A]">
+                            ₹ {price.toFixed(0)}
+                          </span>
+                          {originalPrice && originalPrice > price && (
+                            <span className="text-[11px] text-slate-400 line-through">
+                              ₹ {originalPrice.toFixed(0)}
+                            </span>
+                          )}
                         </div>
 
-                        {/* Price & Add to Cart Button */}
-                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 mt-2">
-                          <div className="flex items-baseline gap-1.5 shrink-0">
-                            <span className="text-sm sm:text-base font-bold text-[#1E3A8A]">
-                              ₹ {price.toFixed(0)}
-                            </span>
-                            {originalPrice && originalPrice > price && (
-                              <span className="text-[11px] text-slate-400 line-through">
-                                ₹ {originalPrice.toFixed(0)}
-                              </span>
-                            )}
-                          </div>
-
-                          <button
-                            type="button"
-                            disabled={isOutOfStock}
-                            onClick={() => !isOutOfStock && handleAddToCart(book)}
-                            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full text-white flex items-center justify-center shadow-xs shrink-0 transition-all ${
-                              isOutOfStock
-                                ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-60'
-                                : addedItems[book?._id || book?.id || book?.slug]
+                        <button
+                          type="button"
+                          disabled={isOutOfStock}
+                          onClick={() => !isOutOfStock && handleAddToCart(book)}
+                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full text-white flex items-center justify-center shadow-xs shrink-0 transition-all ${isOutOfStock
+                              ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-60'
+                              : addedItems[book?._id || book?.id || book?.slug]
                                 ? 'bg-emerald-500 hover:bg-emerald-600 active:scale-95 cursor-pointer'
                                 : 'bg-[#1E3A8A] hover:bg-[#152e72] active:scale-95 cursor-pointer'
                             }`}
-                            title={isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
-                          >
-                            {isOutOfStock ? (
-                              <span className="text-[10px] font-bold">✕</span>
-                            ) : addedItems[book?._id || book?.id || book?.slug] ? (
-                              <Check className="w-3.5 h-3.5" />
-                            ) : (
-                              <ShoppingCart className="w-3.5 h-3.5" />
-                            )}
-                          </button>
-                        </div>
+                          title={isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
+                        >
+                          {isOutOfStock ? (
+                            <span className="text-[10px] font-bold">✕</span>
+                          ) : addedItems[book?._id || book?.id || book?.slug] ? (
+                            <Check className="w-3.5 h-3.5" />
+                          ) : (
+                            <ShoppingCart className="w-3.5 h-3.5" />
+                          )}
+                        </button>
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Pagination Bar */}
+          {totalPages > 1 && (
+            <div className="mt-8 pt-6 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <p className="text-xs text-slate-500 font-medium order-2 sm:order-1">
+                Showing{' '}
+                <span className="font-bold text-slate-800">
+                  {Math.min((currentPage - 1) * 15 + 1, totalItems)}
+                </span>{' '}
+                to{' '}
+                <span className="font-bold text-slate-800">
+                  {Math.min(currentPage * 15, totalItems)}
+                </span>{' '}
+                of <span className="font-bold text-slate-800">{totalItems}</span> books
+              </p>
+
+              <div className="flex items-center gap-1.5 order-1 sm:order-2">
+                <button
+                  type="button"
+                  disabled={currentPage <= 1 || loading}
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer shadow-2xs"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Previous</span>
+                </button>
+
+                {renderPaginationButtons()}
+
+                <button
+                  type="button"
+                  disabled={currentPage >= totalPages || loading}
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer shadow-2xs"
+                >
+                  <span className="hidden sm:inline">Next</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
               </div>
-            )}
-
-            {/* Pagination Bar */}
-            {totalPages > 1 && (
-              <div className="mt-8 pt-6 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <p className="text-xs text-slate-500 font-medium order-2 sm:order-1">
-                  Showing{' '}
-                  <span className="font-bold text-slate-800">
-                    {Math.min((currentPage - 1) * 15 + 1, totalItems)}
-                  </span>{' '}
-                  to{' '}
-                  <span className="font-bold text-slate-800">
-                    {Math.min(currentPage * 15, totalItems)}
-                  </span>{' '}
-                  of <span className="font-bold text-slate-800">{totalItems}</span> books
-                </p>
-
-                <div className="flex items-center gap-1.5 order-1 sm:order-2">
-                  <button
-                    type="button"
-                    disabled={currentPage <= 1 || loading}
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer shadow-2xs"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Previous</span>
-                  </button>
-
-                  {renderPaginationButtons()}
-
-                  <button
-                    type="button"
-                    disabled={currentPage >= totalPages || loading}
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer shadow-2xs"
-                  >
-                    <span className="hidden sm:inline">Next</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
+        </div>
 
         {/* Mobile Filter Modal Drawer */}
         {mobileFilterOpen && (
@@ -689,11 +734,10 @@ function ProductsContent() {
                           onClick={() => {
                             setSelectedTheme(theme);
                           }}
-                          className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-left ${
-                            isSelected
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-left ${isSelected
                               ? 'bg-blue-50 text-[#1E3A8A] font-bold'
                               : 'text-slate-700 hover:bg-slate-50'
-                          }`}
+                            }`}
                         >
                           <span>{theme === 'ALL' ? 'All Categories' : theme}</span>
                           {isSelected && <Check className="w-4 h-4 text-[#1E3A8A]" />}
@@ -714,11 +758,10 @@ function ProductsContent() {
                         key={range.label}
                         type="button"
                         onClick={() => setSelectedPriceRangeIndex(idx)}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-left ${
-                          selectedPriceRangeIndex === idx
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-left ${selectedPriceRangeIndex === idx
                             ? 'bg-blue-50 text-[#1E3A8A] font-bold'
                             : 'text-slate-700 hover:bg-slate-50'
-                        }`}
+                          }`}
                       >
                         <span>{range.label}</span>
                         {selectedPriceRangeIndex === idx && <Check className="w-4 h-4 text-[#1E3A8A]" />}
