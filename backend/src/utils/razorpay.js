@@ -9,6 +9,11 @@ function getRazorpayKeys() {
   const keySecret =
     process.env.RAZORPAY_KEY_SECRET ||
     'CxahKfzuyvxGx1a4GV7m5JBz';
+
+  if (!keySecret && process.env.NODE_ENV === 'production') {
+    console.error('[SECURITY WARNING]: RAZORPAY_KEY_SECRET environment variable is missing.');
+  }
+
   return { keyId, keySecret };
 }
 

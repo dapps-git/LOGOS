@@ -14,23 +14,40 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Purge any legacy admin user objects from localStorage for security hygiene
+    try {
+      localStorage.removeItem('logos_admin_user');
+    } catch {}
+
     const savedToken = localStorage.getItem('logos_admin_token');
     if (isRealJwt(savedToken)) {
       setToken(savedToken);
-      try {
-        const savedUser = localStorage.getItem('logos_admin_user');
-        if (savedUser) setAdmin(JSON.parse(savedUser));
-      } catch {}
+      // Fetch fresh admin profile in memory directly from backend without persisting credentials
+      apiClient('/auth/admin/profile')
+        .then((data) => {
+          if (data && data.admin) {
+            setAdmin(data.admin);
+          }
+        })
+        .catch(() => {
+          // Token expired or invalid
+          localStorage.removeItem('logos_admin_token');
+          setToken(null);
+          setAdmin(null);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+      return;
     } else {
       localStorage.removeItem('logos_admin_token');
-      localStorage.removeItem('logos_admin_user');
     }
     setLoading(false);
 
     // Session expired / rejected by backend -> force re-login
     const onUnauthorized = () => {
       localStorage.removeItem('logos_admin_token');
-      localStorage.removeItem('logos_admin_user');
+      try { localStorage.removeItem('logos_admin_user'); } catch {}
       setToken(null);
       setAdmin(null);
     };
@@ -48,8 +65,9 @@ export const AuthProvider = ({ children }) => {
 
       if (data && data.token) {
         if (typeof window !== 'undefined') {
+          // Store only the JWT session bearer token; admin profile is kept purely in memory state
           localStorage.setItem('logos_admin_token', data.token);
-          localStorage.setItem('logos_admin_user', JSON.stringify(data.admin));
+          try { localStorage.removeItem('logos_admin_user'); } catch {}
         }
         setToken(data.token);
         setAdmin(data.admin);
@@ -64,7 +82,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('logos_admin_token');
-      localStorage.removeItem('logos_admin_user');
+      try { localStorage.removeItem('logos_admin_user'); } catch {}
     }
     setToken(null);
     setAdmin(null);
