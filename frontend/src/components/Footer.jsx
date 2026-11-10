@@ -133,6 +133,18 @@ export const Footer = () => {
         {/* Bottom Copyright Row */}
         <div className="border-t border-slate-800 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-3">
           <p>© {new Date().getFullYear()} LOGOS. All rights reserved.</p>
+
+        <p className="mt-2 text-xs opacity-75 text-center">
+          Powered by{" "}
+          <a
+            href="https://www.crevionads.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium underline hover:opacity-100 transition-opacity"
+          >
+            Crevion Ads
+          </a>
+        </p>
           <p>Made for readers, in India.</p>
         </div>
       </div>
