@@ -772,10 +772,10 @@ function ProfileContent() {
         )}
       </main>
 
-      {/* Address Form Modal */}
+      {/* Address Form Modal (Hardened for iOS Safari & Mobile Keypads) */}
       {showAddressModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150 my-auto">
+        <div className="fixed inset-0 z-50 bg-slate-950/75 flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 my-4 sm:my-auto animate-in fade-in duration-150">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">Add Delivery Address</h3>
@@ -787,7 +787,7 @@ function ProfileContent() {
                   setShowAddressModal(false);
                   setAddrFormError('');
                 }}
-                className="w-7 h-7 rounded-full bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center text-xs"
+                className="w-7 h-7 rounded-full bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center text-xs cursor-pointer"
               >
                 ✕
               </button>
@@ -801,22 +801,28 @@ function ProfileContent() {
 
             <form onSubmit={handleAddNewAddress} className="space-y-3 text-xs">
               <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                <label htmlFor="profile-addr-fullname" className="block text-[11px] font-semibold text-slate-700 mb-1">
                   Full Name <span className="text-rose-500">*</span>
                 </label>
                 <input
+                  id="profile-addr-fullname"
+                  name="name"
                   type="text"
+                  autoComplete="name"
                   required
                   placeholder="e.g. Aifa Sana"
                   value={newAddr.fullName}
-                  onChange={(e) => setNewAddr({ ...newAddr, fullName: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setNewAddr((prev) => ({ ...prev, fullName: val }));
+                  }}
+                  className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl text-base sm:text-xs focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20"
                 />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-[11px] font-semibold text-slate-700">
+                  <label htmlFor="profile-addr-phone" className="block text-[11px] font-semibold text-slate-700">
                     Mobile Number <span className="text-rose-500">*</span>
                   </label>
                   <span className="text-[10px] text-slate-400 font-mono">
@@ -824,68 +830,100 @@ function ProfileContent() {
                   </span>
                 </div>
                 <input
+                  id="profile-addr-phone"
+                  name="tel"
                   type="tel"
+                  autoComplete="tel-national"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   required
-                  maxLength={10}
                   placeholder="10-digit number"
                   value={newAddr.phone}
-                  onChange={(e) => setNewAddr({ ...newAddr, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
-                  className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20"
+                  onChange={(e) => {
+                    let clean = e.target.value.replace(/\D/g, '');
+                    if (clean.startsWith('91') && clean.length > 10) clean = clean.slice(2);
+                    else if (clean.startsWith('0') && clean.length > 10) clean = clean.slice(1);
+                    setNewAddr((prev) => ({ ...prev, phone: clean.slice(0, 10) }));
+                  }}
+                  className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl font-mono text-base sm:text-xs focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                <label htmlFor="profile-addr-street" className="block text-[11px] font-semibold text-slate-700 mb-1">
                   Street Address / House Name <span className="text-rose-500">*</span>
                 </label>
                 <input
+                  id="profile-addr-street"
+                  name="street-address"
                   type="text"
+                  autoComplete="street-address"
                   required
                   placeholder="House Name / Street"
                   value={newAddr.streetAddress}
-                  onChange={(e) => setNewAddr({ ...newAddr, streetAddress: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setNewAddr((prev) => ({ ...prev, streetAddress: val }));
+                  }}
+                  className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl text-base sm:text-xs focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                  <label htmlFor="profile-addr-postoffice" className="block text-[11px] font-semibold text-slate-700 mb-1">
                     Post Office (P.O.) <span className="text-rose-500">*</span>
                   </label>
                   <input
+                    id="profile-addr-postoffice"
+                    name="address-line2"
                     type="text"
                     required
                     placeholder="e.g. Othukkungal P.O."
                     value={newAddr.postOffice}
-                    onChange={(e) => setNewAddr({ ...newAddr, postOffice: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20"
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setNewAddr((prev) => ({ ...prev, postOffice: val }));
+                    }}
+                    className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl text-base sm:text-xs focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                  <label htmlFor="profile-addr-city" className="block text-[11px] font-semibold text-slate-700 mb-1">
                     City / District <span className="text-rose-500">*</span>
                   </label>
                   <input
+                    id="profile-addr-city"
+                    name="address-level2"
                     type="text"
+                    autoComplete="address-level2"
                     required
                     placeholder="e.g. Kottakkal"
                     value={newAddr.city}
-                    onChange={(e) => setNewAddr({ ...newAddr, city: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20"
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setNewAddr((prev) => ({ ...prev, city: val }));
+                    }}
+                    className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl text-base sm:text-xs focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                  <label htmlFor="profile-addr-state" className="block text-[11px] font-semibold text-slate-700 mb-1">
                     State <span className="text-rose-500">*</span>
                   </label>
                   <select
+                    id="profile-addr-state"
+                    name="address-level1"
+                    autoComplete="address-level1"
                     value={newAddr.state || 'Kerala'}
-                    onChange={(e) => setNewAddr({ ...newAddr, state: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20"
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setNewAddr((prev) => ({ ...prev, state: val }));
+                    }}
+                    className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl text-base sm:text-xs focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 cursor-pointer"
                   >
                     {INDIAN_STATES.map((st) => (
                       <option key={st} value={st}>
@@ -896,7 +934,7 @@ function ProfileContent() {
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-[11px] font-semibold text-slate-700">
+                    <label htmlFor="profile-addr-postal" className="block text-[11px] font-semibold text-slate-700">
                       PIN Code <span className="text-rose-500">*</span>
                     </label>
                     <span className="text-[10px] text-slate-400 font-mono">
@@ -904,13 +942,20 @@ function ProfileContent() {
                     </span>
                   </div>
                   <input
+                    id="profile-addr-postal"
+                    name="postal-code"
                     type="text"
+                    autoComplete="postal-code"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     required
-                    maxLength={6}
                     placeholder="676528"
                     value={newAddr.postalCode}
-                    onChange={(e) => setNewAddr({ ...newAddr, postalCode: e.target.value.replace(/\D/g, '').slice(0, 6) })}
-                    className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20"
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                      setNewAddr((prev) => ({ ...prev, postalCode: val }));
+                    }}
+                    className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-xl font-mono text-base sm:text-xs focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20"
                   />
                 </div>
               </div>

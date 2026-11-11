@@ -771,8 +771,8 @@ export default function CheckoutPage() {
 
       {/* LOGOS Branded Order Placing Loading Modal Overlay */}
       {loading && (
-        <div className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="relative bg-white/95 backdrop-blur-md rounded-2xl max-w-[270px] sm:max-w-[290px] w-full py-7 px-6 text-center shadow-2xl border border-white/80 flex flex-col items-center">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="relative bg-white rounded-2xl max-w-[270px] sm:max-w-[290px] w-full py-7 px-6 text-center shadow-2xl border border-slate-100 flex flex-col items-center">
             {/* Animated Brand Emblem with soft spinning accent ring */}
             <div className="relative mb-4 flex items-center justify-center">
               <div className="absolute -inset-2.5 rounded-full border-2 border-slate-100 border-t-[#1044A5] animate-spin" />
@@ -798,10 +798,10 @@ export default function CheckoutPage() {
         </div>
       )}
 
-      {/* Fancy Realistic Delivery Address Modal */}
+      {/* Fancy Realistic Delivery Address Modal (Hardened for iOS Safari & Mobile Keypads) */}
       {showAddressModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-100 my-auto animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-950/75 flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-100 my-4 sm:my-auto animate-in fade-in duration-150">
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 mb-4">
               <div className="flex items-center gap-2.5">
@@ -891,12 +891,11 @@ export default function CheckoutPage() {
                 </div>
               </div>
             ) : (
-              /* Realistic & Fancy Address Form */
               <form onSubmit={handleConfirmAddress} className="space-y-3.5 text-xs">
                 {/* 1. Full Name */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-[11px] font-semibold text-slate-700">
+                    <label htmlFor="checkout-fullname" className="block text-[11px] font-semibold text-slate-700">
                       Full Name <span className="text-rose-500">*</span>
                     </label>
                   </div>
@@ -907,15 +906,19 @@ export default function CheckoutPage() {
                       </svg>
                     </div>
                     <input
+                      id="checkout-fullname"
+                      name="name"
                       type="text"
+                      autoComplete="name"
                       placeholder="e.g. Aifa Sana"
                       autoFocus={false}
                       value={addressForm.fullName}
                       onChange={(e) => {
-                        setAddressForm({ ...addressForm, fullName: e.target.value });
-                        if (addressErrors.fullName) setAddressErrors({ ...addressErrors, fullName: '' });
+                        const val = e.target.value;
+                        setAddressForm((prev) => ({ ...prev, fullName: val }));
+                        if (addressErrors.fullName) setAddressErrors((prev) => ({ ...prev, fullName: '' }));
                       }}
-                      className={`w-full pl-9 pr-3 py-2.5 bg-[#FAFBFD] border rounded-lg text-[16px] sm:text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 ${
+                      className={`w-full pl-9 pr-3 py-2.5 bg-[#FAFBFD] border rounded-lg text-base sm:text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 ${
                         addressErrors.fullName ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-[#1044A5]'
                       }`}
                     />
@@ -925,10 +928,10 @@ export default function CheckoutPage() {
                   )}
                 </div>
 
-                {/* 2. Phone Number with Live Validation Pill */}
+                {/* 2. Phone Number with Live Validation Pill (Hardened against iOS WebKit composition crash) */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-[11px] font-semibold text-slate-700">
+                    <label htmlFor="checkout-phone" className="block text-[11px] font-semibold text-slate-700">
                       Mobile Number <span className="text-rose-500">*</span>
                     </label>
                     <span className="text-[10px] font-mono">
@@ -948,17 +951,28 @@ export default function CheckoutPage() {
                       <span className="text-xs font-mono font-medium text-slate-500 border-r border-slate-200 pr-2 mr-1">+91</span>
                     </div>
                     <input
+                      id="checkout-phone"
+                      name="tel"
                       type="tel"
-                      maxLength={10}
+                      autoComplete="tel-national"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       autoFocus={false}
                       placeholder="9876543210"
                       value={addressForm.phone}
                       onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, '').slice(0, 10);
-                        setAddressForm({ ...addressForm, phone: val });
-                        if (addressErrors.phone) setAddressErrors({ ...addressErrors, phone: '' });
+                        let clean = e.target.value.replace(/\D/g, '');
+                        // Strip country code +91 or leading 0 if pasted or iOS autofilled
+                        if (clean.startsWith('91') && clean.length > 10) {
+                          clean = clean.slice(2);
+                        } else if (clean.startsWith('0') && clean.length > 10) {
+                          clean = clean.slice(1);
+                        }
+                        const val = clean.slice(0, 10);
+                        setAddressForm((prev) => ({ ...prev, phone: val }));
+                        if (addressErrors.phone) setAddressErrors((prev) => ({ ...prev, phone: '' }));
                       }}
-                      className={`w-full pl-16 pr-3 py-2.5 bg-[#FAFBFD] border rounded-lg text-[16px] sm:text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 ${
+                      className={`w-full pl-16 pr-3 py-2.5 bg-[#FAFBFD] border rounded-lg text-base sm:text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 ${
                         addressErrors.phone ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-[#1044A5]'
                       }`}
                     />
@@ -970,7 +984,7 @@ export default function CheckoutPage() {
 
                 {/* 3. Street Address / House Name */}
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                  <label htmlFor="checkout-street" className="block text-[11px] font-semibold text-slate-700 mb-1">
                     House Name / Flat / Street Address <span className="text-rose-500">*</span>
                   </label>
                   <div className="relative">
@@ -980,15 +994,19 @@ export default function CheckoutPage() {
                       </svg>
                     </div>
                     <input
+                      id="checkout-street"
+                      name="street-address"
                       type="text"
+                      autoComplete="street-address"
                       placeholder="e.g. Umminikadavath House, Othukkungal"
                       autoFocus={false}
                       value={addressForm.streetAddress}
                       onChange={(e) => {
-                        setAddressForm({ ...addressForm, streetAddress: e.target.value });
-                        if (addressErrors.streetAddress) setAddressErrors({ ...addressErrors, streetAddress: '' });
+                        const val = e.target.value;
+                        setAddressForm((prev) => ({ ...prev, streetAddress: val }));
+                        if (addressErrors.streetAddress) setAddressErrors((prev) => ({ ...prev, streetAddress: '' }));
                       }}
-                      className={`w-full pl-9 pr-3 py-2.5 bg-[#FAFBFD] border rounded-lg text-[16px] sm:text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 ${
+                      className={`w-full pl-9 pr-3 py-2.5 bg-[#FAFBFD] border rounded-lg text-base sm:text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 ${
                         addressErrors.streetAddress ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-[#1044A5]'
                       }`}
                     />
@@ -1002,7 +1020,7 @@ export default function CheckoutPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {/* Post Office (Requested specifically) */}
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    <label htmlFor="checkout-postoffice" className="block text-[11px] font-semibold text-slate-700 mb-1">
                       Post Office (P.O.) <span className="text-rose-500">*</span>
                     </label>
                     <div className="relative">
@@ -1012,15 +1030,18 @@ export default function CheckoutPage() {
                         </svg>
                       </div>
                       <input
+                        id="checkout-postoffice"
+                        name="address-line2"
                         type="text"
                         placeholder="e.g. Othukkungal P.O."
                         autoFocus={false}
                         value={addressForm.postOffice}
                         onChange={(e) => {
-                          setAddressForm({ ...addressForm, postOffice: e.target.value });
-                          if (addressErrors.postOffice) setAddressErrors({ ...addressErrors, postOffice: '' });
+                          const val = e.target.value;
+                          setAddressForm((prev) => ({ ...prev, postOffice: val }));
+                          if (addressErrors.postOffice) setAddressErrors((prev) => ({ ...prev, postOffice: '' }));
                         }}
-                        className={`w-full pl-9 pr-3 py-2 bg-[#FAFBFD] border rounded-lg text-[16px] sm:text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 ${
+                        className={`w-full pl-9 pr-3 py-2 bg-[#FAFBFD] border rounded-lg text-base sm:text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 ${
                           addressErrors.postOffice ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-[#1044A5]'
                         }`}
                       />
@@ -1032,7 +1053,7 @@ export default function CheckoutPage() {
 
                   {/* City / District */}
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    <label htmlFor="checkout-city" className="block text-[11px] font-semibold text-slate-700 mb-1">
                       City / District <span className="text-rose-500">*</span>
                     </label>
                     <div className="relative">
@@ -1042,15 +1063,19 @@ export default function CheckoutPage() {
                         </svg>
                       </div>
                       <input
+                        id="checkout-city"
+                        name="address-level2"
                         type="text"
+                        autoComplete="address-level2"
                         placeholder="e.g. Kottakkal"
                         autoFocus={false}
                         value={addressForm.city}
                         onChange={(e) => {
-                          setAddressForm({ ...addressForm, city: e.target.value });
-                          if (addressErrors.city) setAddressErrors({ ...addressErrors, city: '' });
+                          const val = e.target.value;
+                          setAddressForm((prev) => ({ ...prev, city: val }));
+                          if (addressErrors.city) setAddressErrors((prev) => ({ ...prev, city: '' }));
                         }}
-                        className={`w-full pl-9 pr-3 py-2 bg-[#FAFBFD] border rounded-lg text-[16px] sm:text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 ${
+                        className={`w-full pl-9 pr-3 py-2 bg-[#FAFBFD] border rounded-lg text-base sm:text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 ${
                           addressErrors.city ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-[#1044A5]'
                         }`}
                       />
@@ -1065,16 +1090,20 @@ export default function CheckoutPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {/* State Dropdown */}
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    <label htmlFor="checkout-state" className="block text-[11px] font-semibold text-slate-700 mb-1">
                       State <span className="text-rose-500">*</span>
                     </label>
                     <select
+                      id="checkout-state"
+                      name="address-level1"
+                      autoComplete="address-level1"
                       value={addressForm.state || 'Kerala'}
                       onChange={(e) => {
-                        setAddressForm({ ...addressForm, state: e.target.value });
-                        if (addressErrors.state) setAddressErrors({ ...addressErrors, state: '' });
+                        const val = e.target.value;
+                        setAddressForm((prev) => ({ ...prev, state: val }));
+                        if (addressErrors.state) setAddressErrors((prev) => ({ ...prev, state: '' }));
                       }}
-                      className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-lg text-[16px] sm:text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 focus:border-[#1044A5] cursor-pointer"
+                      className="w-full px-3 py-2 bg-[#FAFBFD] border border-slate-200 rounded-lg text-base sm:text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 focus:border-[#1044A5] cursor-pointer"
                     >
                       {INDIAN_STATES.map((st) => (
                         <option key={st} value={st}>
@@ -1090,7 +1119,7 @@ export default function CheckoutPage() {
                   {/* PIN Code with Live 6-digit verification */}
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="block text-[11px] font-semibold text-slate-700">
+                      <label htmlFor="checkout-postal" className="block text-[11px] font-semibold text-slate-700">
                         PIN Code <span className="text-rose-500">*</span>
                       </label>
                       <span className="text-[10px] font-mono">
@@ -1108,17 +1137,21 @@ export default function CheckoutPage() {
                         <span className="text-xs font-mono font-bold text-slate-400">#</span>
                       </div>
                       <input
+                        id="checkout-postal"
+                        name="postal-code"
                         type="text"
-                        maxLength={6}
+                        autoComplete="postal-code"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         autoFocus={false}
                         placeholder="e.g. 676528"
                         value={addressForm.postalCode}
                         onChange={(e) => {
                           const val = e.target.value.replace(/\D/g, '').slice(0, 6);
-                          setAddressForm({ ...addressForm, postalCode: val });
-                          if (addressErrors.postalCode) setAddressErrors({ ...addressErrors, postalCode: '' });
+                          setAddressForm((prev) => ({ ...prev, postalCode: val }));
+                          if (addressErrors.postalCode) setAddressErrors((prev) => ({ ...prev, postalCode: '' }));
                         }}
-                        className={`w-full pl-8 pr-3 py-2 bg-[#FAFBFD] border rounded-lg text-[16px] sm:text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 ${
+                        className={`w-full pl-8 pr-3 py-2 bg-[#FAFBFD] border rounded-lg text-base sm:text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1044A5]/20 ${
                           addressErrors.postalCode ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-[#1044A5]'
                         }`}
                       />
@@ -1145,7 +1178,7 @@ export default function CheckoutPage() {
                           }));
                           if (addressErrors.city) setAddressErrors((prev) => ({ ...prev, city: '' }));
                         }}
-                        className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-blue-50 text-[10px] text-slate-600 hover:text-[#1044A5] transition-colors border border-slate-200/60"
+                        className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-blue-50 text-[10px] text-slate-600 hover:text-[#1044A5] transition-colors border border-slate-200/60 cursor-pointer"
                       >
                         {district}
                       </button>
@@ -1159,19 +1192,16 @@ export default function CheckoutPage() {
                     <button
                       type="button"
                       onClick={() => setIsEditingAddress(false)}
-                      className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium transition-colors"
+                      className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium transition-colors cursor-pointer"
                     >
                       Back to Saved
                     </button>
                   )}
                   <button
                     type="submit"
-                    className="flex-1 py-3 bg-[#1044A5] hover:bg-[#0c3986] text-white rounded-lg font-semibold shadow-md shadow-blue-900/15 flex items-center justify-center gap-1.5 transition-all active:scale-98"
+                    className="flex-1 py-2.5 px-4 bg-[#1044A5] hover:bg-[#0c3986] text-white rounded-lg font-semibold shadow-xs transition-colors cursor-pointer"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Confirm &amp; Use Address</span>
+                    Save & Deliver Here
                   </button>
                 </div>
               </form>
@@ -1182,8 +1212,8 @@ export default function CheckoutPage() {
 
       {/* Payment Selector Modal */}
       {showPaymentModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-sm w-full p-6 shadow-2xl border border-slate-100">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
               <h3 className="text-sm font-semibold text-slate-900">Select Payment Method</h3>
               <button
