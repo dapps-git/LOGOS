@@ -32,6 +32,7 @@ export const StoreDataProvider = ({ children }) => {
   };
 
   const [books, setBooks] = useState(initialMockBooks);
+  const [totalBooksCount, setTotalBooksCount] = useState(initialMockBooks.length);
   const [banners, setBanners] = useState(initialMockBanners);
   const [orders, setOrders] = useState(initialMockOrders);
   const [coupons, setCoupons] = useState(initialMockCoupons);
@@ -68,59 +69,51 @@ export const StoreDataProvider = ({ children }) => {
     });
   }, []);
 
-  // Fetch fresh data from backend API
+  // Fetch fresh data from backend API in parallel for high performance
   const fetchAllData = async () => {
     setIsLoading(true);
     try {
-      const bookData = await apiClient('/books?limit=100');
-      if (Array.isArray(bookData?.books) && bookData.books.length > 0) {
-        setBooks(bookData.books);
+      const [
+        booksRes,
+        bannersRes,
+        authorsRes,
+        ordersRes,
+        couponsRes,
+        referralsRes,
+        customersRes,
+        highlightsRes
+      ] = await Promise.allSettled([
+        apiClient('/books?limit=25&includeInactive=true').catch(() => null),
+        apiClient('/banners/admin/all').catch(() => apiClient('/banners').catch(() => null)),
+        apiClient('/books/authors/all').catch(() => null),
+        apiClient('/orders/admin/all').catch(() => null),
+        apiClient('/coupons/admin/all').catch(() => null),
+        apiClient('/referrals/admin/all').catch(() => null),
+        apiClient('/auth/admin/customers').catch(() => null),
+        apiClient('/author-highlights/admin/all').catch(() => null)
+      ]);
 
-        // Fetch remaining books in the background if there are more
-        if (bookData?.pagination?.totalPages > 1) {
-          apiClient('/books?page=2&limit=100')
-            .then((p2) => {
-              if (Array.isArray(p2?.books) && p2.books.length > 0) {
-                setBooks((prev) => {
-                  const map = new Map(prev.map((b) => [b._id, b]));
-                  p2.books.forEach((b) => map.set(b._id, b));
-                  return Array.from(map.values());
-                });
-              }
-            })
-            .catch(() => {});
+      if (booksRes.status === 'fulfilled' && Array.isArray(booksRes.value?.books) && booksRes.value.books.length > 0) {
+        setBooks(booksRes.value.books);
+        if (booksRes.value.pagination?.totalItems !== undefined) {
+          setTotalBooksCount(booksRes.value.pagination.totalItems);
         }
       }
-    } catch (err) {
-      console.warn('[StoreDataContext] Failed to fetch books:', err.message);
-    } finally {
-      setIsLoading(false);
-    }
 
-    try {
-      let bannerData = await apiClient('/banners/admin/all').catch(() => null);
-      if (!bannerData || !Array.isArray(bannerData?.banners)) {
-        bannerData = await apiClient('/banners').catch(() => null);
+      if (bannersRes.status === 'fulfilled' && Array.isArray(bannersRes.value?.banners)) {
+        setBanners(bannersRes.value.banners);
       }
-      if (Array.isArray(bannerData?.banners)) {
-        setBanners(bannerData.banners);
-      }
-    } catch {}
 
-    try {
-      const authorsData = await apiClient('/books/authors/all').catch(() => null);
-      if (Array.isArray(authorsData?.authors)) {
-        setAuthors(authorsData.authors);
+      if (authorsRes.status === 'fulfilled' && Array.isArray(authorsRes.value?.authors)) {
+        setAuthors(authorsRes.value.authors);
       }
-    } catch {}
 
-    try {
-      const orderData = await apiClient('/orders/admin/all');
-      if (Array.isArray(orderData?.orders)) {
-        setOrders(orderData.orders);
+      if (ordersRes.status === 'fulfilled' && Array.isArray(ordersRes.value?.orders)) {
+        const orderList = ordersRes.value.orders;
+        setOrders(orderList);
 
         // Derive and sync live return requests from actual store orders
-        const returnOrders = orderData.orders.filter(
+        const returnOrders = orderList.filter(
           (o) =>
             Boolean(o.returnRequest?.reason) ||
             [
@@ -160,42 +153,34 @@ export const StoreDataProvider = ({ children }) => {
           });
         }
       }
-    } catch {}
 
-    try {
-      const couponData = await apiClient('/coupons/admin/all');
-      if (Array.isArray(couponData?.coupons)) {
-        setCoupons(couponData.coupons);
+      if (couponsRes.status === 'fulfilled' && Array.isArray(couponsRes.value?.coupons)) {
+        setCoupons(couponsRes.value.coupons);
       }
-    } catch {}
 
-    try {
-      const referralData = await apiClient('/referrals/admin/all');
-      if (Array.isArray(referralData?.referrals)) {
-        setReferrals(referralData.referrals);
+      if (referralsRes.status === 'fulfilled' && Array.isArray(referralsRes.value?.referrals)) {
+        setReferrals(referralsRes.value.referrals);
         setReferralStats({
-          totalLinksGenerated: referralData.totalLinksGenerated || 0,
-          totalReferrals: referralData.totalReferrals || referralData.referrals.length,
-          successfulReferrals: referralData.successfulReferrals || 0,
-          pendingReferrals: referralData.pendingReferrals || 0,
-          totalRewardsIssued: referralData.totalRewardsIssued || 0
+          totalLinksGenerated: referralsRes.value.totalLinksGenerated || 0,
+          totalReferrals: referralsRes.value.totalReferrals || referralsRes.value.referrals.length,
+          successfulReferrals: referralsRes.value.successfulReferrals || 0,
+          pendingReferrals: referralsRes.value.pendingReferrals || 0,
+          totalRewardsIssued: referralsRes.value.totalRewardsIssued || 0
         });
       }
-    } catch {}
 
-    try {
-      const customerData = await apiClient('/auth/admin/customers');
-      if (Array.isArray(customerData?.customers)) {
-        setCustomers(customerData.customers);
+      if (customersRes.status === 'fulfilled' && Array.isArray(customersRes.value?.customers)) {
+        setCustomers(customersRes.value.customers);
       }
-    } catch {}
 
-    try {
-      const authorData = await apiClient('/author-highlights/admin/all');
-      if (Array.isArray(authorData?.highlights)) {
-        setAuthors(authorData.highlights);
+      if (highlightsRes.status === 'fulfilled' && Array.isArray(highlightsRes.value?.highlights)) {
+        setAuthors((prev) => (prev.length > 0 ? prev : highlightsRes.value.highlights));
       }
-    } catch {}
+    } catch (err) {
+      console.warn('[StoreDataContext] Error fetching store data in parallel:', err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -522,6 +507,7 @@ export const StoreDataProvider = ({ children }) => {
     <StoreDataContext.Provider
       value={{
         books,
+        totalBooksCount,
         banners,
         authors,
         orders,

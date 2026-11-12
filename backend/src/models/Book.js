@@ -191,6 +191,15 @@ const bookSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Performance Indexes for Fast Home Page and Catalog Loading
+bookSchema.index({ isActive: 1, createdAt: -1 });
+bookSchema.index({ isActive: 1, isBestSeller: 1, createdAt: -1 });
+bookSchema.index({ isActive: 1, isNewArrival: 1, createdAt: -1 });
+bookSchema.index({ isActive: 1, isFeatured: 1, createdAt: -1 });
+bookSchema.index({ isActive: 1, isHandpicked: 1, createdAt: -1 });
+bookSchema.index({ isActive: 1, theme: 1, createdAt: -1 });
+bookSchema.index({ isActive: 1, author: 1, createdAt: -1 });
+
 // Auto-sync name with title, compute stockStatus, and generate slug
 bookSchema.pre('save', function (next) {
   if (!this.name && this.title) {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Badge } from '@/components/common/Badge';
@@ -15,7 +15,6 @@ import {
   Eye,
   Star,
   AlertTriangle,
-  Package,
   FileSpreadsheet,
   Sparkles,
   Loader2
@@ -24,22 +23,44 @@ import { BulkImportModal } from '@/components/products/BulkImportModal';
 import { apiClient } from '@/api/client';
 
 export default function ProductsPage() {
-  const { books = [], deleteBook, updateBook, isLoading, refreshData } = useStoreData();
+  const { deleteBook, updateBook } = useStoreData();
   const { showToast } = useToast();
 
   const [mounted, setMounted] = useState(false);
+  const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [themeFilter, setThemeFilter] = useState('ALL');
   const [stockFilter, setStockFilter] = useState('ALL');
   const [featureFilter, setFeatureFilter] = useState('ALL');
   const [authorFilter, setAuthorFilter] = useState('ALL');
-  const [previewBook, setPreviewBook] = useState(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
-  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 15,
+    totalPages: 1,
+    totalItems: 0
+  });
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
 
-  // Helper to optimize image thumbnail delivery (Forces WebP and small dimensions)
+  const [filterOptions, setFilterOptions] = useState({ themes: ['ALL'], authors: ['ALL'] });
+  const [counts, setCounts] = useState({
+    total: 0,
+    inStock: 0,
+    lowStock: 0,
+    outOfStock: 0
+  });
+
+  const [previewBook, setPreviewBook] = useState(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [migratingImages, setMigratingImages] = useState(false);
+
+  const fetchRequestIdRef = useRef(0);
+
+  // Helper to optimize image thumbnail delivery
   const optimizeAdminImage = (url) => {
     if (!url || typeof url !== 'string') return '/book-placeholder.svg';
     if (url.includes('res.cloudinary.com') && url.includes('/upload/')) {
@@ -58,82 +79,114 @@ export default function ProductsPage() {
     setMounted(true);
   }, []);
 
-  // Filter themes
-  const themes = ['ALL', ...Array.from(new Set(books.map((b) => b.theme).filter(Boolean)))];
+  // Debounce search input (220ms) for snappy typing without flooding network
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 220);
+    return () => clearTimeout(timer);
+  }, [search]);
 
-  // Authors list for Featured Authors Filter
-  const authors = ['ALL', ...Array.from(new Set(books.map((b) => (b.author || '').trim()).filter(Boolean))).sort()];
+  // Load distinct filter options & summary counts once on mount
+  useEffect(() => {
+    let active = true;
+    apiClient('/books/filters/options')
+      .then((res) => {
+        if (!active) return;
+        if (res?.options) {
+          setFilterOptions({
+            themes: ['ALL', ...(res.options.themes || [])],
+            authors: ['ALL', ...(res.options.authors || [])]
+          });
+        }
+        if (res?.counts) {
+          setCounts(res.counts);
+        }
+      })
+      .catch(() => {});
 
-  // Counts for quick pill filters
-  const counts = {
-    all: books.length,
-    authorSpotlight: books.filter((b) => b.isAuthorSpotlight || b.isBestAuthor).length,
-    featuredSpotlight: books.filter((b) => b.isFeatured || b.isFeaturedSpotlight).length,
-    bestsellers: books.filter((b) => b.isBestSeller).length,
-    handpicked: books.filter((b) => b.isHandpicked).length,
-    newArrivals: books.filter((b) => b.isNewArrival).length
-  };
+    return () => {
+      active = false;
+    };
+  }, []);
 
-  // Dynamic stock counts
-  const inStockCount = books.filter((b) => Number(b.stock) > 5).length;
-  const lowStockCount = books.filter((b) => Number(b.stock) > 0 && Number(b.stock) <= 5 && b.stockStatus !== 'out_of_stock').length;
-  const outOfStockCount = books.filter((b) => !b.stock || Number(b.stock) <= 0 || b.stockStatus === 'out_of_stock').length;
+  // Server-side paginated book loader
+  const loadBooks = useCallback(async () => {
+    const currentRequestId = ++fetchRequestIdRef.current;
+    setLoading(true);
 
-  const filteredBooks = books.filter((book) => {
-    const matchesSearch =
-      book.title?.toLowerCase().includes(search.toLowerCase()) ||
-      book.author?.toLowerCase().includes(search.toLowerCase()) ||
-      book.publisher?.toLowerCase().includes(search.toLowerCase()) ||
-      book.sku?.toLowerCase().includes(search.toLowerCase());
+    try {
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        limit: String(itemsPerPage),
+        includeInactive: 'true'
+      });
 
-    const matchesTheme = themeFilter === 'ALL' || book.theme === themeFilter;
+      if (debouncedSearch.trim()) params.append('search', debouncedSearch.trim());
+      if (themeFilter !== 'ALL') params.append('theme', themeFilter);
+      if (stockFilter !== 'ALL') params.append('stockStatus', stockFilter);
+      if (authorFilter !== 'ALL') params.append('author', authorFilter);
 
-    const isOut = !book.stock || Number(book.stock) <= 0 || book.stockStatus === 'out_of_stock';
-    const isLow = Number(book.stock) > 0 && Number(book.stock) <= 5 && book.stockStatus !== 'out_of_stock';
-    const isIn = Number(book.stock) > 5;
+      if (featureFilter === 'bestsellers') params.append('isBestSeller', 'true');
+      else if (featureFilter === 'handpicked') params.append('isHandpicked', 'true');
+      else if (featureFilter === 'featured_spotlight') params.append('isFeatured', 'true');
+      else if (featureFilter === 'new_arrivals') params.append('isNewArrival', 'true');
+      else if (featureFilter === 'author_spotlight') params.append('isAuthorSpotlight', 'true');
 
-    const matchesStock =
-      stockFilter === 'ALL' ||
-      (stockFilter === 'in_stock' && isIn) ||
-      (stockFilter === 'low_stock' && isLow) ||
-      (stockFilter === 'out_of_stock' && isOut);
+      const data = await apiClient(`/books?${params.toString()}`);
 
-    const matchesAuthor = authorFilter === 'ALL' || (book.author || '').trim().toLowerCase() === authorFilter.trim().toLowerCase();
-
-    let matchesFeature = true;
-    if (featureFilter === 'author_spotlight') {
-      matchesFeature = Boolean(book.isAuthorSpotlight || book.isBestAuthor);
-    } else if (featureFilter === 'featured_spotlight') {
-      matchesFeature = Boolean(book.isFeatured || book.isFeaturedSpotlight);
-    } else if (featureFilter === 'bestsellers') {
-      matchesFeature = Boolean(book.isBestSeller);
-    } else if (featureFilter === 'handpicked') {
-      matchesFeature = Boolean(book.isHandpicked);
-    } else if (featureFilter === 'new_arrivals') {
-      matchesFeature = Boolean(book.isNewArrival);
+      if (currentRequestId === fetchRequestIdRef.current && Array.isArray(data?.books)) {
+        setBooks(data.books);
+        if (data.pagination) {
+          setPagination(data.pagination);
+        }
+      }
+    } catch (err) {
+      console.warn('[ProductsPage] Failed to fetch books:', err);
+    } finally {
+      if (currentRequestId === fetchRequestIdRef.current) {
+        setLoading(false);
+      }
     }
+  }, [currentPage, debouncedSearch, themeFilter, stockFilter, featureFilter, authorFilter]);
 
-    return matchesSearch && matchesTheme && matchesStock && matchesAuthor && matchesFeature;
-  });
-
-  // Reset page to 1 whenever search or filters change
+  // Reset to page 1 whenever filters or search query change
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, themeFilter, stockFilter, featureFilter, authorFilter]);
+  }, [debouncedSearch, themeFilter, stockFilter, featureFilter, authorFilter]);
 
-  const totalPages = Math.ceil(filteredBooks.length / itemsPerPage) || 1;
-  const paginatedBooks = filteredBooks.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // Trigger paginated fetch
+  useEffect(() => {
+    loadBooks();
+  }, [loadBooks]);
 
-  const handleDelete = (id) => {
-    deleteBook(id);
-    setDeleteConfirmId(null);
-    showToast('Book removed from catalog successfully', 'info');
+  const handleDelete = async (id) => {
+    try {
+      await deleteBook(id);
+      setBooks((prev) => prev.filter((b) => b._id !== id));
+      setDeleteConfirmId(null);
+      showToast('Book removed from catalog successfully', 'info');
+      if (books.length <= 1 && currentPage > 1) {
+        setCurrentPage((p) => p - 1);
+      } else {
+        loadBooks();
+      }
+    } catch (err) {
+      showToast(err.message || 'Failed to delete book', 'error');
+    }
   };
 
-  const [migratingImages, setMigratingImages] = useState(false);
+  const handleToggleActive = async (book) => {
+    const newActive = !book.isActive;
+    setBooks((prev) => prev.map((b) => (b._id === book._id ? { ...b, isActive: newActive } : b)));
+    try {
+      await updateBook(book._id, { isActive: newActive });
+      showToast(`Book marked as ${newActive ? 'Active' : 'Inactive'}`, 'success');
+    } catch {
+      showToast('Failed to update book status', 'error');
+      loadBooks();
+    }
+  };
 
   const handleConvertImagesToWebp = async () => {
     if (!confirm('This will convert all book images into WebP format and store them in Cloudinary for ultra-fast loading. Proceed?')) return;
@@ -143,7 +196,7 @@ export default function ProductsPage() {
       const res = await apiClient('/books/admin/convert-images-to-webp');
       if (res?.success) {
         showToast(res.message || 'Images converted to WebP successfully!', 'success');
-        if (typeof window !== 'undefined') window.location.reload();
+        loadBooks();
       } else {
         showToast(res?.message || 'Failed to convert images', 'error');
       }
@@ -154,10 +207,8 @@ export default function ProductsPage() {
     }
   };
 
-  const handleToggleActive = (book) => {
-    updateBook(book._id, { isActive: !book.isActive });
-    showToast(`Book marked as ${!book.isActive ? 'Active' : 'Inactive'}`, 'success');
-  };
+  const totalPages = pagination.totalPages || 1;
+  const totalItems = pagination.totalItems || books.length;
 
   return (
     <AdminLayout>
@@ -222,7 +273,7 @@ export default function ProductsPage() {
                 : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
             }`}
           >
-            All Books <span className="text-[10px] opacity-75 font-mono">({counts.all})</span>
+            All Books <span className="text-[10px] opacity-75 font-mono">({counts.total || totalItems})</span>
           </button>
 
           <button
@@ -234,7 +285,7 @@ export default function ProductsPage() {
                 : 'bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100'
             }`}
           >
-            🔥 Bestsellers <span className="text-[10px] opacity-75 font-mono">({counts.bestsellers})</span>
+            🔥 Bestsellers
           </button>
 
           <button
@@ -246,7 +297,7 @@ export default function ProductsPage() {
                 : 'bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100'
             }`}
           >
-            ✨ Handpicked <span className="text-[10px] opacity-75 font-mono">({counts.handpicked})</span>
+            ✨ Handpicked
           </button>
 
           <button
@@ -258,7 +309,7 @@ export default function ProductsPage() {
                 : 'bg-purple-50 text-purple-900 border border-purple-200 hover:bg-purple-100'
             }`}
           >
-            🌟 Featured Spotlight <span className="text-[10px] opacity-75 font-mono">({counts.featuredSpotlight})</span>
+            🌟 Featured Spotlight
           </button>
 
           <button
@@ -270,7 +321,7 @@ export default function ProductsPage() {
                 : 'bg-blue-50 text-blue-900 border border-blue-200 hover:bg-blue-100'
             }`}
           >
-            🚀 New Arrivals <span className="text-[10px] opacity-75 font-mono">({counts.newArrivals})</span>
+            🚀 New Arrivals
           </button>
 
           <button
@@ -282,7 +333,7 @@ export default function ProductsPage() {
                 : 'bg-rose-50 text-rose-900 border border-rose-200 hover:bg-rose-100'
             }`}
           >
-            ⚠️ Out of Stock <span className="text-[10px] opacity-75 font-mono">({outOfStockCount})</span>
+            ⚠️ Out of Stock <span className="text-[10px] opacity-75 font-mono">({counts.outOfStock || 0})</span>
           </button>
         </div>
 
@@ -300,72 +351,59 @@ export default function ProductsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
-            {/* Spotlights / Special Filter */}
-            <select
-              value={featureFilter}
-              onChange={(e) => setFeatureFilter(e.target.value)}
-              className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-xs font-semibold text-slate-700 focus:outline-hidden"
-            >
-              <option value="ALL">All Spotlights / Highlights</option>
-              <option value="author_spotlight">✍️ Author Spotlight / Best Authors</option>
-              <option value="bestsellers">🔥 Bestsellers</option>
-              <option value="handpicked">✨ Handpicked</option>
-              <option value="featured_spotlight">🌟 Featured Book Spotlight</option>
-              <option value="new_arrivals">🚀 New Arrivals</option>
-            </select>
-
-            {/* Featured Authors Filter */}
+            {/* Author Filter Dropdown */}
             <select
               value={authorFilter}
               onChange={(e) => setAuthorFilter(e.target.value)}
-              suppressHydrationWarning
-              className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-xs font-semibold text-slate-700 focus:outline-hidden max-w-[200px]"
+              className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-xs font-semibold text-slate-700 focus:outline-hidden max-w-[160px] truncate"
             >
-              {mounted ? (
-                authors.map((a) => (
-                  <option key={a} value={a}>
-                    {a === 'ALL' ? 'All Featured Authors' : a}
-                  </option>
-                ))
-              ) : (
-                <option value="ALL">All Featured Authors</option>
-              )}
+              <option value="ALL">All Authors</option>
+              {filterOptions.authors.filter((a) => a !== 'ALL').map((auth) => (
+                <option key={auth} value={auth}>
+                  {auth}
+                </option>
+              ))}
             </select>
 
-            {/* Theme / Genre Filter */}
+            {/* Theme Filter Dropdown */}
             <select
               value={themeFilter}
               onChange={(e) => setThemeFilter(e.target.value)}
-              suppressHydrationWarning
-              className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-xs font-semibold text-slate-700 focus:outline-hidden max-w-[160px]"
+              className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-xs font-semibold text-slate-700 focus:outline-hidden max-w-[140px] truncate"
             >
-              {mounted ? (
-                themes.map((t) => (
-                  <option key={t} value={t}>
-                    {t === 'ALL' ? 'All Themes' : t}
-                  </option>
-                ))
-              ) : (
-                <option value="ALL">All Themes</option>
-              )}
+              <option value="ALL">All Themes</option>
+              {filterOptions.themes.filter((t) => t !== 'ALL').map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
             </select>
 
-            {/* Stock Filter */}
+            {/* Stock Filter Dropdown */}
             <select
               value={stockFilter}
               onChange={(e) => setStockFilter(e.target.value)}
               className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-xs font-semibold text-slate-700 focus:outline-hidden"
             >
-              <option value="ALL">All Stock ({books.length})</option>
-              <option value="in_stock">In Stock ({inStockCount})</option>
-              <option value="low_stock">Low Stock ({lowStockCount})</option>
-              <option value="out_of_stock">Out of Stock ({outOfStockCount})</option>
+              <option value="ALL">All Stock ({counts.total || totalItems})</option>
+              <option value="in_stock">In Stock ({counts.inStock || 0})</option>
+              <option value="low_stock">Low Stock ({counts.lowStock || 0})</option>
+              <option value="out_of_stock">Out of Stock ({counts.outOfStock || 0})</option>
             </select>
           </div>
         </div>
 
         {/* Products Table */}
-        <div className="bg-white border border-slate-200 rounded-md overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-md overflow-hidden relative">
+          {loading && (
+            <div className="absolute inset-0 bg-white/70 backdrop-blur-2xs flex items-center justify-center z-10">
+              <div className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-full shadow-lg text-xs font-bold animate-pulse">
+                <Loader2 className="w-4 h-4 animate-spin text-sky-400" />
+                <span>Loading page {currentPage}...</span>
+              </div>
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
@@ -380,7 +418,7 @@ export default function ProductsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {isLoading && books.length === 0 ? (
+                {loading && books.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-16 text-center text-slate-500">
                       <div className="flex flex-col items-center justify-center gap-2">
@@ -389,14 +427,14 @@ export default function ProductsPage() {
                       </div>
                     </td>
                   </tr>
-                ) : filteredBooks.length === 0 ? (
+                ) : books.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-12 text-center text-slate-400">
-                      No books found in catalog matching your criteria.
+                      No books found matching your criteria.
                     </td>
                   </tr>
                 ) : (
-                  paginatedBooks.map((book) => {
+                  books.map((book) => {
                     const cover = book.coverImage || book.image || (book.images && book.images[0]) || '/book-placeholder.svg';
                     const photosCount = (book.images?.length) || (book.coverImage ? 1 : 0);
 
@@ -427,7 +465,7 @@ export default function ProductsPage() {
                               )}
                             </div>
                             <div className="min-w-0 max-w-xs">
-                              <p className="font-normal text-slate-900 truncate">{book.title || book.name}</p>
+                              <p className="font-semibold text-slate-900 truncate">{book.title || book.name}</p>
                               <p className="text-[10px] text-slate-400 mt-0.5 font-mono">SKU: {book.sku || 'N/A'}</p>
                               <div className="flex flex-wrap items-center gap-1 mt-1">
                                 {book.isBestSeller && (
@@ -501,8 +539,8 @@ export default function ProductsPage() {
                               book.stock === 0
                                 ? 'danger'
                                 : book.stock <= 5
-                                ? 'warning'
-                                : 'success'
+                                  ? 'warning'
+                                  : 'success'
                             }
                           >
                             {book.stock || 0} left
@@ -560,13 +598,13 @@ export default function ProductsPage() {
             </table>
           </div>
 
-          {/* Admin Table Pagination Controls (15 items per page) */}
-          {filteredBooks.length > 0 && (
+          {/* Admin Table Server-Side Pagination Controls (15 items per page) */}
+          {totalItems > 0 && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-slate-50 border-t border-slate-200 text-xs text-slate-600">
               <div className="text-slate-500">
                 Showing <span className="font-semibold text-slate-800">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
-                <span className="font-semibold text-slate-800">{Math.min(currentPage * itemsPerPage, filteredBooks.length)}</span> of{' '}
-                <span className="font-semibold text-slate-800">{filteredBooks.length}</span> products
+                <span className="font-semibold text-slate-800">{Math.min(currentPage * itemsPerPage, totalItems)}</span> of{' '}
+                <span className="font-semibold text-slate-800">{totalItems}</span> products
               </div>
 
               {totalPages > 1 && (
@@ -722,3 +760,4 @@ export default function ProductsPage() {
     </AdminLayout>
   );
 }
+

@@ -44,10 +44,12 @@ const getBooks = async (req, res) => {
       stockStatus,
       sortBy,
       page = 1,
-      limit = 15
+      limit = 15,
+      includeInactive,
+      all
     } = req.query;
 
-    const query = { isActive: true };
+    const query = (includeInactive === 'true' || all === 'true') ? {} : { isActive: true };
 
     if (search) {
       const trimmedSearch = String(search).trim();
@@ -133,7 +135,15 @@ const getBooks = async (req, res) => {
     if (stockStatus && stockStatus !== 'ALL') {
       if (stockStatus === 'in_stock') {
         query.stockStatus = { $ne: 'out_of_stock' };
-        query.stock = { $gt: 0 };
+        query.stock = { $gt: 5 };
+      } else if (stockStatus === 'low_stock') {
+        const lowConditions = [{ stockStatus: 'low_stock' }, { stock: { $gt: 0, $lte: 5 } }];
+        if (query.$or) {
+          query.$and = (query.$and || []).concat([{ $or: query.$or }, { $or: lowConditions }]);
+          delete query.$or;
+        } else {
+          query.$or = lowConditions;
+        }
       } else if (stockStatus === 'out_of_stock') {
         const outConditions = [{ stockStatus: 'out_of_stock' }, { stock: { $lte: 0 } }];
         if (query.$or) {
@@ -257,7 +267,8 @@ const getBestSellers = async (req, res) => {
     const limit = parseInt(req.query.limit || '8', 10);
     const books = await Book.find({ isActive: true, isBestSeller: true })
       .sort({ rating: -1, createdAt: -1 })
-      .limit(limit);
+      .limit(limit)
+      .lean();
 
     return res.json({
       success: true,
@@ -277,7 +288,8 @@ const getNewArrivals = async (req, res) => {
     const limit = parseInt(req.query.limit || '8', 10);
     const books = await Book.find({ isActive: true, isNewArrival: true })
       .sort({ createdAt: -1 })
-      .limit(limit);
+      .limit(limit)
+      .lean();
 
     return res.json({
       success: true,
@@ -297,7 +309,8 @@ const getFeaturedBooks = async (req, res) => {
     const limit = parseInt(req.query.limit || '8', 10);
     const books = await Book.find({ isActive: true, isFeatured: true })
       .sort({ createdAt: -1 })
-      .limit(limit);
+      .limit(limit)
+      .lean();
 
     return res.json({
       success: true,
@@ -309,16 +322,20 @@ const getFeaturedBooks = async (req, res) => {
   }
 };
 
-// @desc    Get List of Themes, Genres, Authors, Languages for UI Filters
+// @desc    Get List of Themes, Genres, Authors, Languages for UI Filters & Summary Counts
 // @route   GET /api/books/filters/options
 // @access  Public
 const getFilterOptions = async (req, res) => {
   try {
-    const [themes, authors, publishers, languages] = await Promise.all([
+    const [themes, authors, publishers, languages, totalBooks, inStockCount, lowStockCount, outOfStockCount] = await Promise.all([
       Book.distinct('theme', { isActive: true }),
       Book.distinct('author', { isActive: true }),
       Book.distinct('publisher', { isActive: true }),
-      Book.distinct('languages', { isActive: true })
+      Book.distinct('languages', { isActive: true }),
+      Book.countDocuments({ isActive: true }),
+      Book.countDocuments({ isActive: true, stock: { $gt: 5 } }),
+      Book.countDocuments({ isActive: true, stock: { $gt: 0, $lte: 5 } }),
+      Book.countDocuments({ isActive: true, stock: { $lte: 0 } })
     ]);
 
     return res.json({
@@ -328,6 +345,12 @@ const getFilterOptions = async (req, res) => {
         authors: authors.filter(Boolean),
         publishers: publishers.filter(Boolean),
         languages: languages.filter(Boolean)
+      },
+      counts: {
+        total: totalBooks,
+        inStock: inStockCount,
+        lowStock: lowStockCount,
+        outOfStock: outOfStockCount
       }
     });
   } catch (error) {
@@ -768,7 +791,7 @@ const bulkImportBooks = async (req, res) => {
 const getSpotlightAuthor = async (req, res) => {
   try {
     // 1. Check dedicated AuthorHighlight model for spotlight author
-    const authorHighlight = await AuthorHighlight.findOne({ isActive: true, isSpotlight: true }).sort({ updatedAt: -1 });
+    const authorHighlight = await AuthorHighlight.findOne({ isActive: true, isSpotlight: true }).sort({ updatedAt: -1 }).lean();
 
     let authorName = authorHighlight ? authorHighlight.name : '';
     let authorPhoto = (authorHighlight && authorHighlight.photo) || '';
@@ -776,7 +799,7 @@ const getSpotlightAuthor = async (req, res) => {
 
     // 2. Fallback to any active AuthorHighlight with bio
     if (!authorName) {
-      const anyHighlight = await AuthorHighlight.findOne({ isActive: true, bio: { $exists: true, $ne: '' } }).sort({ order: 1, updatedAt: -1 });
+      const anyHighlight = await AuthorHighlight.findOne({ isActive: true, bio: { $exists: true, $ne: '' } }).sort({ order: 1, updatedAt: -1 }).lean();
       if (anyHighlight) {
         authorName = anyHighlight.name;
         authorPhoto = anyHighlight.photo;
@@ -787,13 +810,13 @@ const getSpotlightAuthor = async (req, res) => {
     // 3. Fallback to Book with isAuthorSpotlight or authorPhoto
     let spotlightBook = null;
     if (!authorName) {
-      spotlightBook = await Book.findOne({ isActive: true, isAuthorSpotlight: true }).sort({ updatedAt: -1 });
+      spotlightBook = await Book.findOne({ isActive: true, isAuthorSpotlight: true }).sort({ updatedAt: -1 }).lean();
       if (!spotlightBook) {
         spotlightBook = await Book.findOne({
           isActive: true,
           authorPhoto: { $exists: true, $ne: '' },
           authorBio: { $exists: true, $ne: '' }
-        }).sort({ updatedAt: -1 });
+        }).sort({ updatedAt: -1 }).lean();
       }
       if (spotlightBook) {
         authorName = spotlightBook.author;
@@ -814,7 +837,7 @@ const getSpotlightAuthor = async (req, res) => {
     const authorBooks = await Book.find({
       isActive: true,
       author: { $regex: new RegExp(`^${authorName.trim()}$`, 'i') }
-    }).select('title name slug price discountPrice images coverImage author').limit(8);
+    }).select('title name slug price discountPrice images coverImage author').limit(8).lean();
 
     // Sanitize authorPhoto to prevent huge base64 strings from bloating response
     if (authorPhoto && typeof authorPhoto === 'string' && authorPhoto.startsWith('data:image') && authorPhoto.length > 1000) {
@@ -843,14 +866,14 @@ const getSpotlightAuthor = async (req, res) => {
 // @access  Public
 const getSpotlightBook = async (req, res) => {
   try {
-    let book = await Book.findOne({ isActive: true, isFeaturedSpotlight: true }).sort({ updatedAt: -1 });
+    let book = await Book.findOne({ isActive: true, isFeaturedSpotlight: true }).sort({ updatedAt: -1 }).lean();
 
     if (!book) {
-      book = await Book.findOne({ isActive: true, isFeatured: true }).sort({ updatedAt: -1 });
+      book = await Book.findOne({ isActive: true, isFeatured: true }).sort({ updatedAt: -1 }).lean();
     }
 
     if (!book) {
-      book = await Book.findOne({ isActive: true, slug: 'parajithanayakar' });
+      book = await Book.findOne({ isActive: true, slug: 'parajithanayakar' }).lean();
     }
 
     if (book) {

@@ -23,7 +23,7 @@ import {
 
 export default function Dashboard() {
   const { admin } = useAuth();
-  const { books = [], orders = [], banners = [], returnsList = [] } = useStoreData();
+  const { books = [], totalBooksCount = 0, orders = [], banners = [], returnsList = [] } = useStoreData();
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState(null);
   const [mounted, setMounted] = useState(false);
 
@@ -43,7 +43,7 @@ export default function Dashboard() {
   }
 
   // Dynamic calculations directly from live store state
-  const totalProductsCount = books.length;
+  const totalProductsCount = totalBooksCount || books.length;
   const totalOrdersCount = orders.length;
   const totalRevenue = orders.reduce((sum, o) => sum + (Number(o.finalTotal) || Number(o.totalAmount) || 0), 0);
   const pendingReturnsCount = returnsList.filter(
