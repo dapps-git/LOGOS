@@ -169,7 +169,7 @@ const createOrder = async (req, res) => {
       const coupon = await Coupon.findOne({ code: String(effectiveCouponCode).trim().toUpperCase(), isActive: true });
       if (coupon) {
         const meetsMin = !coupon.minOrderValue || subtotal >= coupon.minOrderValue;
-        const alreadyUsedWelcome = coupon.isWelcomeCoupon && (customer.isWelcomeOfferUsed || customer.ordersCount > 0);
+        const alreadyUsedWelcome = coupon.isWelcomeCoupon && (customer.isWelcomeOfferUsed || customer.firstPurchaseCompleted);
 
         if (!alreadyUsedWelcome && meetsMin) {
           if (coupon.discountType === 'percentage') {
@@ -963,7 +963,7 @@ const createRazorpayOrder = async (req, res) => {
 
     // Coupon discount (supports combining with referral discount)
     const effectiveCouponCode = couponCode || req.body.appliedCoupon;
-    if (effectiveCouponCode && subtotal >= 1000) {
+    if (effectiveCouponCode) {
       const coupon = await Coupon.findOne({ code: String(effectiveCouponCode).trim().toUpperCase(), isActive: true });
       if (coupon && (!coupon.isWelcomeCoupon || !customer.isWelcomeOfferUsed)) {
         if (subtotal >= (coupon.minOrderValue || 0)) {

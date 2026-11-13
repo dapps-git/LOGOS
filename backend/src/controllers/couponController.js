@@ -51,7 +51,7 @@ const validateCoupon = async (req, res) => {
       if (customer) {
         // Rule: Welcome coupon exclusivity on first order
         if (coupon.isWelcomeCoupon) {
-          if (customer.isWelcomeOfferUsed || customer.ordersCount > 0) {
+          if (customer.isWelcomeOfferUsed || customer.firstPurchaseCompleted) {
             return res.status(400).json({
               success: false,
               message: 'Welcome offer is valid only on your first order'
