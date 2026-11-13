@@ -553,18 +553,29 @@ const cancelOrder = async (req, res) => {
       }
     }
 
-    // Restore customer wallet rewards if points were used
+    // Restore customer wallet rewards, referral discount, and welcome offer if cancelled
     if (order.customer) {
       try {
         const Customer = require('../models/Customer');
         const walletUsed = (order.discount || 0) - (order.referralDiscount || 0) - (order.couponDiscount || 0);
+        const updates = {};
         if (walletUsed > 0) {
-          await Customer.findByIdAndUpdate(order.customer, {
-            $inc: { referralRewardBalance: walletUsed }
-          });
+          updates.$inc = { referralRewardBalance: walletUsed };
+        }
+        if (order.isReferralOrder) {
+          updates.$set = { ...(updates.$set || {}), referralDiscountUsed: false };
+        }
+        if (order.appliedCoupon) {
+          const coupon = await Coupon.findOne({ code: order.appliedCoupon });
+          if (coupon && coupon.isWelcomeCoupon) {
+            updates.$set = { ...(updates.$set || {}), isWelcomeOfferUsed: false };
+          }
+        }
+        if (Object.keys(updates).length > 0) {
+          await Customer.findByIdAndUpdate(order.customer, updates);
         }
       } catch (custErr) {
-        console.warn('Could not restore customer wallet balance:', custErr.message);
+        console.warn('Could not restore customer benefits on cancel:', custErr.message);
       }
     }
 
@@ -965,8 +976,9 @@ const createRazorpayOrder = async (req, res) => {
     const effectiveCouponCode = couponCode || req.body.appliedCoupon;
     if (effectiveCouponCode) {
       const coupon = await Coupon.findOne({ code: String(effectiveCouponCode).trim().toUpperCase(), isActive: true });
-      if (coupon && (!coupon.isWelcomeCoupon || !customer.isWelcomeOfferUsed)) {
-        if (subtotal >= (coupon.minOrderValue || 0)) {
+      if (coupon && (!coupon.isWelcomeCoupon || (!customer.isWelcomeOfferUsed && !customer.firstPurchaseCompleted))) {
+        const meetsMin = !coupon.minOrderValue || subtotal >= coupon.minOrderValue;
+        if (meetsMin) {
           if (coupon.discountType === 'percentage') {
             couponDiscount = (subtotal * coupon.discountValue) / 100;
             if (coupon.maxDiscount && couponDiscount > coupon.maxDiscount) couponDiscount = coupon.maxDiscount;
@@ -1140,10 +1152,11 @@ const verifyRazorpayPayment = async (req, res) => {
     }
 
     const effectiveCouponCode = couponCode || req.body.appliedCoupon;
-    if (effectiveCouponCode && subtotal >= 1000) {
+    if (effectiveCouponCode) {
       const coupon = await Coupon.findOne({ code: String(effectiveCouponCode).trim().toUpperCase(), isActive: true });
-      if (coupon && (!coupon.isWelcomeCoupon || !customer.isWelcomeOfferUsed)) {
-        if (subtotal >= (coupon.minOrderValue || 0)) {
+      if (coupon && (!coupon.isWelcomeCoupon || (!customer.isWelcomeOfferUsed && !customer.firstPurchaseCompleted))) {
+        const meetsMin = !coupon.minOrderValue || subtotal >= coupon.minOrderValue;
+        if (meetsMin) {
           if (coupon.discountType === 'percentage') {
             couponDiscount = (subtotal * coupon.discountValue) / 100;
             if (coupon.maxDiscount && couponDiscount > coupon.maxDiscount) couponDiscount = coupon.maxDiscount;

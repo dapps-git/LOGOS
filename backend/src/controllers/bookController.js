@@ -636,7 +636,7 @@ const bulkImportBooks = async (req, res) => {
     const transformDriveUrl = (url) => {
       if (!url || typeof url !== 'string') return url;
       const str = url.trim();
-      const driveMatch = str.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=|drive\/folders\/)|docs\.google\.com\/file\/d\/)([a-zA-Z0-9_-]+)/i);
+      const driveMatch = str.match(/(?:drive\.google\.com\/(?:file\/d\/|(?:open|uc)\?(?:[\w=&]+)?id=|drive\/folders\/)|docs\.google\.com\/file\/d\/)([a-zA-Z0-9_-]+)/i);
       if (driveMatch && driveMatch[1]) {
         return `https://lh3.googleusercontent.com/d/${driveMatch[1]}`;
       }
@@ -677,7 +677,7 @@ const bulkImportBooks = async (req, res) => {
         }
 
         if (imagesList.length === 0) {
-          imagesList = [];
+          imagesList = ['/book-placeholder.svg'];
         }
 
         const rawLanguages = b.languages || b.Languages || b.language || b.Language || ['Malayalam'];

@@ -41,8 +41,9 @@ async function generateUniqueReferralCode() {
 async function evaluateCustomerReferralEligibility(customerId, targetOrderId = null) {
   try {
     if (!customerId) return { eligible: false, message: 'Customer ID required' };
+    const custId = (customerId && typeof customerId === 'object' && customerId._id) ? customerId._id : customerId;
 
-    const customer = await Customer.findById(customerId);
+    const customer = await Customer.findById(custId);
     if (!customer) return { eligible: false, message: 'Customer not found' };
 
     // 1. If already eligible, preserve permanently
@@ -55,7 +56,7 @@ async function evaluateCustomerReferralEligibility(customerId, targetOrderId = n
     }
 
     // 2. Fetch all orders for this customer ordered chronologically
-    const allOrders = await Order.find({ customer: customerId }).sort({ createdAt: 1 });
+    const allOrders = await Order.find({ customer: custId }).sort({ createdAt: 1 });
     if (!allOrders || allOrders.length === 0) {
       return { eligible: false, message: 'No orders found for customer' };
     }
