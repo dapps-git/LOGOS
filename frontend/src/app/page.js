@@ -11,7 +11,6 @@ import { ComboOfferBanner } from '@/components/ComboOfferBanner';
 import { FeaturedAuthors } from '@/components/FeaturedAuthors';
 import { HandpickedReads } from '@/components/HandpickedReads';
 import { LatestNews } from '@/components/LatestNews';
-import { Testimonials } from '@/components/Testimonials';
 import { Footer } from '@/components/Footer';
 
 export default function HomePage() {
@@ -49,8 +48,6 @@ export default function HomePage() {
         {/* 9b. Latest News & Blog Articles (Literary Journal & Video Stories) */}
         <LatestNews />
 
-        {/* 10. Testimonials (What Our Person’s Say) */}
-        <Testimonials />
       </main>
 
       {/* 11. Footer (Logos Book) */}
