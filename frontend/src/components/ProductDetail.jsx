@@ -8,11 +8,14 @@ import {
   ShoppingCart,
   Zap,
   Check,
-  Heart
+  Heart,
+  Truck,
+  Calendar
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useWishlist } from '../context/WishlistContext';
+import { ProductReviews } from './ProductReviews';
 
 export const ProductDetail = ({ book }) => {
   const router = useRouter();
@@ -91,9 +94,11 @@ export const ProductDetail = ({ book }) => {
   const isbn = book?.isbn || '9789347536100';
   const description = book?.description || `${title} by ${author}.`;
 
-  const rawStock = book?.stock !== undefined ? Number(book.stock) : null;
-  const isOutOfStock = book?.stockStatus === 'out_of_stock' || (rawStock !== null && rawStock <= 0);
-  const isLowStock = !isOutOfStock && (book?.stockStatus === 'low_stock' || (rawStock !== null && rawStock > 0 && rawStock <= 5));
+  const rawStock = book?.stock !== undefined && book?.stock !== null ? Number(book.stock) : null;
+  const isOutOfStock = (rawStock !== null && !isNaN(rawStock))
+    ? rawStock <= 0
+    : (book?.stockStatus === 'out_of_stock');
+  const isLowStock = !isOutOfStock && ((rawStock !== null && !isNaN(rawStock) && rawStock > 0 && rawStock <= 5) || book?.stockStatus === 'low_stock');
 
   const handleAddToCart = async () => {
     if (!book || isAdding || isOutOfStock) return;
@@ -216,9 +221,13 @@ export const ProductDetail = ({ book }) => {
           {/* Right Column: Metadata, Specs, Description & Action Buttons */}
           <div className="lg:col-span-7 flex flex-col space-y-4">
             
-            {/* Dynamic Stock Badge */}
+            {/* Dynamic Stock & Pre-Order Badge */}
             <div>
-              {isOutOfStock ? (
+              {Boolean(book?.isComingSoon || book?.isPreBook) ? (
+                <span className="inline-block px-3 py-1 rounded text-[11px] font-extrabold tracking-wider uppercase bg-purple-50 text-purple-700 border border-purple-200 shadow-2xs">
+                  ⏳ PRE-ORDER / COMING SOON
+                </span>
+              ) : isOutOfStock ? (
                 <span className="inline-block px-2.5 py-0.5 rounded text-[11px] font-bold tracking-wider uppercase bg-rose-50 text-rose-700 border border-rose-200">
                   OUT OF STOCK
                 </span>
@@ -297,20 +306,33 @@ export const ProductDetail = ({ book }) => {
               </p>
             </div>
 
-            {/* Action Buttons: Add to Cart & Buy Now (1 Row on mobile and desktop) */}
+            {/* Pre-Order Delivery Notice */}
+            {Boolean(book?.isComingSoon || book?.isPreBook) && (
+              <div className="p-3 bg-purple-50/80 border border-purple-200 rounded-xl text-xs text-purple-950 flex items-start gap-2.5 shadow-2xs">
+                <Truck className="w-4 h-4 text-purple-700 mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-bold text-purple-900">Pre-Book / Upcoming Release:</p>
+                  <p className="text-[11px] text-purple-800/90 leading-relaxed mt-0.5">
+                    Delivery date may vary; typically dispatches within 2 to 3 weeks upon official publisher release. We will keep you updated via email/SMS.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons: Add to Cart & Buy Now / Pre-Book */}
             <div className="pt-4 flex flex-row items-center gap-2.5 sm:gap-3 w-full">
-              {/* Add to Cart Button */}
+              {/* Add to Cart / Pre-Book Cart Button */}
               <button
                 type="button"
                 onClick={handleAddToCart}
-                disabled={isAdding || isOutOfStock}
+                disabled={isAdding || (!Boolean(book?.isComingSoon || book?.isPreBook) && isOutOfStock)}
                 className={`flex-1 inline-flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 sm:py-3 px-3 sm:px-6 rounded-lg font-bold text-xs sm:text-sm transition-all shadow-2xs whitespace-nowrap ${
-                  isOutOfStock
+                  !Boolean(book?.isComingSoon || book?.isPreBook) && isOutOfStock
                     ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-70'
                     : 'border-2 border-[#1E3A8A] text-[#1E3A8A] hover:bg-blue-50/70 active:scale-95 cursor-pointer disabled:opacity-60'
                 }`}
               >
-                {isOutOfStock ? (
+                {!Boolean(book?.isComingSoon || book?.isPreBook) && isOutOfStock ? (
                   <span>Currently Unavailable</span>
                 ) : addedToCart ? (
                   <>
@@ -325,28 +347,40 @@ export const ProductDetail = ({ book }) => {
                 ) : (
                   <>
                     <ShoppingCart className="w-4 h-4 shrink-0" />
-                    <span className="truncate">Add to Cart</span>
+                    <span className="truncate">{Boolean(book?.isComingSoon || book?.isPreBook) ? 'Add Pre-Order' : 'Add to Cart'}</span>
                   </>
                 )}
               </button>
 
-              {/* Buy Now Button */}
+              {/* Buy Now / Pre-Book Now Button */}
               <button
                 type="button"
                 onClick={handleBuyNow}
-                disabled={isOutOfStock}
-                className={`flex-1 inline-flex items-center justify-center py-2.5 sm:py-3 px-3 sm:px-6 rounded-lg font-bold text-xs sm:text-sm transition-all shadow-sm whitespace-nowrap ${
-                  isOutOfStock
+                disabled={!Boolean(book?.isComingSoon || book?.isPreBook) && isOutOfStock}
+                className={`flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 sm:py-3 px-3 sm:px-6 rounded-lg font-bold text-xs sm:text-sm transition-all shadow-sm whitespace-nowrap ${
+                  !Boolean(book?.isComingSoon || book?.isPreBook) && isOutOfStock
                     ? 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-60'
-                    : 'bg-[#1B365D] hover:bg-[#142c4c] text-white active:scale-95 cursor-pointer'
+                    : Boolean(book?.isComingSoon || book?.isPreBook)
+                      ? 'bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white active:scale-95 cursor-pointer'
+                      : 'bg-[#1B365D] hover:bg-[#142c4c] text-white active:scale-95 cursor-pointer'
                 }`}
               >
-                <span className="truncate">{isOutOfStock ? 'Out of Stock' : 'Buy Now'}</span>
+                {Boolean(book?.isComingSoon || book?.isPreBook) ? (
+                  <>
+                    <Calendar className="w-4 h-4 shrink-0" />
+                    <span className="truncate">Pre-Book Now</span>
+                  </>
+                ) : (
+                  <span className="truncate">{isOutOfStock ? 'Out of Stock' : 'Buy Now'}</span>
+                )}
               </button>
             </div>
 
           </div>
         </div>
+
+        {/* Product Reviews & Rating Section (4 Reviews + See All ->) */}
+        <ProductReviews book={book} />
       </div>
     </div>
   );

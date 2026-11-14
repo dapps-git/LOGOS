@@ -1,12 +1,32 @@
+const mongoose = require('mongoose');
 const Review = require('../models/Review');
 const Book = require('../models/Book');
 const Order = require('../models/Order');
+const cloudinary = require('../config/cloudinary');
+
+// Helper to upload images to Cloudinary in WebP format
+const uploadToCloudinaryWebp = async (imageInput, folder = 'logos_reviews') => {
+  if (!imageInput || typeof imageInput !== 'string') return imageInput;
+  if (imageInput.includes('res.cloudinary.com') && (imageInput.includes('f_webp') || imageInput.endsWith('.webp'))) {
+    return imageInput;
+  }
+
+  const uploadResponse = await cloudinary.uploader.upload(imageInput, {
+    folder,
+    format: 'webp',
+    transformation: [
+      { width: 1200, crop: 'limit' },
+      { quality: 'auto', fetch_format: 'webp' }
+    ]
+  });
+  return uploadResponse.secure_url;
+};
 
 // Helper to recalculate book rating
 const updateBookRating = async (bookId) => {
   const reviews = await Review.find({ book: bookId, isApproved: true });
   const count = reviews.length;
-  const avg = count > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / count : 0;
+  const avg = count > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / count : 5.0;
 
   await Book.findByIdAndUpdate(bookId, {
     rating: Number(avg.toFixed(1)),
@@ -14,14 +34,24 @@ const updateBookRating = async (bookId) => {
   });
 };
 
-// @desc    Get Reviews for a Book
+// @desc    Get Reviews for a Book (Sorted by highest positive rating first)
 // @route   GET /api/reviews/book/:bookId
 // @access  Public
 const getBookReviews = async (req, res) => {
   try {
-    const reviews = await Review.find({ book: req.params.bookId, isApproved: true })
+    const { bookId } = req.params;
+    let targetBookId = bookId;
+
+    if (!mongoose.Types.ObjectId.isValid(bookId)) {
+      const book = await Book.findOne({ $or: [{ slug: bookId }, { _id: bookId }] });
+      if (book) {
+        targetBookId = book._id;
+      }
+    }
+
+    const reviews = await Review.find({ book: targetBookId, isApproved: true })
       .populate('customer', 'name avatar')
-      .sort({ createdAt: -1 });
+      .sort({ rating: -1, createdAt: -1 });
 
     return res.json({
       success: true,
@@ -33,41 +63,73 @@ const getBookReviews = async (req, res) => {
   }
 };
 
-// @desc    Add Review for a Book
+// @desc    Add Review for a Book (with WebP image conversion and star rating 1-5)
 // @route   POST /api/reviews
-// @access  Private (Customer)
+// @access  Public / Customer
 const addReview = async (req, res) => {
   try {
-    const { bookId, rating, title, comment, images } = req.body;
+    const { bookId, rating, title, comment, images, customerName } = req.body;
 
     if (!bookId || !rating || !comment) {
       return res.status(400).json({ success: false, message: 'Book ID, rating (1-5), and comment are required' });
     }
 
-    const book = await Book.findById(bookId);
+    let book = null;
+    if (mongoose.Types.ObjectId.isValid(bookId)) {
+      book = await Book.findById(bookId);
+    }
+    if (!book) {
+      book = await Book.findOne({ slug: bookId });
+    }
     if (!book) {
       return res.status(404).json({ success: false, message: 'Book not found' });
     }
 
+    // Process and convert images to Cloudinary WebP format
+    const processedImages = [];
+    if (Array.isArray(images) && images.length > 0) {
+      for (const img of images) {
+        if (typeof img === 'string' && img.trim()) {
+          try {
+            const webpUrl = await uploadToCloudinaryWebp(img.trim(), 'logos_reviews');
+            processedImages.push(webpUrl);
+          } catch (uploadErr) {
+            console.warn('[addReview] Image WebP upload error:', uploadErr.message);
+            processedImages.push(img);
+          }
+        }
+      }
+    }
+
     // Check if user has purchased this book
-    const verifiedOrder = await Order.findOne({
-      customer: req.customer._id,
-      'items.book': bookId,
-      orderStatus: { $in: ['Delivered', 'Confirmed', 'Processing', 'Shipped'] }
-    });
+    let isVerified = false;
+    const customerId = req.customer ? req.customer._id : null;
+    if (customerId) {
+      const verifiedOrder = await Order.findOne({
+        customer: customerId,
+        'items.book': book._id,
+        orderStatus: { $in: ['Delivered', 'Confirmed', 'Processing', 'Shipped'] }
+      });
+      isVerified = Boolean(verifiedOrder);
+    }
+
+    const finalRating = Math.max(1, Math.min(5, Math.round(Number(rating) || 5)));
+    const reviewerName = (req.customer && req.customer.name) || customerName || 'Reader';
 
     const review = await Review.create({
-      book: bookId,
-      customer: req.customer._id,
-      customerName: req.customer.name,
-      rating: Number(rating),
+      book: book._id,
+      customer: customerId,
+      customerName: reviewerName.trim(),
+      rating: finalRating,
       title: title ? title.trim() : '',
       comment: comment.trim(),
-      images: Array.isArray(images) ? images : [],
-      isVerifiedPurchase: !!verifiedOrder
+      images: processedImages,
+      isVerifiedPurchase: isVerified,
+      isApproved: true,
+      addedBy: req.customer ? 'customer' : 'guest'
     });
 
-    await updateBookRating(bookId);
+    await updateBookRating(book._id);
 
     return res.status(201).json({
       success: true,

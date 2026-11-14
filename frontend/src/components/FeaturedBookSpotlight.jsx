@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { fetchSpotlightBook } from '@/lib/api';
+import { fetchSpotlightBook, getBookCoverImage } from '@/lib/api';
 import { FeaturedBookSpotlightSkeleton } from '@/components/Skeletons';
 
 export const FeaturedBookSpotlight = () => {
@@ -20,7 +20,7 @@ export const FeaturedBookSpotlight = () => {
               title: liveBook.title,
               author: liveBook.author,
               description: liveBook.description,
-              image: liveBook.image || (liveBook.images && liveBook.images[0]) || '/featured_parajitha.png',
+              image: getBookCoverImage(liveBook) || '/featured_parajitha.png',
               slug: liveBook.slug || liveBook._id
             });
           } else {

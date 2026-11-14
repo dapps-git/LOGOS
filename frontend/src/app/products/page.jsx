@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
-import { fetchBooksPaginated, fetchFilterOptions, optimizeImageUrl } from '../../lib/api';
+import { fetchBooksPaginated, fetchFilterOptions, optimizeImageUrl, getBookCoverImage } from '../../lib/api';
 import { useWishlist } from '../../context/WishlistContext';
 import { useCart } from '../../context/CartContext';
 import { CatalogGridSkeleton } from '../../components/Skeletons';
@@ -44,12 +44,13 @@ const DEFAULT_CATEGORIES = [
 ];
 
 function ProductsContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { toggleWishlist, isBookInWishlist } = useWishlist();
   const { addToCart } = useCart();
 
   const [books, setBooks] = useState([]);
-  const [pagination, setPagination] = useState({ page: 1, limit: 15, totalPages: 1, totalItems: 0 });
+  const [pagination, setPagination] = useState({ page: 1, limit: 16, totalPages: 1, totalItems: 0 });
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
@@ -151,7 +152,7 @@ function ProductsContent() {
 
         const params = {
           page: currentPage,
-          limit: 15,
+          limit: 16,
           sortBy
         };
 
@@ -159,6 +160,8 @@ function ProductsContent() {
           params.isNewArrival = 'true';
         } else if (collectionFilter === 'bestsellers') {
           params.isBestSeller = 'true';
+        } else if (collectionFilter === 'coming-soon' || collectionFilter === 'pre-book') {
+          params.isComingSoon = 'true';
         }
 
         if (debouncedSearch && debouncedSearch.trim()) {
@@ -191,14 +194,14 @@ function ProductsContent() {
         if (currentReqId === requestIdRef.current) {
           const list = Array.isArray(data.books) ? data.books : [];
           setBooks(list);
-          setPagination(data.pagination || { page: currentPage, limit: 15, totalPages: 1, totalItems: list.length });
+          setPagination(data.pagination || { page: currentPage, limit: 16, totalPages: 1, totalItems: list.length });
 
         }
       } catch (err) {
         console.warn('[ProductsPage] loadBooks error:', err);
         if (currentReqId === requestIdRef.current) {
           setBooks([]);
-          setPagination({ page: 1, limit: 15, totalPages: 1, totalItems: 0 });
+          setPagination({ page: 1, limit: 16, totalPages: 1, totalItems: 0 });
         }
       } finally {
         if (currentReqId === requestIdRef.current) {
@@ -215,7 +218,7 @@ function ProductsContent() {
     if (newPage < 1 || newPage > total || newPage === currentPage) return;
     setCurrentPage(newPage);
     if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 100, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -471,8 +474,23 @@ function ProductsContent() {
           {/* Product Cards Grid: 6 in One Row on Laptop/Desktop (xl:grid-cols-6) */}
           {loading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-3 sm:gap-4">
-              {Array.from({ length: 15 }).map((_, idx) => (
-                <div key={idx} className="aspect-[3/4] bg-slate-100 rounded-2xl animate-pulse" />
+              {Array.from({ length: 16 }).map((_, idx) => (
+                <div
+                  key={`catalog-skel-${idx}`}
+                  className="bg-white rounded-2xl border border-slate-200/90 p-2.5 sm:p-3 flex flex-col justify-between shadow-2xs"
+                >
+                  <div className="aspect-[3/4] w-full bg-slate-100 rounded-xl animate-pulse mb-2.5 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-full border-2 border-slate-300/40 border-t-transparent animate-spin" />
+                  </div>
+                  <div className="space-y-2 mt-auto">
+                    <div className="h-3.5 bg-slate-200 rounded-sm w-4/5 animate-pulse" />
+                    <div className="h-3 bg-slate-150 rounded-sm w-1/2 animate-pulse" />
+                    <div className="flex items-center justify-between pt-1">
+                      <div className="h-4 bg-slate-200 rounded-sm w-16 animate-pulse" />
+                      <div className="h-3 bg-slate-150 rounded-sm w-8 animate-pulse" />
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           ) : books.length === 0 ? (
@@ -506,7 +524,7 @@ function ProductsContent() {
                 const originalPrice = book.discountPrice && Number(book.discountPrice) < Number(book.price)
                   ? Number(book.price)
                   : null;
-                const image = (book.images && book.images[0]) || book.coverImage || book.image || '/book-placeholder.svg';
+                const image = getBookCoverImage(book);
                 const inWishlist = isBookInWishlist(bookId);
                 const discountPercent = originalPrice && originalPrice > price
                   ? Math.round(((originalPrice - price) / originalPrice) * 100)
@@ -514,17 +532,26 @@ function ProductsContent() {
                 const rating = book.rating ? Number(book.rating).toFixed(1) : '5.0';
                 const reviewsCount = book.reviewsCount ? `${(book.reviewsCount / 1000).toFixed(1)}k` : '0.1k';
 
-                const isOutOfStock = book.stockStatus === 'out_of_stock' || (book.stock !== undefined && Number(book.stock) <= 0);
+                const rawStock = book.stock !== undefined && book.stock !== null ? Number(book.stock) : null;
+                const isOutOfStock = (rawStock !== null && !isNaN(rawStock))
+                  ? rawStock <= 0
+                  : (book.stockStatus === 'out_of_stock');
 
-                // Determine Top-Left Badge: Out of Stock > Bestseller > New > Discount
-                const showBestseller = !isOutOfStock && book.isBestSeller;
-                const showNew = !isOutOfStock && book.isNewArrival && !book.isBestSeller;
-                const showDiscount = !isOutOfStock && discountPercent > 0 && !showBestseller && !showNew;
+                // Determine Top-Left Badge: Pre-Book > Out of Stock > Book of the Week > Bestseller > New > Discount
+                const isPreBookBook = Boolean(book.isComingSoon || book.isPreBook);
+                const showBookOfTheWeek = !isOutOfStock && !isPreBookBook && book.isBookOfTheWeek;
+                const showBestseller = !isOutOfStock && !isPreBookBook && book.isBestSeller && !showBookOfTheWeek;
+                const showNew = !isOutOfStock && !isPreBookBook && book.isNewArrival && !book.isBestSeller && !showBookOfTheWeek;
+                const showDiscount = !isOutOfStock && !isPreBookBook && discountPercent > 0 && !showBestseller && !showNew && !showBookOfTheWeek;
 
                 return (
                   <div
                     key={`card-${bookId}`}
-                    className="group bg-white rounded-2xl border border-slate-200/90 hover:border-slate-300 shadow-2xs hover:shadow-md transition-all duration-300 p-2.5 sm:p-3 flex flex-col justify-between"
+                    onClick={(e) => {
+                      if (e.target.closest('button') || e.target.closest('a')) return;
+                      router.push(`/books/${book.slug || bookId}`);
+                    }}
+                    className="group bg-white rounded-2xl border border-slate-200/90 hover:border-blue-300 shadow-2xs hover:shadow-md transition-all duration-200 p-2.5 sm:p-3 flex flex-col justify-between cursor-pointer active:scale-[0.98]"
                   >
                     {/* Book Cover Image Container (Portrait 3:4 Aspect Ratio) */}
                     <div className="relative aspect-[3/4] w-full bg-[#f8fafc] rounded-xl overflow-hidden mb-2.5 border border-slate-100 flex items-center justify-center p-2 group-hover:bg-[#f1f5f9] transition-colors">
@@ -549,9 +576,24 @@ function ProductsContent() {
                       </Link>
 
                       {/* Top-Left Badges with reduced border-radius */}
-                      {isOutOfStock && (
+                      {isPreBookBook && (
+                        <span className="absolute top-2 left-2 bg-gradient-to-r from-amber-600 to-amber-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs tracking-tight">
+                          Pre-Book
+                        </span>
+                      )}
+                      {!isPreBookBook && isOutOfStock && (
                         <span className="absolute top-2 left-2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs tracking-tight">
                           Out of Stock
+                        </span>
+                      )}
+                      {isPreBookBook && (
+                        <span className="absolute top-2 right-10 sm:right-11 bg-black/50 backdrop-blur-xs text-white border border-white/25 text-[9px] font-bold px-1.5 py-0.5 rounded-md shadow-xs tracking-tight pointer-events-none">
+                          ⏳ 2-3 WEEKS
+                        </span>
+                      )}
+                      {showBookOfTheWeek && (
+                        <span className="absolute top-2 left-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs tracking-tight">
+                          Book of Week 👑
                         </span>
                       )}
                       {showBestseller && (
@@ -627,26 +669,51 @@ function ProductsContent() {
                           )}
                         </div>
 
-                        <button
-                          type="button"
-                          disabled={isOutOfStock}
-                          onClick={() => !isOutOfStock && handleAddToCart(book)}
-                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full text-white flex items-center justify-center shadow-xs shrink-0 transition-all ${isOutOfStock
-                              ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-60'
-                              : addedItems[book?._id || book?.id || book?.slug]
-                                ? 'bg-emerald-500 hover:bg-emerald-600 active:scale-95 cursor-pointer'
-                                : 'bg-[#1E3A8A] hover:bg-[#152e72] active:scale-95 cursor-pointer'
+                        {isPreBookBook ? (
+                          <button
+                            type="button"
+                            onClick={() => handleAddToCart(book)}
+                            className={`px-2.5 py-1 rounded-full text-white text-[10px] font-bold shadow-xs shrink-0 transition-all active:scale-95 cursor-pointer flex items-center gap-1 ${
+                              addedItems[book?._id || book?.id || book?.slug]
+                                ? 'bg-emerald-600'
+                                : 'bg-amber-600 hover:bg-amber-700'
                             }`}
-                          title={isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
-                        >
-                          {isOutOfStock ? (
-                            <span className="text-[10px] font-bold">✕</span>
-                          ) : addedItems[book?._id || book?.id || book?.slug] ? (
-                            <Check className="w-3.5 h-3.5" />
-                          ) : (
-                            <ShoppingCart className="w-3.5 h-3.5" />
-                          )}
-                        </button>
+                            title="Pre-Book this title (Ships in 2-3 weeks)"
+                          >
+                            {addedItems[book?._id || book?.id || book?.slug] ? (
+                              <>
+                                <Check className="w-3 h-3" />
+                                <span>Pre-Booked!</span>
+                              </>
+                            ) : (
+                              <>
+                                <ShoppingCart className="w-3 h-3" />
+                                <span>Pre-Book</span>
+                              </>
+                            )}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={isOutOfStock}
+                            onClick={() => !isOutOfStock && handleAddToCart(book)}
+                            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full text-white flex items-center justify-center shadow-xs shrink-0 transition-all ${isOutOfStock
+                                ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-60'
+                                : addedItems[book?._id || book?.id || book?.slug]
+                                  ? 'bg-emerald-500 hover:bg-emerald-600 active:scale-95 cursor-pointer'
+                                  : 'bg-[#1E3A8A] hover:bg-[#152e72] active:scale-95 cursor-pointer'
+                              }`}
+                            title={isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
+                          >
+                            {isOutOfStock ? (
+                              <span className="text-[10px] font-bold">✕</span>
+                            ) : addedItems[book?._id || book?.id || book?.slug] ? (
+                              <Check className="w-3.5 h-3.5" />
+                            ) : (
+                              <ShoppingCart className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

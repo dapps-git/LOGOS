@@ -4,11 +4,13 @@ import React from 'react';
 import { Navbar } from '@/components/Navbar';
 import { HeroBanner } from '@/components/HeroBanner';
 import { NewArrivals } from '@/components/NewArrivals';
+import { BookOfTheWeek } from '@/components/BookOfTheWeek';
 import { FeaturedBookSpotlight } from '@/components/FeaturedBookSpotlight';
 import { Bestsellers } from '@/components/Bestsellers';
 import { AuthorSpotlight } from '@/components/AuthorSpotlight';
 import { ComboOfferBanner } from '@/components/ComboOfferBanner';
 import { FeaturedAuthors } from '@/components/FeaturedAuthors';
+import { ComingSoon } from '@/components/ComingSoon';
 import { HandpickedReads } from '@/components/HandpickedReads';
 import { LatestNews } from '@/components/LatestNews';
 import { Footer } from '@/components/Footer';
@@ -27,6 +29,9 @@ export default function HomePage() {
         {/* 2. New Arrivals (Fresh from the press) */}
         <NewArrivals />
 
+        {/* 2b. Book of the Week (Curated highlight) */}
+        <BookOfTheWeek />
+
         {/* 3. Featured Book Spotlight (പരാജിതനായകർ) */}
         <FeaturedBookSpotlight />
 
@@ -41,6 +46,9 @@ export default function HomePage() {
 
         {/* 8. Featured Authors (The voices behind the pages) */}
         <FeaturedAuthors />
+
+        {/* 8b. Coming Soon & Pre-Orders (Upcoming Titles) */}
+        <ComingSoon />
 
         {/* 9. Handpicked Reads (From our editors' desks - 01, 02, 03) */}
         <HandpickedReads />

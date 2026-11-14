@@ -54,7 +54,10 @@ function ProductFormContent() {
     sku: '',
     isbn: '',
     isBestSeller: false,
-    isNewArrival: true,
+    isNewArrival: false,
+    isBookOfTheWeek: false,
+    isComingSoon: false,
+    isPreBook: false,
     isFeatured: false,
     isHandpicked: false,
     isAuthorSpotlight: false,
@@ -130,6 +133,9 @@ function ProductFormContent() {
           isbn: bookToEdit.isbn || '',
           isBestSeller: Boolean(bookToEdit.isBestSeller),
           isNewArrival: Boolean(bookToEdit.isNewArrival),
+          isBookOfTheWeek: Boolean(bookToEdit.isBookOfTheWeek),
+          isComingSoon: Boolean(bookToEdit.isComingSoon),
+          isPreBook: Boolean(bookToEdit.isPreBook),
           isFeatured: Boolean(bookToEdit.isFeatured),
           isHandpicked: Boolean(bookToEdit.isHandpicked),
           isAuthorSpotlight: Boolean(bookToEdit.isAuthorSpotlight),
@@ -177,6 +183,7 @@ function ProductFormContent() {
     }
 
     const finalTheme = formData.theme === 'Other' ? (formData.customTheme || 'General') : formData.theme;
+    const firstCover = (Array.isArray(formData.images) && (formData.images.find(img => typeof img === 'string' && img.trim() && !img.includes('placeholder')) || formData.images[0])) || '';
 
     const payload = {
       title: formData.title.trim(),
@@ -197,10 +204,15 @@ function ProductFormContent() {
       description: formData.description.trim(),
       spotlightDescription: (formData.spotlightDescription || '').trim(),
       images: formData.images,
+      coverImage: firstCover,
+      image: firstCover,
       sku: formData.sku || `LGS-BK-${Date.now().toString().slice(-5)}`,
       isbn: formData.isbn || '',
       isBestSeller: formData.isBestSeller,
       isNewArrival: formData.isNewArrival,
+      isBookOfTheWeek: formData.isBookOfTheWeek,
+      isComingSoon: formData.isComingSoon,
+      isPreBook: formData.isComingSoon || formData.isPreBook,
       isFeatured: formData.isFeatured,
       isHandpicked: formData.isHandpicked,
       isAuthorSpotlight: formData.isAuthorSpotlight,
@@ -584,6 +596,36 @@ function ProductFormContent() {
                   <div>
                     <span className="text-xs font-medium block">New Arrival 🚀</span>
                     <span className="text-[10px] text-slate-400 font-light block">Display in Fresh from Press</span>
+                  </div>
+                </label>
+
+                <label className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                  formData.isBookOfTheWeek ? 'border-amber-500 bg-amber-50/70 text-amber-900 font-bold shadow-2xs' : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={formData.isBookOfTheWeek}
+                    onChange={(e) => setFormData({ ...formData, isBookOfTheWeek: e.target.checked })}
+                    className="rounded border-slate-300 text-amber-600 focus:ring-amber-500 w-4 h-4"
+                  />
+                  <div>
+                    <span className="text-xs font-medium block">Book of the Week 👑</span>
+                    <span className="text-[10px] text-slate-400 font-light block">Feature in homepage Book of the Week section</span>
+                  </div>
+                </label>
+
+                <label className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                  formData.isComingSoon ? 'border-purple-600 bg-purple-50/70 text-purple-950 font-bold shadow-2xs' : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={formData.isComingSoon}
+                    onChange={(e) => setFormData({ ...formData, isComingSoon: e.target.checked, isPreBook: e.target.checked })}
+                    className="rounded border-slate-300 text-purple-600 focus:ring-purple-500 w-4 h-4"
+                  />
+                  <div>
+                    <span className="text-xs font-medium block">Coming Soon / Pre-Book ⏳</span>
+                    <span className="text-[10px] text-slate-400 font-light block">Display in Coming Soon section with Pre-Book button (ships in 2-3 weeks)</span>
                   </div>
                 </label>
 

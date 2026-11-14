@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Star, Heart } from 'lucide-react';
-import { fetchBestSellers } from '@/lib/api';
+import { fetchBestSellers, getBookCoverImage } from '@/lib/api';
 import { useWishlist } from '@/context/WishlistContext';
 
 export const RecentlyViewed = ({ currentBook }) => {
@@ -40,7 +40,7 @@ export const RecentlyViewed = ({ currentBook }) => {
               price: Number(b.price || 0),
               originalPrice: b.originalPrice ? Number(b.originalPrice) : null,
               rating: b.rating ? String(b.rating) : '5.0',
-              image: (b.images && b.images[0]) || b.image || '/book-placeholder.svg',
+              image: getBookCoverImage(b),
               href: `/books/${b.slug || b.id || b._id}`
             })));
             setLoading(false);
@@ -71,7 +71,7 @@ export const RecentlyViewed = ({ currentBook }) => {
             price: Number(b.discountPrice || b.price || 0),
             originalPrice: b.discountPrice ? Number(b.price) : (b.originalPrice ? Number(b.originalPrice) : null),
             rating: b.rating ? String(b.rating) : '5.0',
-            image: (b.images && b.images[0]) || b.image || '/book-placeholder.svg',
+            image: getBookCoverImage(b),
             href: `/books/${b.slug || b._id || b.id}`
           }));
 

@@ -179,7 +179,8 @@ export const BulkImportModal = ({ isOpen, onClose }) => {
             const languages = String(rawLanguages).split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
 
             const isBestSeller = String(row.Bestseller || row.bestseller || row.isBestSeller).toLowerCase() === 'yes' || String(row.Bestseller || row.isBestSeller).toLowerCase() === 'true';
-            const isNewArrival = String(row.NewArrival || row.newArrival || row.isNewArrival).toLowerCase() !== 'no' && String(row.NewArrival || row.isNewArrival).toLowerCase() !== 'false';
+            const rawArrival = String(row.NewArrival || row.newArrival || row.isNewArrival || '').trim().toLowerCase();
+            const isNewArrival = rawArrival === 'yes' || rawArrival === 'true';
             const isFeatured = String(row.Featured || row.featured || row.isFeatured).toLowerCase() === 'yes' || String(row.Featured || row.isFeatured).toLowerCase() === 'true';
 
             return {
@@ -242,7 +243,7 @@ export const BulkImportModal = ({ isOpen, onClose }) => {
               description: `${title} by ${author}. Available at LOGOS Books.`,
               images,
               isBestSeller: false,
-              isNewArrival: true,
+              isNewArrival: false,
               isFeatured: false,
               isValid: Boolean(title && price > 0)
             };

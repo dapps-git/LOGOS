@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Star, Heart } from 'lucide-react';
-import { fetchFeaturedBooks, fetchBooks, optimizeImageUrl } from '@/lib/api';
+import { fetchFeaturedBooks, fetchBooks, optimizeImageUrl, getBookCoverImage } from '@/lib/api';
 import { useWishlist } from '@/context/WishlistContext';
 import { HandpickedSkeleton } from '@/components/Skeletons';
 
@@ -18,31 +18,40 @@ export const HandpickedReads = () => {
       try {
         let list = await fetchFeaturedBooks().catch(() => []);
         if (!Array.isArray(list) || list.length === 0) {
-          list = await fetchBooks({ isHandpicked: true, limit: 3 }).catch(() => []);
+          list = await fetchBooks({ isHandpicked: true, limit: 4 }).catch(() => []);
         }
         if (!Array.isArray(list) || list.length === 0) {
-          list = await fetchBooks({ limit: 3 }).catch(() => []);
+          list = await fetchBooks({ limit: 4 }).catch(() => []);
         }
 
         if (isMounted) {
-          const uniqueBooks = (Array.isArray(list) ? list : []).filter((b) => {
-            const img = (b.images && b.images[0]) || b.coverImage;
+          const rawList = Array.isArray(list) ? list : [];
+          let displayBooks = rawList.filter((b) => {
+            const img = getBookCoverImage(b);
             return img && img !== '/book-placeholder.svg' && !img.includes('placeholder');
           });
+          if (displayBooks.length === 0) {
+            displayBooks = rawList;
+          }
 
-          if (uniqueBooks.length > 0) {
-            const formatted = uniqueBooks.slice(0, 3).map((b, idx) => ({
-              num: `0${idx + 1}`,
-              id: b._id,
-              title: b.title || b.name,
-              author: b.author,
-              price: Number(b.discountPrice || b.price || 0),
-              originalPrice: b.discountPrice && Number(b.discountPrice) < Number(b.price) ? Number(b.price) : null,
-              rating: b.rating ? String(b.rating) : '5.0',
-              image: (b.images && b.images[0]) || b.coverImage || (idx === 0 ? '/handpicked1.png' : idx === 1 ? '/handpicked2.png' : '/handpicked3.png'),
-              href: `/books/${b.slug || b._id}`,
-              prominent: idx === 1
-            }));
+          if (displayBooks.length > 0) {
+            const formatted = displayBooks.slice(0, 4).map((b, idx) => {
+              const rawStock = b.stock !== undefined && b.stock !== null ? Number(b.stock) : null;
+              const isOutOfStock = (rawStock !== null && !isNaN(rawStock)) ? rawStock <= 0 : (b.stockStatus === 'out_of_stock');
+              return {
+                num: `0${idx + 1}`,
+                id: b._id,
+                title: b.title || b.name,
+                author: b.author,
+                price: Number(b.discountPrice || b.price || 0),
+                originalPrice: b.discountPrice && Number(b.discountPrice) < Number(b.price) ? Number(b.price) : null,
+                rating: b.rating ? String(b.rating) : '5.0',
+                image: getBookCoverImage(b) || (idx === 0 ? '/handpicked1.png' : idx === 1 ? '/handpicked2.png' : '/handpicked3.png'),
+                href: `/books/${b.slug || b._id}`,
+                prominent: idx === 1,
+                isOutOfStock
+              };
+            });
             setBooks(formatted);
           } else {
             setBooks([]);
@@ -76,11 +85,11 @@ export const HandpickedReads = () => {
         </div>
       </div>
 
-      {/* 3-Column Staggered Book Showcase */}
+      {/* 2-Column on Mobile, 3/4-Column on Desktop */}
       {loading ? (
         <HandpickedSkeleton />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12 items-end pt-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 lg:gap-8 items-end pt-4">
           {books.map((book) => (
             <Link
               key={book.id}
@@ -102,7 +111,7 @@ export const HandpickedReads = () => {
                   referrerPolicy="no-referrer"
                   loading="lazy"
                   crossOrigin="anonymous"
-                  className="w-full h-full object-cover object-center"
+                  className={`w-full h-full object-cover object-center ${book.isOutOfStock ? 'opacity-60 grayscale' : ''}`}
                   onError={(e) => {
                     if (!e.currentTarget.dataset.failed) {
                       e.currentTarget.dataset.failed = 'true';
@@ -114,6 +123,12 @@ export const HandpickedReads = () => {
                     }
                   }}
                 />
+                {/* Out of Stock Overlay Badge */}
+                {book.isOutOfStock && (
+                  <span className="absolute top-2 left-2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs tracking-tight pointer-events-none">
+                    Out of Stock
+                  </span>
+                )}
                 {/* Wishlist Heart Button */}
                 <button
                   type="button"

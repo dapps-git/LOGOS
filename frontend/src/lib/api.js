@@ -30,7 +30,7 @@ function getAuthHeaders() {
 
 export async function fetchBooks(params = {}) {
   try {
-    const finalParams = { limit: 15, ...params };
+    const finalParams = { limit: 16, ...params };
     const cleanParams = Object.entries(finalParams).filter(
       ([_, v]) => v !== undefined && v !== null && v !== ''
     );
@@ -49,7 +49,7 @@ export async function fetchBooks(params = {}) {
 
 export async function fetchBooksPaginated(params = {}) {
   try {
-    const finalParams = { page: 1, limit: 15, ...params };
+    const finalParams = { page: 1, limit: 16, ...params };
     const cleanParams = Object.entries(finalParams).filter(
       ([_, v]) => v !== undefined && v !== null && v !== ''
     );
@@ -121,6 +121,34 @@ export async function fetchNewArrivals() {
     return data.books || [];
   } catch (err) {
     console.warn('[LOGOS API] fetchNewArrivals fallback:', err.message);
+    return [];
+  }
+}
+
+export async function fetchBookOfTheWeek() {
+  try {
+    const res = await fetch(`${getApiBase()}/books/collections/book-of-the-week`, {
+      cache: 'no-store'
+    });
+    if (!res.ok) throw new Error(`Failed to fetch book of the week: ${res.status}`);
+    const data = await res.json();
+    return data.book || null;
+  } catch (err) {
+    console.warn('[LOGOS API] fetchBookOfTheWeek fallback:', err.message);
+    return null;
+  }
+}
+
+export async function fetchComingSoonBooks() {
+  try {
+    const res = await fetch(`${getApiBase()}/books/collections/coming-soon`, {
+      cache: 'no-store'
+    });
+    if (!res.ok) throw new Error(`Failed to fetch coming soon books: ${res.status}`);
+    const data = await res.json();
+    return data.books || [];
+  } catch (err) {
+    console.warn('[LOGOS API] fetchComingSoonBooks fallback:', err.message);
     return [];
   }
 }
@@ -608,6 +636,55 @@ export async function fetchNewsBySlug(idOrSlug) {
     return null;
   }
 }
+
+// ----------------- Book Reviews APIs -----------------
+export async function fetchBookReviews(bookId) {
+  try {
+    if (!bookId) return [];
+    const res = await fetch(`${getApiBase()}/reviews/book/${bookId}`, {
+      cache: 'no-store'
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.reviews || [];
+  } catch (err) {
+    console.warn('[LOGOS API] fetchBookReviews error:', err.message);
+    return [];
+  }
+}
+
+export async function submitBookReview(reviewData) {
+  const res = await fetch(`${getApiBase()}/reviews`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(reviewData)
+  });
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to submit review');
+  }
+  return data.review;
+}
+
+// ----------------- Book Cover Image Resolver -----------------
+export function getBookCoverImage(book) {
+  if (!book) return '/book-placeholder.svg';
+  const images = Array.isArray(book.images) ? book.images : [];
+  // Priority 1: Genuine non-placeholder from images array
+  const realFromImages = images.find(
+    (img) => typeof img === 'string' && img.trim() && !img.includes('placeholder')
+  );
+  if (realFromImages) return realFromImages;
+
+  // Priority 2: Genuine non-placeholder from coverImage or image
+  const realCover = [book.coverImage, book.image].find(
+    (img) => typeof img === 'string' && img.trim() && !img.includes('placeholder')
+  );
+  if (realCover) return realCover;
+
+  return images[0] || book.coverImage || book.image || '/book-placeholder.svg';
+}
+
 
 
 

@@ -116,6 +116,16 @@ const bookSchema = new mongoose.Schema({
       message: 'At least 1 book cover photo is required'
     }
   },
+  coverImage: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  image: {
+    type: String,
+    default: '',
+    trim: true
+  },
   isBestSeller: {
     type: Boolean,
     default: false,
@@ -123,8 +133,28 @@ const bookSchema = new mongoose.Schema({
   },
   isNewArrival: {
     type: Boolean,
-    default: true,
+    default: false,
     index: true
+  },
+  isBookOfTheWeek: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  isComingSoon: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  isPreBook: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  expectedReleaseDate: {
+    type: String,
+    default: '',
+    trim: true
   },
   isFeatured: {
     type: Boolean,
@@ -195,6 +225,9 @@ const bookSchema = new mongoose.Schema({
 bookSchema.index({ isActive: 1, createdAt: -1 });
 bookSchema.index({ isActive: 1, isBestSeller: 1, createdAt: -1 });
 bookSchema.index({ isActive: 1, isNewArrival: 1, createdAt: -1 });
+bookSchema.index({ isActive: 1, isBookOfTheWeek: 1, createdAt: -1 });
+bookSchema.index({ isActive: 1, isComingSoon: 1, createdAt: -1 });
+bookSchema.index({ isActive: 1, isPreBook: 1, createdAt: -1 });
 bookSchema.index({ isActive: 1, isFeatured: 1, createdAt: -1 });
 bookSchema.index({ isActive: 1, isHandpicked: 1, createdAt: -1 });
 bookSchema.index({ isActive: 1, theme: 1, createdAt: -1 });
@@ -231,6 +264,14 @@ bookSchema.pre('save', function (next) {
 
   if (this.discountPrice && this.discountPrice < this.price) {
     this.discountPercent = Math.round(((this.price - this.discountPrice) / this.price) * 100);
+  }
+
+  if (Array.isArray(this.images) && this.images.length > 0) {
+    const realImg = this.images.find((img) => typeof img === 'string' && img.trim() && !img.includes('placeholder')) || this.images[0];
+    if (realImg) {
+      this.coverImage = realImg;
+      this.image = realImg;
+    }
   }
 
   next();

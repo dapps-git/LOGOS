@@ -37,6 +37,10 @@ const getBooks = async (req, res) => {
       maxPrice,
       isBestSeller,
       isNewArrival,
+      isBookOfTheWeek,
+      isComingSoon,
+      isPreBook,
+      expectedReleaseDate,
       isFeatured,
       isHandpicked,
       isAuthorSpotlight,
@@ -127,6 +131,10 @@ const getBooks = async (req, res) => {
 
     if (isBestSeller === 'true') query.isBestSeller = true;
     if (isNewArrival === 'true') query.isNewArrival = true;
+    if (isBookOfTheWeek === 'true') query.isBookOfTheWeek = true;
+    if (isComingSoon === 'true' || isPreBook === 'true') {
+      query.$or = (query.$or || []).concat([{ isComingSoon: true }, { isPreBook: true }]);
+    }
     if (isFeatured === 'true') query.isFeatured = true;
     if (isHandpicked === 'true') query.isHandpicked = true;
     if (isAuthorSpotlight === 'true') query.isAuthorSpotlight = true;
@@ -185,7 +193,7 @@ const getBooks = async (req, res) => {
     }
 
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.max(1, parseInt(limit, 10) || 15);
+    const limitNum = Math.max(1, parseInt(limit, 10) || 16);
     const skip = (pageNum - 1) * limitNum;
 
     const [books, total] = await Promise.all([
@@ -322,6 +330,65 @@ const getFeaturedBooks = async (req, res) => {
   }
 };
 
+// @desc    Get Book of the Week
+// @route   GET /api/books/collections/book-of-the-week
+// @access  Public
+const getBookOfTheWeek = async (req, res) => {
+  try {
+    let book = await Book.findOne({ isActive: true, isBookOfTheWeek: true })
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    // Fallback if none explicitly marked as Book of the Week
+    if (!book) {
+      book = await Book.findOne({ isActive: true, isFeaturedSpotlight: true })
+        .sort({ updatedAt: -1 })
+        .lean();
+    }
+    if (!book) {
+      book = await Book.findOne({ isActive: true, isHandpicked: true })
+        .sort({ createdAt: -1 })
+        .lean();
+    }
+    if (!book) {
+      book = await Book.findOne({ isActive: true })
+        .sort({ rating: -1, createdAt: -1 })
+        .lean();
+    }
+
+    return res.json({
+      success: true,
+      book
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get Coming Soon & Pre-Book Books
+// @route   GET /api/books/collections/coming-soon
+// @access  Public
+const getComingSoonBooks = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit || '8', 10);
+    const books = await Book.find({
+      isActive: true,
+      $or: [{ isComingSoon: true }, { isPreBook: true }]
+    })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    return res.json({
+      success: true,
+      count: books.length,
+      books
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // @desc    Get List of Themes, Genres, Authors, Languages for UI Filters & Summary Counts
 // @route   GET /api/books/filters/options
 // @access  Public
@@ -386,6 +453,10 @@ const createBook = async (req, res) => {
       isbn,
       isBestSeller,
       isNewArrival,
+      isBookOfTheWeek,
+      isComingSoon,
+      isPreBook,
+      expectedReleaseDate,
       isFeatured,
       isHandpicked,
       isAuthorSpotlight,
@@ -442,10 +513,16 @@ const createBook = async (req, res) => {
       discountPrice: discountPrice ? Number(discountPrice) : null,
       stock: Number(stock),
       images,
+      coverImage: (Array.isArray(images) && (images.find((img) => typeof img === 'string' && img.trim() && !img.includes('placeholder')) || images[0])) || '',
+      image: (Array.isArray(images) && (images.find((img) => typeof img === 'string' && img.trim() && !img.includes('placeholder')) || images[0])) || '',
       sku: sku || `LGS-BK-${Date.now().toString().slice(-6)}`,
       isbn: isbn || '',
       isBestSeller: Boolean(isBestSeller),
-      isNewArrival: isNewArrival !== undefined ? Boolean(isNewArrival) : true,
+      isNewArrival: Boolean(isNewArrival),
+      isBookOfTheWeek: Boolean(isBookOfTheWeek),
+      isComingSoon: Boolean(isComingSoon),
+      isPreBook: Boolean(isPreBook),
+      expectedReleaseDate: expectedReleaseDate ? expectedReleaseDate.trim() : '',
       isFeatured: Boolean(isFeatured),
       isHandpicked: Boolean(isHandpicked),
       isAuthorSpotlight: Boolean(isAuthorSpotlight),
@@ -484,6 +561,17 @@ const updateBook = async (req, res) => {
         });
       }
       book.images = images;
+      const firstReal = images.find((img) => typeof img === 'string' && img.trim() && !img.includes('placeholder')) || images[0];
+      if (firstReal) {
+        book.coverImage = firstReal;
+        book.image = firstReal;
+      }
+    } else if (Array.isArray(book.images) && book.images.length > 0) {
+      const firstReal = book.images.find((img) => typeof img === 'string' && img.trim() && !img.includes('placeholder')) || book.images[0];
+      if (firstReal && (!book.coverImage || book.coverImage.includes('placeholder'))) {
+        book.coverImage = firstReal;
+        book.image = firstReal;
+      }
     }
 
     const authorToUse = (otherFields.author || book.author || '').trim();
@@ -691,7 +779,7 @@ const bulkImportBooks = async (req, res) => {
         const isbn = (b.isbn || b.ISBN || '').trim();
 
         const isBestSeller = Boolean(b.isBestSeller || b.isBestseller || b.Bestseller === 'yes' || b.Bestseller === 'true' || b.Bestseller === true);
-        const isNewArrival = b.isNewArrival !== undefined ? Boolean(b.isNewArrival) : true;
+        const isNewArrival = Boolean(b.isNewArrival === true || b.isNewArrival === 'true' || b.isNewArrival === 'yes' || b.NewArrival === 'yes' || b.NewArrival === 'true' || b.NewArrival === true);
         const isFeatured = Boolean(b.isFeatured || b.Featured === 'yes' || b.Featured === 'true' || b.Featured === true);
         const isHandpicked = Boolean(b.isHandpicked || b.Handpicked === 'yes' || b.Handpicked === 'true' || b.Handpicked === true);
         const isAuthorSpotlight = Boolean(b.isAuthorSpotlight || b.AuthorSpotlight === 'yes' || b.AuthorSpotlight === 'true' || b.AuthorSpotlight === true);
@@ -1074,11 +1162,44 @@ const getBookSuggestions = async (req, res) => {
   }
 };
 
+// @desc    Sync stock counts and stockStatus across all catalog books to eliminate discrepancies
+// @route   ALL /api/books/admin/sync-stock
+// @access  Public / Admin
+const syncAllBookStocks = async (req, res) => {
+  try {
+    const books = await Book.find({});
+    let updatedCount = 0;
+
+    for (const book of books) {
+      const parsed = isNaN(Number(book.stock)) ? 25 : Math.max(0, parseInt(book.stock, 10));
+      const expectedStatus = parsed === 0 ? 'out_of_stock' : parsed <= 5 ? 'low_stock' : 'in_stock';
+
+      if (book.stock !== parsed || book.stockStatus !== expectedStatus) {
+        book.stock = parsed;
+        book.stockStatus = expectedStatus;
+        await book.save();
+        updatedCount++;
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: `Stock audit complete: Synchronized ${updatedCount} books out of ${books.length} total titles.`,
+      totalTitles: books.length,
+      updatedCount
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 module.exports = {
   getBooks,
   getBookByIdOrSlug,
   getBestSellers,
   getNewArrivals,
+  getBookOfTheWeek,
+  getComingSoonBooks,
   getFeaturedBooks,
   getFilterOptions,
   getSpotlightAuthor,
@@ -1090,5 +1211,6 @@ module.exports = {
   deleteBook,
   uploadBookImage,
   bulkImportBooks,
-  convertImagesToCloudinaryWebp
+  convertImagesToCloudinaryWebp,
+  syncAllBookStocks
 };

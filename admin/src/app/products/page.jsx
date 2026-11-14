@@ -17,7 +17,8 @@ import {
   AlertTriangle,
   FileSpreadsheet,
   Sparkles,
-  Loader2
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { BulkImportModal } from '@/components/products/BulkImportModal';
 import { apiClient } from '@/api/client';
@@ -57,8 +58,28 @@ export default function ProductsPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [migratingImages, setMigratingImages] = useState(false);
+  const [syncingStock, setSyncingStock] = useState(false);
 
   const fetchRequestIdRef = useRef(0);
+
+  // Helper to resolve genuine book cover image prioritizing real uploads over placeholders
+  const getAdminBookCover = (b) => {
+    if (!b) return '/book-placeholder.svg';
+    const images = Array.isArray(b.images) ? b.images : [];
+    // Priority 1: Genuine non-placeholder photo from images array
+    const realFromImages = images.find(
+      (img) => typeof img === 'string' && img.trim() && !img.includes('placeholder')
+    );
+    if (realFromImages) return realFromImages;
+
+    // Priority 2: Genuine non-placeholder from coverImage or image
+    const realFromCover = [b.coverImage, b.image].find(
+      (img) => typeof img === 'string' && img.trim() && !img.includes('placeholder')
+    );
+    if (realFromCover) return realFromCover;
+
+    return images[0] || b.coverImage || b.image || '/book-placeholder.svg';
+  };
 
   // Helper to optimize image thumbnail delivery
   const optimizeAdminImage = (url) => {
@@ -188,6 +209,42 @@ export default function ProductsPage() {
     }
   };
 
+  const handleToggleNewArrival = async (book) => {
+    const newArrival = !book.isNewArrival;
+    setBooks((prev) => prev.map((b) => (b._id === book._id ? { ...b, isNewArrival: newArrival } : b)));
+    try {
+      await updateBook(book._id, { isNewArrival: newArrival });
+      showToast(`Book ${newArrival ? 'marked as New Arrival' : 'removed from New Arrivals'}`, 'success');
+    } catch {
+      showToast('Failed to update New Arrival badge', 'error');
+      loadBooks();
+    }
+  };
+
+  const handleToggleBookOfTheWeek = async (book) => {
+    const newStatus = !book.isBookOfTheWeek;
+    setBooks((prev) => prev.map((b) => (b._id === book._id ? { ...b, isBookOfTheWeek: newStatus } : b)));
+    try {
+      await updateBook(book._id, { isBookOfTheWeek: newStatus });
+      showToast(`Book ${newStatus ? 'marked as Book of the Week 👑' : 'removed from Book of the Week'}`, 'success');
+    } catch {
+      showToast('Failed to update Book of the Week badge', 'error');
+      loadBooks();
+    }
+  };
+
+  const handleToggleComingSoon = async (book) => {
+    const newStatus = !book.isComingSoon;
+    setBooks((prev) => prev.map((b) => (b._id === book._id ? { ...b, isComingSoon: newStatus, isPreBook: newStatus } : b)));
+    try {
+      await updateBook(book._id, { isComingSoon: newStatus, isPreBook: newStatus });
+      showToast(`Book ${newStatus ? 'marked as Coming Soon / Pre-Book ⏳' : 'removed from Coming Soon'}`, 'success');
+    } catch {
+      showToast('Failed to update Coming Soon badge', 'error');
+      loadBooks();
+    }
+  };
+
   const handleConvertImagesToWebp = async () => {
     if (!confirm('This will convert all book images into WebP format and store them in Cloudinary for ultra-fast loading. Proceed?')) return;
     try {
@@ -207,6 +264,24 @@ export default function ProductsPage() {
     }
   };
 
+  const handleSyncStock = async () => {
+    try {
+      setSyncingStock(true);
+      showToast('Auditing and reconciling stock status across catalog...', 'info');
+      const res = await apiClient('/books/admin/sync-stock');
+      if (res?.success) {
+        showToast(res.message || 'Stock levels and statuses synchronized successfully!', 'success');
+        loadBooks();
+      } else {
+        showToast(res?.message || 'Sync completed', 'info');
+      }
+    } catch (e) {
+      showToast(`Error synchronizing stock: ${e.message}`, 'error');
+    } finally {
+      setSyncingStock(false);
+    }
+  };
+
   const totalPages = pagination.totalPages || 1;
   const totalItems = pagination.totalItems || books.length;
 
@@ -223,6 +298,26 @@ export default function ProductsPage() {
           </div>
 
           <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={handleSyncStock}
+              disabled={syncingStock}
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white font-bold text-xs rounded-md shadow-xs transition-all active:scale-95 cursor-pointer"
+              title="Audit and synchronize stock levels and stockStatus across all catalog titles"
+            >
+              {syncingStock ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Reconciling...</span>
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4" />
+                  <span>Reconcile Stock</span>
+                </>
+              )}
+            </button>
+
             <button
               type="button"
               onClick={handleConvertImagesToWebp}
@@ -435,7 +530,7 @@ export default function ProductsPage() {
                   </tr>
                 ) : (
                   books.map((book) => {
-                    const cover = book.coverImage || book.image || (book.images && book.images[0]) || '/book-placeholder.svg';
+                    const cover = getAdminBookCover(book);
                     const photosCount = (book.images?.length) || (book.coverImage ? 1 : 0);
 
                     return (
@@ -473,11 +568,42 @@ export default function ProductsPage() {
                                     <Star className="w-2.5 h-2.5 fill-amber-700" /> Best Seller
                                   </span>
                                 )}
-                                {book.isNewArrival && (
-                                  <span className="text-[9px] font-medium text-blue-800 bg-blue-50 px-1.5 py-0.5 border border-blue-200 rounded-full">
-                                    New
-                                  </span>
-                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleNewArrival(book)}
+                                  className={`text-[9px] font-medium px-1.5 py-0.5 border rounded-full transition-all cursor-pointer ${
+                                    book.isNewArrival
+                                      ? 'text-blue-800 bg-blue-50 border-blue-200 hover:bg-blue-100 shadow-2xs font-semibold'
+                                      : 'text-slate-400 bg-slate-50 border-slate-200 hover:border-blue-300 hover:text-blue-600'
+                                  }`}
+                                  title={book.isNewArrival ? 'Click to remove from New Arrivals' : 'Click to add to New Arrivals'}
+                                >
+                                  {book.isNewArrival ? '🚀 New Arrival' : '+ New Arrival'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleBookOfTheWeek(book)}
+                                  className={`text-[9px] font-medium px-1.5 py-0.5 border rounded-full transition-all cursor-pointer ${
+                                    book.isBookOfTheWeek
+                                      ? 'text-amber-900 bg-amber-100 border-amber-300 hover:bg-amber-200 shadow-2xs font-bold'
+                                      : 'text-slate-400 bg-slate-50 border-slate-200 hover:border-amber-300 hover:text-amber-700'
+                                  }`}
+                                  title={book.isBookOfTheWeek ? 'Click to remove from Book of the Week' : 'Click to set as Book of the Week'}
+                                >
+                                  {book.isBookOfTheWeek ? '👑 Book of Week' : '+ Book of Week'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleComingSoon(book)}
+                                  className={`text-[9px] font-medium px-1.5 py-0.5 border rounded-full transition-all cursor-pointer ${
+                                    book.isComingSoon
+                                      ? 'text-purple-900 bg-purple-100 border-purple-300 hover:bg-purple-200 shadow-2xs font-bold'
+                                      : 'text-slate-400 bg-slate-50 border-slate-200 hover:border-purple-300 hover:text-purple-700'
+                                  }`}
+                                  title={book.isComingSoon ? 'Click to remove from Coming Soon' : 'Click to set as Coming Soon / Pre-Book'}
+                                >
+                                  {book.isComingSoon ? '⏳ Pre-Book' : '+ Pre-Book'}
+                                </button>
                                 {book.isFeatured && (
                                   <span className="text-[9px] font-medium text-purple-800 bg-purple-50 px-1.5 py-0.5 border border-purple-200 rounded-full">
                                     Spotlight

@@ -396,6 +396,22 @@ const updateOrderStatusAdmin = async (req, res) => {
         note: note || (effectiveLocation ? `Status updated to ${status} (${effectiveLocation})` : `Order status updated to ${status}`)
       });
 
+      // Handle stock restock when order is cancelled by admin
+      if (status === 'Cancelled' && previousStatus !== 'Cancelled') {
+        for (const item of order.items) {
+          if (item.book) {
+            await restoreBookStock(item.book, item.quantity);
+          }
+        }
+      } else if (previousStatus === 'Cancelled' && ['Confirmed', 'Processing', 'Shipped', 'Out for Delivery', 'Delivered'].includes(status)) {
+        // If uncancelled, deduct stock back
+        for (const item of order.items) {
+          if (item.book) {
+            await deductBookStock(item.book, item.quantity);
+          }
+        }
+      }
+
       // Handle return review transitions
       if (['Return Accepted', 'Approved', 'Return Approved', 'Return Scheduled', 'Pickup Scheduled', 'Returned', 'Received', 'Return Received', 'Refund Initiated', 'Refunded', 'Exchanged', 'Replacement Dispatched'].includes(status)) {
         if (!order.returnRequest) {
@@ -419,11 +435,11 @@ const updateOrderStatusAdmin = async (req, res) => {
           order.returnRequest.refundAmount = Number(refundAmount);
         }
 
-        // If transitioning from un-restocked state to return accepted, restore stock
-        if (['Return Accepted', 'Approved', 'Return Approved', 'Returned', 'Refunded', 'Exchanged'].includes(status) && !['Cancelled', 'Returned', 'Return Accepted', 'Approved', 'Return Approved'].includes(previousStatus)) {
+        // If transitioning from un-restocked state to return accepted, safely restore stock and sync status
+        if (['Return Accepted', 'Approved', 'Return Approved', 'Returned', 'Refunded', 'Exchanged'].includes(status) && !['Cancelled', 'Returned', 'Return Accepted', 'Approved', 'Return Approved', 'Refunded', 'Exchanged'].includes(previousStatus)) {
           for (const item of order.items) {
             if (item.book) {
-              await Book.findByIdAndUpdate(item.book, { $inc: { stock: item.quantity } });
+              await restoreBookStock(item.book, item.quantity);
             }
           }
         }

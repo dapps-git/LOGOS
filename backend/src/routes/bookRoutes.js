@@ -5,6 +5,8 @@ const {
   getBookByIdOrSlug,
   getBestSellers,
   getNewArrivals,
+  getBookOfTheWeek,
+  getComingSoonBooks,
   getFeaturedBooks,
   getFilterOptions,
   getSpotlightAuthor,
@@ -16,7 +18,8 @@ const {
   deleteBook,
   uploadBookImage,
   bulkImportBooks,
-  convertImagesToCloudinaryWebp
+  convertImagesToCloudinaryWebp,
+  syncAllBookStocks
 } = require('../controllers/bookController');
 const { protectAdmin } = require('../middleware/adminMiddleware');
 
@@ -24,6 +27,8 @@ const { protectAdmin } = require('../middleware/adminMiddleware');
 router.get('/', getBooks);
 router.get('/collections/best-sellers', getBestSellers);
 router.get('/collections/new-arrivals', getNewArrivals);
+router.get('/collections/book-of-the-week', getBookOfTheWeek);
+router.get('/collections/coming-soon', getComingSoonBooks);
 router.get('/collections/featured', getFeaturedBooks);
 router.get('/spotlight/author', getSpotlightAuthor);
 router.get('/spotlight/book', getSpotlightBook);
@@ -33,6 +38,7 @@ router.get('/search/suggest', getBookSuggestions);
 
 // Cloudinary WebP Image Batch Migration (Admin / Maintenance)
 router.all('/admin/convert-images-to-webp', convertImagesToCloudinaryWebp);
+router.all('/admin/sync-stock', syncAllBookStocks);
 
 router.get('/:idOrSlug', getBookByIdOrSlug);
 

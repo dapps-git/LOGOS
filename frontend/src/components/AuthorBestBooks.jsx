@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Star } from 'lucide-react';
-import { fetchBooks } from '@/lib/api';
+import { fetchBooks, getBookCoverImage } from '@/lib/api';
 import { AuthorBestBooksSkeleton } from '@/components/Skeletons';
 
 export const AuthorBestBooks = () => {
@@ -37,7 +37,7 @@ export const AuthorBestBooks = () => {
                 title: b.title || b.name,
                 rating: b.rating ? String(b.rating) : '5.0',
                 description: b.description,
-                image: (b.images && b.images[0]) || (idx === 0 ? '/author_best1.png' : '/author_best2.png'),
+                image: getBookCoverImage(b) || (idx === 0 ? '/author_best1.png' : '/author_best2.png'),
                 slug: b.slug || b._id
               }))
             );

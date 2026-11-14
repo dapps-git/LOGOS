@@ -9,15 +9,15 @@ const {
   createReviewAdmin,
   toggleApproveReviewAdmin
 } = require('../controllers/reviewController');
-const { protectCustomer } = require('../middleware/authMiddleware');
+const { protectCustomer, optionalAuth } = require('../middleware/authMiddleware');
 const { protectAdmin } = require('../middleware/adminMiddleware');
 
 // Public
 router.get('/testimonials', getPublicTestimonials);
 router.get('/book/:bookId', getBookReviews);
 
-// Customer
-router.post('/', protectCustomer, addReview);
+// Customer or Guest Review
+router.post('/', optionalAuth, addReview);
 router.delete('/:id', protectCustomer, deleteReview);
 
 // Admin

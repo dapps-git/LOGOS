@@ -191,9 +191,12 @@ export const StoreDataProvider = ({ children }) => {
   // --- Actions ---
   const addBook = async (newBook) => {
     const id = `bk-${Date.now().toString().slice(-6)}`;
+    const coverImage = newBook.coverImage || (Array.isArray(newBook.images) && (newBook.images.find(img => typeof img === 'string' && img.trim() && !img.includes('placeholder')) || newBook.images[0])) || '';
     const bookWithId = {
       ...newBook,
       _id: id,
+      coverImage,
+      image: coverImage,
       rating: newBook.rating || 5.0,
       reviewsCount: newBook.reviewsCount || 0,
       salesCount: 0,
@@ -228,10 +231,16 @@ export const StoreDataProvider = ({ children }) => {
       ? (updatedFields.stock === 0 ? 'out_of_stock' : updatedFields.stock <= 5 ? 'low_stock' : 'in_stock')
       : undefined;
 
+    let coverImage = updatedFields.coverImage;
+    if (!coverImage && Array.isArray(updatedFields.images) && updatedFields.images.length > 0) {
+      coverImage = updatedFields.images.find(img => typeof img === 'string' && img.trim() && !img.includes('placeholder')) || updatedFields.images[0];
+    }
+
     const merged = {
       ...updatedFields,
       ...(calculatedDiscount !== undefined ? { discountPercent: calculatedDiscount } : {}),
-      ...(stockStatus !== undefined ? { stockStatus } : {})
+      ...(stockStatus !== undefined ? { stockStatus } : {}),
+      ...(coverImage ? { coverImage, image: coverImage } : {})
     };
 
     // Try backend

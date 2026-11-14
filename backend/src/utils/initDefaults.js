@@ -74,6 +74,53 @@ const initDefaults = async () => {
       }
       console.log('[LOGOS Init] Seeded initial default banners');
     }
+
+    // 3. Auto-sync stock quantities & stockStatus across all books to eliminate discrepancies
+    const Book = require('../models/Book');
+    const syncRes1 = await Book.updateMany(
+      { stock: { $gt: 5 }, stockStatus: { $ne: 'in_stock' } },
+      { $set: { stockStatus: 'in_stock' } }
+    );
+    const syncRes2 = await Book.updateMany(
+      { stock: { $gt: 0, $lte: 5 }, stockStatus: { $ne: 'low_stock' } },
+      { $set: { stockStatus: 'low_stock' } }
+    );
+    const syncRes3 = await Book.updateMany(
+      { stock: { $lte: 0 }, stockStatus: { $ne: 'out_of_stock' } },
+      { $set: { stock: 0, stockStatus: 'out_of_stock' } }
+    );
+    const syncRes4 = await Book.updateMany(
+      { stock: { $exists: false } },
+      { $set: { stock: 25, stockStatus: 'in_stock' } }
+    );
+    const totalFixed = (syncRes1.modifiedCount || 0) + (syncRes2.modifiedCount || 0) + (syncRes3.modifiedCount || 0) + (syncRes4.modifiedCount || 0);
+    if (totalFixed > 0) {
+      console.log(`[LOGOS Init] Auto-synchronized stock status for ${totalFixed} catalog books.`);
+    }
+
+    // 4. Auto-sync coverImage & image fields for books that have photos in images array
+    const booksNeedingCover = await Book.find({
+      $or: [
+        { coverImage: { $exists: false } },
+        { coverImage: '' },
+        { coverImage: /placeholder/i }
+      ],
+      'images.0': { $exists: true }
+    }).select('_id images coverImage').lean();
+
+    let coverFixedCount = 0;
+    for (const b of booksNeedingCover) {
+      if (Array.isArray(b.images) && b.images.length > 0) {
+        const realImg = b.images.find((img) => typeof img === 'string' && img.trim() && !img.includes('placeholder')) || b.images[0];
+        if (realImg && !realImg.includes('placeholder')) {
+          await Book.updateOne({ _id: b._id }, { $set: { coverImage: realImg, image: realImg } });
+          coverFixedCount++;
+        }
+      }
+    }
+    if (coverFixedCount > 0) {
+      console.log(`[LOGOS Init] Synchronized coverImage for ${coverFixedCount} books from their uploaded photos.`);
+    }
   } catch (err) {
     console.warn('[LOGOS Init Warning]', err.message);
   }
