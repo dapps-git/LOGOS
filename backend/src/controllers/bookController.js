@@ -241,26 +241,18 @@ const getBookByIdOrSlug = async (req, res) => {
     let book;
 
     if (idOrSlug.match(/^[0-9a-fA-F]{24}$/)) {
-      book = await Book.findById(idOrSlug);
+      book = await Book.findById(idOrSlug).lean();
     } else {
-      book = await Book.findOne({ slug: idOrSlug });
+      book = await Book.findOne({ slug: idOrSlug }).lean();
     }
 
     if (!book) {
       return res.status(404).json({ success: false, message: 'Book not found' });
     }
 
-    // Also fetch related books in the same theme or author
-    const relatedBooks = await Book.find({
-      _id: { $ne: book._id },
-      isActive: true,
-      $or: [{ theme: book.theme }, { author: book.author }]
-    }).limit(4);
-
     return res.json({
       success: true,
-      book,
-      relatedBooks
+      book
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

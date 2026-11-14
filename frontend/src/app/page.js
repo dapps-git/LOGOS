@@ -5,7 +5,6 @@ import { Navbar } from '@/components/Navbar';
 import { HeroBanner } from '@/components/HeroBanner';
 import { NewArrivals } from '@/components/NewArrivals';
 import { BookOfTheWeek } from '@/components/BookOfTheWeek';
-import { FeaturedBookSpotlight } from '@/components/FeaturedBookSpotlight';
 import { Bestsellers } from '@/components/Bestsellers';
 import { AuthorSpotlight } from '@/components/AuthorSpotlight';
 import { ComboOfferBanner } from '@/components/ComboOfferBanner';
@@ -29,11 +28,8 @@ export default function HomePage() {
         {/* 2. New Arrivals (Fresh from the press) */}
         <NewArrivals />
 
-        {/* 2b. Book of the Week (Curated highlight) */}
+        {/* 3. Book of the Week (Spotlight Showcase) */}
         <BookOfTheWeek />
-
-        {/* 3. Featured Book Spotlight (പരാജിതനായകർ) */}
-        <FeaturedBookSpotlight />
 
         {/* 4. Bestsellers (Most loved) */}
         <Bestsellers />

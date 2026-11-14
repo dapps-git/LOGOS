@@ -467,10 +467,6 @@ export const ProductReviews = ({ book }) => {
               </p>
             </div>
           </div>
-
-          <div className="text-xs text-slate-500 font-medium">
-            <span>✨ Filtered: Positive & Highest rated reviews first</span>
-          </div>
         </div>
       )}
 

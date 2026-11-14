@@ -184,7 +184,7 @@ export async function fetchFeaturedBooks() {
 export async function fetchBookBySlugOrId(idOrSlug) {
   try {
     const res = await fetch(`${getApiBase()}/books/${idOrSlug}`, {
-      cache: 'no-store'
+      next: { revalidate: 30 }
     });
     if (!res.ok) throw new Error(`Failed to fetch book: ${res.status}`);
     const data = await res.json();

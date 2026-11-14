@@ -23,9 +23,7 @@ export default function BookDetailLoading() {
             
             {/* Left Column: Image Skeleton */}
             <div className="lg:col-span-5 flex flex-col items-center w-full">
-              <div className="w-full max-w-[340px] sm:max-w-[400px] aspect-[3/4] bg-slate-100 rounded-xl animate-pulse flex items-center justify-center border border-slate-200/60">
-                <div className="w-12 h-12 rounded-full border-2 border-slate-300/60 border-t-transparent animate-spin" />
-              </div>
+              <div className="w-full max-w-[340px] sm:max-w-[400px] aspect-[3/4] bg-slate-100 rounded-xl animate-pulse border border-slate-200/60 shadow-xs" />
               <div className="flex gap-2.5 justify-center mt-5 pt-3 border-t border-slate-100 w-full">
                 {[1, 2, 3].map((idx) => (
                   <div key={idx} className="w-14 h-20 bg-slate-100 rounded-md animate-pulse border border-slate-200" />
