@@ -50,7 +50,7 @@ function ProductsContent() {
   const { addToCart } = useCart();
 
   const [books, setBooks] = useState([]);
-  const [pagination, setPagination] = useState({ page: 1, limit: 16, totalPages: 1, totalItems: 0 });
+  const [pagination, setPagination] = useState({ page: 1, limit: 18, totalPages: 1, totalItems: 0 });
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
@@ -152,7 +152,7 @@ function ProductsContent() {
 
         const params = {
           page: currentPage,
-          limit: 16,
+          limit: 18,
           sortBy
         };
 
@@ -194,14 +194,14 @@ function ProductsContent() {
         if (currentReqId === requestIdRef.current) {
           const list = Array.isArray(data.books) ? data.books : [];
           setBooks(list);
-          setPagination(data.pagination || { page: currentPage, limit: 16, totalPages: 1, totalItems: list.length });
+          setPagination(data.pagination || { page: currentPage, limit: 18, totalPages: 1, totalItems: list.length });
 
         }
       } catch (err) {
         console.warn('[ProductsPage] loadBooks error:', err);
         if (currentReqId === requestIdRef.current) {
           setBooks([]);
-          setPagination({ page: 1, limit: 16, totalPages: 1, totalItems: 0 });
+          setPagination({ page: 1, limit: 18, totalPages: 1, totalItems: 0 });
         }
       } finally {
         if (currentReqId === requestIdRef.current) {
@@ -474,13 +474,13 @@ function ProductsContent() {
           {/* Product Cards Grid: 6 in One Row on Laptop/Desktop (xl:grid-cols-6) */}
           {loading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-3 sm:gap-4">
-              {Array.from({ length: 16 }).map((_, idx) => (
+              {Array.from({ length: 18 }).map((_, idx) => (
                 <div
                   key={`catalog-skel-${idx}`}
                   className="bg-white rounded-2xl border border-slate-200/90 p-2.5 sm:p-3 flex flex-col justify-between shadow-2xs"
                 >
                   <div className="aspect-[3/4] w-full bg-slate-100 rounded-xl animate-pulse mb-2.5 flex items-center justify-center">
-                    <div className="w-8 h-8 rounded-full border-2 border-slate-300/40 border-t-transparent animate-spin" />
+                    <div className="w-8 h-8 rounded-full border-2 border-slate-200 border-t-slate-400/40 animate-pulse" />
                   </div>
                   <div className="space-y-2 mt-auto">
                     <div className="h-3.5 bg-slate-200 rounded-sm w-4/5 animate-pulse" />

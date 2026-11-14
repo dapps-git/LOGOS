@@ -199,7 +199,7 @@ const getBooks = async (req, res) => {
     }
 
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.max(1, parseInt(limit, 10) || 16);
+    const limitNum = Math.max(1, parseInt(limit, 10) || 18);
     const skip = (pageNum - 1) * limitNum;
 
     const [books, total] = await Promise.all([

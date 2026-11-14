@@ -30,7 +30,7 @@ function getAuthHeaders() {
 
 export async function fetchBooks(params = {}) {
   try {
-    const finalParams = { limit: 16, ...params };
+    const finalParams = { limit: 18, ...params };
     const cleanParams = Object.entries(finalParams).filter(
       ([_, v]) => v !== undefined && v !== null && v !== ''
     );
@@ -49,7 +49,7 @@ export async function fetchBooks(params = {}) {
 
 export async function fetchBooksPaginated(params = {}) {
   try {
-    const finalParams = { page: 1, limit: 16, ...params };
+    const finalParams = { page: 1, limit: 18, ...params };
     const cleanParams = Object.entries(finalParams).filter(
       ([_, v]) => v !== undefined && v !== null && v !== ''
     );
