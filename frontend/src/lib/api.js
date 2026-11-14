@@ -130,13 +130,27 @@ export async function fetchBookOfTheWeek() {
     const res = await fetch(`${getApiBase()}/books/collections/book-of-the-week`, {
       cache: 'no-store'
     });
-    if (!res.ok) throw new Error(`Failed to fetch book of the week: ${res.status}`);
-    const data = await res.json();
-    return data.book || null;
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.book) return data.book;
+    }
+  } catch {}
+
+  // Resilient fallback: Query books list and find isBookOfTheWeek or spotlight
+  try {
+    const res = await fetch(`${getApiBase()}/books?limit=100`, { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      const list = data.books || [];
+      const botw = list.find((b) => Boolean(b.isBookOfTheWeek));
+      if (botw) return botw;
+      const spot = list.find((b) => Boolean(b.isFeaturedSpotlight || b.isFeatured));
+      if (spot) return spot;
+    }
   } catch (err) {
     console.warn('[LOGOS API] fetchBookOfTheWeek fallback:', err.message);
-    return null;
   }
+  return null;
 }
 
 export async function fetchComingSoonBooks() {
@@ -144,13 +158,24 @@ export async function fetchComingSoonBooks() {
     const res = await fetch(`${getApiBase()}/books/collections/coming-soon`, {
       cache: 'no-store'
     });
-    if (!res.ok) throw new Error(`Failed to fetch coming soon books: ${res.status}`);
-    const data = await res.json();
-    return data.books || [];
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data?.books) && data.books.length > 0) return data.books;
+    }
+  } catch {}
+
+  // Resilient fallback: Query books list and find isComingSoon / isPreBook
+  try {
+    const res = await fetch(`${getApiBase()}/books?limit=100`, { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      const list = data.books || [];
+      return list.filter((b) => Boolean(b.isComingSoon || b.isPreBook));
+    }
   } catch (err) {
     console.warn('[LOGOS API] fetchComingSoonBooks fallback:', err.message);
-    return [];
   }
+  return [];
 }
 
 export async function fetchBestSellers() {

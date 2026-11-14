@@ -29,14 +29,7 @@ export const BookOfTheWeek = () => {
               slug: live.slug || live._id
             });
           } else {
-            setBook({
-              id: 'kannakile-chirikal',
-              title: 'കണക്കിലെ ചിരികൾ - Kannakile Chirikal',
-              author: 'അമിത് കുമാർ',
-              description: 'ഒരു ബാങ്കുദ്യോഗസ്ഥന്റെ അനുഭവക്കുറിപ്പുകൾ നിറഞ്ഞ രസകരമായ പുസ്തകം.',
-              image: '/featured_parajitha.png',
-              slug: 'kannakile-chirikal'
-            });
+            setBook(null);
           }
           setLoading(false);
         }

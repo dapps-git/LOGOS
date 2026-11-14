@@ -133,7 +133,13 @@ const getBooks = async (req, res) => {
     if (isNewArrival === 'true') query.isNewArrival = true;
     if (isBookOfTheWeek === 'true') query.isBookOfTheWeek = true;
     if (isComingSoon === 'true' || isPreBook === 'true') {
-      query.$or = (query.$or || []).concat([{ isComingSoon: true }, { isPreBook: true }]);
+      const csConditions = [{ isComingSoon: true }, { isPreBook: true }];
+      if (query.$or) {
+        query.$and = (query.$and || []).concat([{ $or: query.$or }, { $or: csConditions }]);
+        delete query.$or;
+      } else {
+        query.$or = csConditions;
+      }
     }
     if (isFeatured === 'true') query.isFeatured = true;
     if (isHandpicked === 'true') query.isHandpicked = true;
@@ -386,7 +392,18 @@ const getComingSoonBooks = async (req, res) => {
 // @access  Public
 const getFilterOptions = async (req, res) => {
   try {
-    const [themes, authors, publishers, languages, totalBooks, inStockCount, lowStockCount, outOfStockCount] = await Promise.all([
+    const [
+      themes,
+      authors,
+      publishers,
+      languages,
+      totalBooks,
+      inStockCount,
+      lowStockCount,
+      outOfStockCount,
+      botwCount,
+      comingSoonCount
+    ] = await Promise.all([
       Book.distinct('theme', { isActive: true }),
       Book.distinct('author', { isActive: true }),
       Book.distinct('publisher', { isActive: true }),
@@ -394,7 +411,9 @@ const getFilterOptions = async (req, res) => {
       Book.countDocuments({ isActive: true }),
       Book.countDocuments({ isActive: true, stock: { $gt: 5 } }),
       Book.countDocuments({ isActive: true, stock: { $gt: 0, $lte: 5 } }),
-      Book.countDocuments({ isActive: true, stock: { $lte: 0 } })
+      Book.countDocuments({ isActive: true, stock: { $lte: 0 } }),
+      Book.countDocuments({ isActive: true, isBookOfTheWeek: true }),
+      Book.countDocuments({ isActive: true, $or: [{ isComingSoon: true }, { isPreBook: true }] })
     ]);
 
     return res.json({
@@ -409,7 +428,9 @@ const getFilterOptions = async (req, res) => {
         total: totalBooks,
         inStock: inStockCount,
         lowStock: lowStockCount,
-        outOfStock: outOfStockCount
+        outOfStock: outOfStockCount,
+        bookOfTheWeek: botwCount,
+        comingSoon: comingSoonCount
       }
     });
   } catch (error) {

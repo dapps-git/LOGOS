@@ -152,14 +152,25 @@ export default function ProductsPage() {
       else if (featureFilter === 'handpicked') params.append('isHandpicked', 'true');
       else if (featureFilter === 'featured_spotlight') params.append('isFeatured', 'true');
       else if (featureFilter === 'new_arrivals') params.append('isNewArrival', 'true');
+      else if (featureFilter === 'book_of_the_week') params.append('isBookOfTheWeek', 'true');
+      else if (featureFilter === 'coming_soon') params.append('isComingSoon', 'true');
       else if (featureFilter === 'author_spotlight') params.append('isAuthorSpotlight', 'true');
 
       const data = await apiClient(`/books?${params.toString()}`);
 
       if (currentRequestId === fetchRequestIdRef.current && Array.isArray(data?.books)) {
-        setBooks(data.books);
+        let displayList = data.books;
+        if (featureFilter === 'book_of_the_week') {
+          displayList = displayList.filter((b) => Boolean(b.isBookOfTheWeek));
+        } else if (featureFilter === 'coming_soon') {
+          displayList = displayList.filter((b) => Boolean(b.isComingSoon || b.isPreBook));
+        }
+        setBooks(displayList);
         if (data.pagination) {
-          setPagination(data.pagination);
+          setPagination({
+            ...data.pagination,
+            totalItems: (featureFilter === 'book_of_the_week' || featureFilter === 'coming_soon') ? displayList.length : data.pagination.totalItems
+          });
         }
       }
     } catch (err) {
@@ -417,6 +428,30 @@ export default function ProductsPage() {
             }`}
           >
             🚀 New Arrivals
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFeatureFilter(featureFilter === 'book_of_the_week' ? 'ALL' : 'book_of_the_week')}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+              featureFilter === 'book_of_the_week'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100'
+            }`}
+          >
+            👑 Book of the Week {counts.bookOfTheWeek ? <span className="text-[10px] opacity-75 font-mono">({counts.bookOfTheWeek})</span> : null}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFeatureFilter(featureFilter === 'coming_soon' ? 'ALL' : 'coming_soon')}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+              featureFilter === 'coming_soon'
+                ? 'bg-purple-700 text-white shadow-xs'
+                : 'bg-purple-50 text-purple-900 border border-purple-200 hover:bg-purple-100'
+            }`}
+          >
+            ⏳ Coming Soon {counts.comingSoon ? <span className="text-[10px] opacity-75 font-mono">({counts.comingSoon})</span> : null}
           </button>
 
           <button

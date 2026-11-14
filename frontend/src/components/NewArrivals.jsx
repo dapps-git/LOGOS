@@ -20,12 +20,10 @@ export const NewArrivals = () => {
         if (!Array.isArray(list) || list.length === 0) {
           list = await fetchBooks({ isNewArrival: true, limit: 6 }).catch(() => []);
         }
-        if (!Array.isArray(list) || list.length === 0) {
-          list = await fetchBooks({ limit: 6 }).catch(() => []);
-        }
 
         if (isMounted) {
-          const rawList = Array.isArray(list) ? list : [];
+          // Strictly only display books manually marked as New Arrival by the admin
+          const rawList = (Array.isArray(list) ? list : []).filter((b) => Boolean(b.isNewArrival));
           let displayBooks = rawList.filter((b) => {
             const img = getBookCoverImage(b);
             return img && img !== '/book-placeholder.svg' && !img.includes('placeholder');
