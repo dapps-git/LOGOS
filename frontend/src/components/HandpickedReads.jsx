@@ -77,7 +77,7 @@ export const HandpickedReads = () => {
       <div className="flex items-end justify-between gap-4 pb-6 sm:pb-8">
         <div>
           <p className="text-xs sm:text-sm font-medium text-[#4361ee] tracking-tight">
-            From our editors&apos; desks
+            From our editors&apos; desk
           </p>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-serif text-slate-900 tracking-tight mt-1">
             Handpicked Reads
@@ -94,9 +94,8 @@ export const HandpickedReads = () => {
             <Link
               key={book.id}
               href={book.href}
-              className={`group flex flex-col transition-all ${
-                book.prominent ? '-translate-y-2 sm:-translate-y-4' : ''
-              }`}
+              className={`group flex flex-col transition-all ${book.prominent ? '-translate-y-2 sm:-translate-y-4' : ''
+                }`}
             >
               {/* Number Index (01, 02, 03) */}
               <span className="text-xl sm:text-2xl font-serif text-[#224494] font-semibold mb-2 block">
@@ -147,17 +146,15 @@ export const HandpickedReads = () => {
                       slug: book.href ? book.href.replace('/books/', '') : book.id
                     });
                   }}
-                  className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md transition-all shadow-sm z-10 ${
-                    isBookInWishlist(book.id)
+                  className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md transition-all shadow-sm z-10 ${isBookInWishlist(book.id)
                       ? 'bg-white text-rose-500 shadow-rose-200'
                       : 'bg-white/80 text-slate-400 hover:text-rose-500 hover:bg-white'
-                  }`}
+                    }`}
                   title="Wishlist"
                 >
                   <Heart
-                    className={`w-3.5 h-3.5 ${
-                      isBookInWishlist(book.id) ? 'fill-rose-500 text-rose-500' : ''
-                    }`}
+                    className={`w-3.5 h-3.5 ${isBookInWishlist(book.id) ? 'fill-rose-500 text-rose-500' : ''
+                      }`}
                   />
                 </button>
               </div>
