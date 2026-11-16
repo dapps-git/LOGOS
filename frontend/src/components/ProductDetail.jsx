@@ -40,19 +40,20 @@ export const ProductDetail = ({ book }) => {
     ? Number(book?.price)
     : (book?.originalPrice ? Number(book.originalPrice) : null);
 
-  const [failedImages, setFailedImages] = useState({});
-
   const rawImages = Array.isArray(book?.images) && book.images.length > 0
     ? Array.from(new Set(book.images.filter((img) => typeof img === 'string' && img.trim() && img !== '/book-placeholder.svg')))
     : (book?.coverImage ? [book.coverImage] : (book?.image ? [book.image] : []));
 
-  const initialImagesList = rawImages.length > 0 ? rawImages : ['/book-placeholder.svg'];
+  const imagesList = rawImages.length > 0 ? rawImages : ['/book-placeholder.svg'];
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  
-  // Filter out any thumbnails that fail to load
-  const activeImages = initialImagesList.filter((_, idx) => !failedImages[idx]);
-  const imagesList = activeImages.length > 0 ? activeImages : ['/book-placeholder.svg'];
   const currentImage = imagesList[selectedImageIndex] || imagesList[0] || '/book-placeholder.svg';
+
+  // Reset selected image when viewing a different book
+  useEffect(() => {
+    setSelectedImageIndex(0);
+    setDragOffset(0);
+    setIsDragging(false);
+  }, [book?._id, book?.id, book?.slug]);
 
   const rating = book?.rating ? Number(book.rating).toFixed(0) : '5';
 
@@ -258,23 +259,24 @@ export const ProductDetail = ({ book }) => {
             >
               {/* Sliding Carousel Track */}
               <div
-                className="flex w-full h-full overflow-hidden"
+                className="flex h-full select-none"
                 style={{
-                  transform: `translateX(calc(-${selectedImageIndex * 100}% + ${dragOffset}px))`,
+                  width: `${imagesList.length * 100}%`,
+                  transform: `translateX(calc(-${(selectedImageIndex / imagesList.length) * 100}% + ${dragOffset}px))`,
                   transition: isDragging ? 'none' : 'transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1)'
                 }}
               >
                 {imagesList.map((img, idx) => (
                   <div
                     key={`book-slide-${idx}`}
-                    className="w-full h-full shrink-0 flex items-center justify-center p-2 overflow-hidden"
+                    style={{ width: `${100 / imagesList.length}%` }}
+                    className="h-full shrink-0 flex items-center justify-center p-2"
                   >
                     <img
                       src={optimizeImageUrl(img, { width: 600, quality: 'auto' })}
                       alt={`${title} - view ${idx + 1}`}
                       referrerPolicy="no-referrer"
-                      loading={idx === 0 ? 'eager' : 'lazy'}
-                      crossOrigin="anonymous"
+                      loading="eager"
                       draggable={false}
                       onError={(e) => {
                         if (!e.currentTarget.dataset.failed) {
@@ -291,6 +293,8 @@ export const ProductDetail = ({ book }) => {
               {/* Top-Right Wishlist Heart Button */}
               <button
                 type="button"
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (book) {
@@ -319,6 +323,8 @@ export const ProductDetail = ({ book }) => {
               {imagesList.length > 1 && selectedImageIndex > 0 && (
                 <button
                   type="button"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedImageIndex((prev) => Math.max(0, prev - 1));
@@ -334,6 +340,8 @@ export const ProductDetail = ({ book }) => {
               {imagesList.length > 1 && selectedImageIndex < imagesList.length - 1 && (
                 <button
                   type="button"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedImageIndex((prev) => Math.min(imagesList.length - 1, prev + 1));
@@ -352,6 +360,8 @@ export const ProductDetail = ({ book }) => {
                     <button
                       key={`dot-${dotIdx}`}
                       type="button"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedImageIndex(dotIdx);
@@ -366,7 +376,7 @@ export const ProductDetail = ({ book }) => {
               )}
             </div>
 
-            {/* Multiple Images Gallery Thumbnails (Only valid images rendered) */}
+            {/* Multiple Images Gallery Thumbnails */}
             {imagesList.length > 1 && (
               <div className="flex flex-wrap gap-2.5 justify-center mt-5 pt-3 border-t border-slate-100 w-full">
                 {imagesList.map((img, idx) => (
@@ -384,8 +394,11 @@ export const ProductDetail = ({ book }) => {
                       src={optimizeImageUrl(img, { width: 140, quality: 'auto' })}
                       alt={`${title} photo ${idx + 1}`}
                       className="w-full h-full object-contain pointer-events-none"
-                      onError={() => {
-                        setFailedImages((prev) => ({ ...prev, [idx]: true }));
+                      onError={(e) => {
+                        if (!e.currentTarget.dataset.failed) {
+                          e.currentTarget.dataset.failed = 'true';
+                          e.currentTarget.src = '/book-placeholder.svg';
+                        }
                       }}
                     />
                   </button>
