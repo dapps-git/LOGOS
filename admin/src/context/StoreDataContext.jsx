@@ -83,7 +83,7 @@ export const StoreDataProvider = ({ children }) => {
         customersRes,
         highlightsRes
       ] = await Promise.allSettled([
-        apiClient('/books?limit=25&includeInactive=true').catch(() => null),
+        apiClient('/books?limit=100&includeInactive=true').catch(() => null),
         apiClient('/banners/admin/all').catch(() => apiClient('/banners').catch(() => null)),
         apiClient('/books/authors/all').catch(() => null),
         apiClient('/orders/admin/all').catch(() => null),

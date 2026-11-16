@@ -7,6 +7,7 @@ import { AdminLayout } from '@/components/layout/AdminLayout';
 import { ImageUploader } from '@/components/common/ImageUploader';
 import { useStoreData } from '@/context/StoreDataContext';
 import { useToast } from '@/context/ToastContext';
+import { apiClient } from '@/api/client';
 import {
   ArrowLeft,
   Save,
@@ -17,7 +18,8 @@ import {
   User,
   Sparkles,
   Upload,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Loader2
 } from 'lucide-react';
 
 const COMMON_LANGUAGES = ['English', 'Malayalam', 'Hindi', 'Tamil', 'Arabic', 'Kannada', 'Telugu', 'Bengali'];
@@ -107,44 +109,80 @@ function ProductFormContent() {
     }));
   };
 
-  // Load existing book if editing
+  const [isLoadingBook, setIsLoadingBook] = useState(Boolean(editId));
+
+  // Load existing book if editing (supports local cache + direct API fetch for all paginated catalog books)
   useEffect(() => {
-    if (editId && books.length > 0) {
-      const bookToEdit = books.find((b) => b._id === editId);
-      if (bookToEdit) {
-        setFormData({
-          title: bookToEdit.title || bookToEdit.name || '',
-          author: bookToEdit.author || '',
-          authorPhoto: bookToEdit.authorPhoto || '',
-          authorBio: bookToEdit.authorBio || '',
-          publisher: bookToEdit.publisher || '',
-          edition: bookToEdit.edition || '1st Edition',
-          theme: THEMES_LIST.includes(bookToEdit.theme) ? bookToEdit.theme : 'Other',
-          customTheme: THEMES_LIST.includes(bookToEdit.theme) ? '' : bookToEdit.theme,
-          languages: bookToEdit.languages || ['English'],
-          pageCount: bookToEdit.pageCount || 250,
-          price: bookToEdit.price || '',
-          discountPrice: bookToEdit.discountPrice || '',
-          stock: bookToEdit.stock !== undefined ? bookToEdit.stock : 10,
-          description: bookToEdit.description || '',
-          spotlightDescription: bookToEdit.spotlightDescription || '',
-          images: bookToEdit.images || [],
-          sku: bookToEdit.sku || '',
-          isbn: bookToEdit.isbn || '',
-          isBestSeller: Boolean(bookToEdit.isBestSeller),
-          isNewArrival: Boolean(bookToEdit.isNewArrival),
-          isBookOfTheWeek: Boolean(bookToEdit.isBookOfTheWeek),
-          isComingSoon: Boolean(bookToEdit.isComingSoon),
-          isPreBook: Boolean(bookToEdit.isPreBook),
-          isFeatured: Boolean(bookToEdit.isFeatured),
-          isHandpicked: Boolean(bookToEdit.isHandpicked),
-          isAuthorSpotlight: Boolean(bookToEdit.isAuthorSpotlight),
-          isFeaturedSpotlight: Boolean(bookToEdit.isFeaturedSpotlight),
-          isBestAuthor: Boolean(bookToEdit.isBestAuthor),
-          isActive: bookToEdit.isActive !== false
-        });
+    if (!editId) {
+      setIsLoadingBook(false);
+      return;
+    }
+
+    let isMounted = true;
+
+    const populateForm = (b) => {
+      if (!b) return;
+      setFormData({
+        title: b.title || b.name || '',
+        author: b.author || '',
+        authorPhoto: b.authorPhoto || '',
+        authorBio: b.authorBio || '',
+        publisher: b.publisher || '',
+        edition: b.edition || '1st Edition',
+        theme: THEMES_LIST.includes(b.theme) ? b.theme : 'Other',
+        customTheme: THEMES_LIST.includes(b.theme) ? '' : (b.theme || ''),
+        languages: Array.isArray(b.languages) && b.languages.length > 0 ? b.languages : ['English'],
+        pageCount: b.pageCount || 250,
+        price: b.price !== undefined && b.price !== null ? b.price : '',
+        discountPrice: b.discountPrice !== undefined && b.discountPrice !== null ? b.discountPrice : '',
+        stock: b.stock !== undefined && b.stock !== null ? b.stock : 10,
+        description: b.description || '',
+        spotlightDescription: b.spotlightDescription || '',
+        images: Array.isArray(b.images) && b.images.length > 0 ? b.images : (b.coverImage ? [b.coverImage] : (b.image ? [b.image] : [])),
+        sku: b.sku || '',
+        isbn: b.isbn || '',
+        isBestSeller: Boolean(b.isBestSeller),
+        isNewArrival: Boolean(b.isNewArrival),
+        isBookOfTheWeek: Boolean(b.isBookOfTheWeek),
+        isComingSoon: Boolean(b.isComingSoon),
+        isPreBook: Boolean(b.isPreBook),
+        isFeatured: Boolean(b.isFeatured),
+        isHandpicked: Boolean(b.isHandpicked),
+        isAuthorSpotlight: Boolean(b.isAuthorSpotlight),
+        isFeaturedSpotlight: Boolean(b.isFeaturedSpotlight),
+        isBestAuthor: Boolean(b.isBestAuthor),
+        isActive: b.isActive !== false
+      });
+      setIsLoadingBook(false);
+    };
+
+    // 1. Try local cache first for instant populate
+    if (books && books.length > 0) {
+      const cached = books.find((b) => b._id === editId || b.id === editId);
+      if (cached) {
+        populateForm(cached);
       }
     }
+
+    // 2. Fetch fresh full book details from backend API (covers every book across all catalog pages)
+    apiClient(`/books/${editId}`)
+      .then((res) => {
+        if (!isMounted) return;
+        const fetchedBook = res?.book || (res?._id ? res : null);
+        if (fetchedBook) {
+          populateForm(fetchedBook);
+        }
+      })
+      .catch((err) => {
+        console.warn('[EditBook] Direct book fetch error:', err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingBook(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, [editId, books]);
 
   const toggleLanguage = (lang) => {
@@ -251,10 +289,19 @@ function ProductFormContent() {
             Back to Products
           </Link>
 
-          <span className="text-xs font-semibold text-slate-400">
+          <span className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+            {isLoadingBook && <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />}
             {editId ? 'Editing Existing Book' : 'New Product Wizard'}
           </span>
         </div>
+
+        {/* Loading Indicator */}
+        {isLoadingBook && (
+          <div className="bg-blue-50 border border-blue-200 px-4 py-3 rounded-md flex items-center gap-2.5 text-xs text-blue-900 font-semibold">
+            <Loader2 className="w-4 h-4 animate-spin text-[#1E3A8A]" />
+            <span>Loading book data from catalog...</span>
+          </div>
+        )}
 
         {/* Title Card */}
         <div className="bg-white p-6 rounded-md border border-slate-200 shadow-2xs">

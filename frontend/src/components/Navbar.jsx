@@ -24,6 +24,8 @@ export const Navbar = () => {
   const [selectedIndex, setSelectedIndex] = useState(-1);
 
   const searchContainerRef = useRef(null);
+  const mobileSearchContainerRef = useRef(null);
+  const mobileMenuContainerRef = useRef(null);
   const searchInputRef = useRef(null);
   const mobileSearchInputRef = useRef(null);
 
@@ -40,7 +42,11 @@ export const Navbar = () => {
       if (userDropdownRef.current && !userDropdownRef.current.contains(event.target)) {
         setUserDropdownOpen(false);
       }
-      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+      const isInsideSearch =
+        (searchContainerRef.current && searchContainerRef.current.contains(event.target)) ||
+        (mobileSearchContainerRef.current && mobileSearchContainerRef.current.contains(event.target)) ||
+        (mobileMenuContainerRef.current && mobileMenuContainerRef.current.contains(event.target));
+      if (!isInsideSearch) {
         setShowSuggestions(false);
       }
     };
@@ -104,6 +110,7 @@ export const Navbar = () => {
     setShowSuggestions(false);
     setMobileSearchOpen(false);
     setMobileMenuOpen(false);
+    setSearchQuery('');
     router.push(`/books/${book.slug || book._id}`);
   };
 
@@ -233,11 +240,13 @@ export const Navbar = () => {
               <div className="max-h-[320px] overflow-y-auto space-y-1">
                 {suggestions.length > 0 ? (
                   suggestions.map((item, idx) => (
-                    <button
+                    <Link
                       key={item._id || item.slug || idx}
-                      type="button"
+                      href={`/books/${item.slug || item._id}`}
                       onClick={() => handleSelectBook(item)}
-                      className={`w-full flex items-center gap-2.5 p-2 rounded-xl text-left transition-colors ${
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
+                      className={`w-full flex items-center gap-2.5 p-2 rounded-xl text-left transition-colors cursor-pointer ${
                         selectedIndex === idx ? 'bg-blue-50 text-[#1E3A8A]' : 'hover:bg-slate-50 text-slate-800'
                       }`}
                     >
@@ -275,7 +284,7 @@ export const Navbar = () => {
                           )}
                         </div>
                       </div>
-                    </button>
+                    </Link>
                   ))
                 ) : !searchLoading ? (
                   <div className="px-3 py-4 text-center">
@@ -446,7 +455,7 @@ export const Navbar = () => {
 
       {/* Mobile Quick Search Bar Dropdown */}
       {mobileSearchOpen && (
-        <div className="pointer-events-auto md:hidden mt-2 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-slate-100 p-2.5 animate-in fade-in slide-in-from-top-2">
+        <div ref={mobileSearchContainerRef} className="pointer-events-auto md:hidden mt-2 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-slate-100 p-2.5 animate-in fade-in slide-in-from-top-2">
           <form onSubmit={handleSearchSubmit} className="relative flex items-center">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
             <input
@@ -492,11 +501,13 @@ export const Navbar = () => {
                 </div>
               ) : suggestions.length > 0 ? (
                 suggestions.map((item) => (
-                  <button
+                  <Link
                     key={item._id || item.slug}
-                    type="button"
+                    href={`/books/${item.slug || item._id}`}
                     onClick={() => handleSelectBook(item)}
-                    className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left hover:bg-slate-50 text-slate-800 transition-colors"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left hover:bg-slate-50 text-slate-800 transition-colors cursor-pointer"
                   >
                     <img
                       src={item.coverImage || '/book-placeholder.svg'}
@@ -513,7 +524,7 @@ export const Navbar = () => {
                     <span className="text-xs font-semibold text-slate-900">
                       ₹{item.discountPrice || item.price}
                     </span>
-                  </button>
+                  </Link>
                 ))
               ) : (
                 <p className="text-center py-2 text-xs text-slate-400">No books found</p>
@@ -536,7 +547,7 @@ export const Navbar = () => {
 
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="pointer-events-auto md:hidden mt-2 bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl border border-slate-100 p-5 space-y-4 animate-in fade-in slide-in-from-top-2">
+        <div ref={mobileMenuContainerRef} className="pointer-events-auto md:hidden mt-2 bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl border border-slate-100 p-5 space-y-4 animate-in fade-in slide-in-from-top-2">
           {/* Quick Search inside Drawer with Live Results */}
           <div className="relative">
             <form onSubmit={handleSearchSubmit} className="relative flex items-center">
@@ -569,11 +580,13 @@ export const Navbar = () => {
                   </div>
                 ) : suggestions.length > 0 ? (
                   suggestions.map((item) => (
-                    <button
+                    <Link
                       key={`drawer-${item._id || item.slug}`}
-                      type="button"
+                      href={`/books/${item.slug || item._id}`}
                       onClick={() => handleSelectBook(item)}
-                      className="w-full flex items-center gap-2 p-1.5 rounded-lg text-left bg-white hover:bg-blue-50 transition-colors shadow-2xs border border-slate-100"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
+                      className="w-full flex items-center gap-2 p-1.5 rounded-lg text-left bg-white hover:bg-blue-50 transition-colors shadow-2xs border border-slate-100 cursor-pointer"
                     >
                       <img
                         src={item.coverImage || '/book-placeholder.svg'}
@@ -588,7 +601,7 @@ export const Navbar = () => {
                       <span className="text-xs font-bold text-[#1E3A8A] shrink-0">
                         ₹{item.discountPrice || item.price}
                       </span>
-                    </button>
+                    </Link>
                   ))
                 ) : (
                   <p className="text-center py-2 text-xs text-slate-400">No books found for &quot;{searchQuery}&quot;</p>
