@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -10,12 +10,15 @@ import {
   Check,
   Heart,
   Truck,
-  Calendar
+  Calendar,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useWishlist } from '../context/WishlistContext';
 import { ProductReviews } from './ProductReviews';
+import { optimizeImageUrl } from '../lib/api';
 
 export const ProductDetail = ({ book }) => {
   const router = useRouter();
@@ -52,6 +55,97 @@ export const ProductDetail = ({ book }) => {
   const currentImage = imagesList[selectedImageIndex] || imagesList[0] || '/book-placeholder.svg';
 
   const rating = book?.rating ? Number(book.rating).toFixed(0) : '5';
+
+  // Touch / Mobile Swipe Gesture State
+  const touchStartRef = useRef({ x: 0, y: 0, time: 0 });
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleTouchStart = (e) => {
+    if (imagesList.length <= 1) return;
+    const touch = e.touches[0];
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      time: Date.now()
+    };
+    setIsDragging(true);
+    setDragOffset(0);
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isDragging || imagesList.length <= 1) return;
+    const touch = e.touches[0];
+    const diffX = touch.clientX - touchStartRef.current.x;
+    const diffY = touch.clientY - touchStartRef.current.y;
+
+    // Do not interfere if user is scrolling vertically
+    if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffX) < 15) {
+      return;
+    }
+
+    // Elastic damping resistance at boundary edges
+    const isAtStart = selectedImageIndex === 0 && diffX > 0;
+    const isAtEnd = selectedImageIndex === imagesList.length - 1 && diffX < 0;
+    const damping = isAtStart || isAtEnd ? 0.25 : 1;
+
+    setDragOffset(diffX * damping);
+  };
+
+  const handleTouchEnd = () => {
+    if (!isDragging || imagesList.length <= 1) {
+      setIsDragging(false);
+      setDragOffset(0);
+      return;
+    }
+
+    const elapsed = Math.max(1, Date.now() - touchStartRef.current.time);
+    const velocity = Math.abs(dragOffset) / elapsed;
+
+    // Trigger swipe if user moved >= 40px or flicked quickly (> 0.35 px/ms)
+    const passedThreshold = Math.abs(dragOffset) > 40 || velocity > 0.35;
+
+    if (passedThreshold) {
+      if (dragOffset < 0 && selectedImageIndex < imagesList.length - 1) {
+        setSelectedImageIndex((prev) => Math.min(imagesList.length - 1, prev + 1));
+      } else if (dragOffset > 0 && selectedImageIndex > 0) {
+        setSelectedImageIndex((prev) => Math.max(0, prev - 1));
+      }
+    }
+
+    setIsDragging(false);
+    setDragOffset(0);
+  };
+
+  const handleMouseDown = (e) => {
+    if (imagesList.length <= 1) return;
+    touchStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      time: Date.now()
+    };
+    setIsDragging(true);
+    setDragOffset(0);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging || imagesList.length <= 1) return;
+    const diffX = e.clientX - touchStartRef.current.x;
+    const isAtStart = selectedImageIndex === 0 && diffX > 0;
+    const isAtEnd = selectedImageIndex === imagesList.length - 1 && diffX < 0;
+    const damping = isAtStart || isAtEnd ? 0.25 : 1;
+    setDragOffset(diffX * damping);
+  };
+
+  const handleMouseUp = () => {
+    handleTouchEnd();
+  };
+
+  const handleMouseLeave = () => {
+    if (isDragging) {
+      handleTouchEnd();
+    }
+  };
 
   // Dynamic Algorithm: Store recently viewed book in local storage
   useEffect(() => {
@@ -127,7 +221,7 @@ export const ProductDetail = ({ book }) => {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 overflow-x-hidden">
       {/* Breadcrumb Navigation */}
       <nav className="flex items-center gap-2 text-xs sm:text-sm text-slate-500 mb-5">
         <Link href="/" className="hover:text-blue-600 transition-colors">
@@ -144,28 +238,76 @@ export const ProductDetail = ({ book }) => {
       </nav>
 
       {/* Main Product Card */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-10 shadow-xs">
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-10 shadow-xs overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
           
-          {/* Left Column: Direct Book Image Showcase (Expanded width showcase) */}
-          <div className="lg:col-span-5 flex flex-col items-center">
-            <div className="relative w-full max-w-[360px] sm:max-w-[420px] flex items-center justify-center">
-              
+          {/* Left Column: Direct Book Image Showcase (Smooth Mobile Swipe Carousel) */}
+          <div className="lg:col-span-5 flex flex-col items-center w-full overflow-hidden">
+            <div
+              className={`relative w-full max-w-[340px] sm:max-w-[400px] aspect-[3/4] overflow-hidden rounded-xl select-none touch-pan-y ${
+                imagesList.length > 1 ? 'cursor-grab active:cursor-grabbing' : ''
+              }`}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              onTouchCancel={handleTouchEnd}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseLeave}
+            >
+              {/* Sliding Carousel Track */}
+              <div
+                className="flex w-full h-full overflow-hidden"
+                style={{
+                  transform: `translateX(calc(-${selectedImageIndex * 100}% + ${dragOffset}px))`,
+                  transition: isDragging ? 'none' : 'transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1)'
+                }}
+              >
+                {imagesList.map((img, idx) => (
+                  <div
+                    key={`book-slide-${idx}`}
+                    className="w-full h-full shrink-0 flex items-center justify-center p-2 overflow-hidden"
+                  >
+                    <img
+                      src={optimizeImageUrl(img, { width: 600, quality: 'auto' })}
+                      alt={`${title} - view ${idx + 1}`}
+                      referrerPolicy="no-referrer"
+                      loading={idx === 0 ? 'eager' : 'lazy'}
+                      crossOrigin="anonymous"
+                      draggable={false}
+                      onError={(e) => {
+                        if (!e.currentTarget.dataset.failed) {
+                          e.currentTarget.dataset.failed = 'true';
+                          e.currentTarget.src = '/book-placeholder.svg';
+                        }
+                      }}
+                      className="max-h-full max-w-full w-auto h-auto object-contain select-none filter drop-shadow-xl rounded-sm pointer-events-none transition-transform duration-300 hover:scale-[1.02]"
+                    />
+                  </div>
+                ))}
+              </div>
+
               {/* Top-Right Wishlist Heart Button */}
               <button
                 type="button"
-                onClick={() => book && toggleWishlist({
-                  id: bookId,
-                  _id: bookId,
-                  title,
-                  author,
-                  price,
-                  originalPrice,
-                  coverImage: currentImage,
-                  image: currentImage,
-                  slug: book.slug || bookId
-                })}
-                className={`absolute top-2 right-2 z-10 w-9 h-9 rounded-full flex items-center justify-center bg-white/90 backdrop-blur-xs shadow-md border border-slate-200 transition-all active:scale-95 cursor-pointer ${
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (book) {
+                    toggleWishlist({
+                      id: bookId,
+                      _id: bookId,
+                      title,
+                      author,
+                      price,
+                      originalPrice,
+                      coverImage: currentImage,
+                      image: currentImage,
+                      slug: book.slug || bookId
+                    });
+                  }
+                }}
+                className={`absolute top-2 right-2 z-20 w-9 h-9 rounded-full flex items-center justify-center bg-white/90 backdrop-blur-xs shadow-md border border-slate-200 transition-all active:scale-95 cursor-pointer ${
                   inWishlist ? 'text-rose-500 shadow-rose-100 border-rose-200' : 'text-slate-400 hover:text-rose-500'
                 }`}
                 title={inWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'}
@@ -173,21 +315,55 @@ export const ProductDetail = ({ book }) => {
                 <Heart className={`w-4 h-4 ${inWishlist ? 'fill-rose-500 text-rose-500' : ''}`} />
               </button>
 
-              {/* Book Cover Artwork */}
-              <img
-                src={currentImage}
-                alt={title}
-                referrerPolicy="no-referrer"
-                loading="eager"
-                crossOrigin="anonymous"
-                onError={(e) => {
-                  if (!e.currentTarget.dataset.failed) {
-                    e.currentTarget.dataset.failed = 'true';
-                    e.currentTarget.src = '/book-placeholder.svg';
-                  }
-                }}
-                className="w-full max-w-[340px] sm:max-w-[400px] h-auto aspect-[3/4] object-contain select-none transition-transform duration-300 hover:scale-[1.02] filter drop-shadow-xl rounded-sm"
-              />
+              {/* Left Arrow Button (when images > 1 and not on first) */}
+              {imagesList.length > 1 && selectedImageIndex > 0 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedImageIndex((prev) => Math.max(0, prev - 1));
+                  }}
+                  className="absolute left-1.5 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-slate-700 shadow-md border border-slate-200/80 flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+                  aria-label="Previous image"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+              )}
+
+              {/* Right Arrow Button (when images > 1 and not on last) */}
+              {imagesList.length > 1 && selectedImageIndex < imagesList.length - 1 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedImageIndex((prev) => Math.min(imagesList.length - 1, prev + 1));
+                  }}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-slate-700 shadow-md border border-slate-200/80 flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+                  aria-label="Next image"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              )}
+
+              {/* Dots / Page Indicator on Mobile */}
+              {imagesList.length > 1 && (
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-black/40 backdrop-blur-xs px-2.5 py-1 rounded-full sm:hidden">
+                  {imagesList.map((_, dotIdx) => (
+                    <button
+                      key={`dot-${dotIdx}`}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedImageIndex(dotIdx);
+                      }}
+                      className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                        selectedImageIndex === dotIdx ? 'w-4 bg-white' : 'w-1.5 bg-white/60 hover:bg-white/80'
+                      }`}
+                      aria-label={`View photo ${dotIdx + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Multiple Images Gallery Thumbnails (Only valid images rendered) */}
@@ -205,9 +381,9 @@ export const ProductDetail = ({ book }) => {
                     }`}
                   >
                     <img
-                      src={img}
+                      src={optimizeImageUrl(img, { width: 140, quality: 'auto' })}
                       alt={`${title} photo ${idx + 1}`}
-                      className="w-full h-full object-contain"
+                      className="w-full h-full object-contain pointer-events-none"
                       onError={() => {
                         setFailedImages((prev) => ({ ...prev, [idx]: true }));
                       }}
