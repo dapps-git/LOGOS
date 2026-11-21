@@ -6,25 +6,44 @@ import { fetchBanners, optimizeImageUrl } from '@/lib/api';
 import { HeroBannerSkeleton } from '@/components/Skeletons';
 
 export const HeroBanner = () => {
-  const [banners, setBanners] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Instant SWR state: Load cached banners from localStorage immediately (0ms initial load!)
+  const [banners, setBanners] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('logos_cached_hero_banners');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return [];
+  });
+  const [loading, setLoading] = useState(() => banners.length === 0);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Fetch active hero banners from API
+  // Background fetch: Silently fetch latest active hero banners from API
   useEffect(() => {
     let isMounted = true;
-    try {
-      localStorage.removeItem('logos_cached_hero_banners');
-    } catch {}
 
     async function load() {
       try {
-        const data = await fetchBanners();
+        const data = await fetchBanners({ position: 'hero' });
         if (isMounted && Array.isArray(data)) {
           const heroBanners = data.filter(
             (b) => b.isActive !== false && (b.position === 'hero' || !b.position)
           );
-          setBanners(heroBanners);
+          if (heroBanners.length > 0) {
+            setBanners(heroBanners);
+            try {
+              localStorage.setItem('logos_cached_hero_banners', JSON.stringify(heroBanners));
+            } catch {}
+          } else {
+            setBanners([]);
+            try {
+              localStorage.removeItem('logos_cached_hero_banners');
+            } catch {}
+          }
         }
       } catch (err) {
         console.warn('[LOGOS] Error loading hero banners:', err);
@@ -49,7 +68,7 @@ export const HeroBanner = () => {
     return () => clearInterval(interval);
   }, [banners.length]);
 
-  // Pre-cache next banner slide in browser memory (skipping data URLs)
+  // Pre-cache next banner slide in browser memory
   useEffect(() => {
     if (banners.length <= 1 || typeof window === 'undefined') return;
     const nextIdx = (currentIndex + 1) % banners.length;
@@ -60,10 +79,12 @@ export const HeroBanner = () => {
     }
   }, [currentIndex, banners]);
 
+  // If loading and no cache exists yet, show skeleton
   if (loading && banners.length === 0) {
     return <HeroBannerSkeleton />;
   }
 
+  // If not loading and no active banners, render nothing
   if (!banners || banners.length === 0) {
     return null;
   }

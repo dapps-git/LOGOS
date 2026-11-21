@@ -251,10 +251,17 @@ export function optimizeImageUrl(url, { width = 500, quality = 'auto' } = {}) {
   return url;
 }
 
-export async function fetchBanners() {
+export async function fetchBanners(params = {}) {
   try {
-    const res = await fetch(`${getApiBase()}/banners`, {
-      cache: 'no-store'
+    let queryString = '';
+    if (typeof params === 'string') {
+      queryString = `?position=${encodeURIComponent(params)}`;
+    } else if (params && typeof params === 'object') {
+      const clean = Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== '');
+      if (clean.length > 0) queryString = `?${new URLSearchParams(clean).toString()}`;
+    }
+    const res = await fetch(`${getApiBase()}/banners${queryString}`, {
+      next: { revalidate: 60 }
     });
     if (!res.ok) throw new Error(`Failed to fetch banners: ${res.status}`);
     const data = await res.json();

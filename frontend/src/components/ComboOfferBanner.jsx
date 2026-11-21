@@ -13,7 +13,7 @@ export const ComboOfferBanner = () => {
     let isMounted = true;
     async function load() {
       try {
-        const data = await fetchBanners();
+        const data = await fetchBanners({ position: 'deal_of_day' });
         if (isMounted) {
           if (Array.isArray(data) && data.length > 0) {
             const banner = data.find(

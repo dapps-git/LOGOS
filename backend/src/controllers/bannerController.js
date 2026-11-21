@@ -1,4 +1,25 @@
 const Banner = require('../models/Banner');
+const cloudinary = require('../config/cloudinary');
+
+// Helper to upload base64 or remote URL images to Cloudinary in WebP format
+const uploadToCloudinaryWebp = async (imageInput, folder = 'logos_banners') => {
+  if (!imageInput || typeof imageInput !== 'string') return imageInput;
+  if (imageInput.includes('res.cloudinary.com') && (imageInput.includes('f_webp') || imageInput.endsWith('.webp'))) {
+    return imageInput;
+  }
+  try {
+    const uploadResponse = await cloudinary.uploader.upload(imageInput, {
+      folder: folder,
+      format: 'webp',
+      quality: 'auto',
+      fetch_format: 'auto'
+    });
+    return uploadResponse.secure_url;
+  } catch (err) {
+    console.warn('[Banner Cloudinary Error]:', err.message);
+    return imageInput;
+  }
+};
 
 // @desc    Get all active banners
 // @route   GET /api/banners
@@ -53,13 +74,19 @@ const createBanner = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Title and image are required' });
     }
 
+    let finalImage = image;
+    if (image && (image.startsWith('data:') || image.startsWith('http'))) {
+      finalImage = await uploadToCloudinaryWebp(image, 'logos_banners');
+    }
+    let finalMobileImage = mobileImage ? (await uploadToCloudinaryWebp(mobileImage, 'logos_banners')) : finalImage;
+
     const banner = await Banner.create({
       title,
       subtitle,
       description,
       badge: badge || 'Special Offer',
-      image,
-      mobileImage,
+      image: finalImage,
+      mobileImage: finalMobileImage,
       link: link || '/books',
       buttonText: buttonText || 'Explore Collection',
       position: position || 'hero',
@@ -88,7 +115,15 @@ const updateBanner = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Banner not found' });
     }
 
-    Object.assign(banner, req.body);
+    const updateData = { ...req.body };
+    if (updateData.image && (updateData.image.startsWith('data:') || updateData.image.startsWith('http'))) {
+      updateData.image = await uploadToCloudinaryWebp(updateData.image, 'logos_banners');
+    }
+    if (updateData.mobileImage && (updateData.mobileImage.startsWith('data:') || updateData.mobileImage.startsWith('http'))) {
+      updateData.mobileImage = await uploadToCloudinaryWebp(updateData.mobileImage, 'logos_banners');
+    }
+
+    Object.assign(banner, updateData);
     await banner.save();
 
     return res.json({
