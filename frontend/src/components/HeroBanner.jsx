@@ -5,21 +5,12 @@ import Link from 'next/link';
 import { fetchBanners, optimizeImageUrl } from '@/lib/api';
 import { HeroBannerSkeleton } from '@/components/Skeletons';
 
-const DEFAULT_BANNER = {
-  _id: 'default_hero_banner',
-  image: '/banner.webp',
-  mobileImage: '/banner.webp',
-  title: 'LOGOS Publications',
-  isActive: true,
-  position: 'hero'
-};
-
 export const HeroBanner = () => {
-  // Instant initial state: Immediately display default banner
-  const [banners, setBanners] = useState([DEFAULT_BANNER]);
+  const [banners, setBanners] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Background fetch: Silently fetch latest active banners from API
+  // Fetch active hero banners from API
   useEffect(() => {
     let isMounted = true;
     try {
@@ -29,16 +20,18 @@ export const HeroBanner = () => {
     async function load() {
       try {
         const data = await fetchBanners();
-        if (isMounted && Array.isArray(data) && data.length > 0) {
+        if (isMounted && Array.isArray(data)) {
           const heroBanners = data.filter(
             (b) => b.isActive !== false && (b.position === 'hero' || !b.position)
           );
-          if (heroBanners.length > 0) {
-            setBanners(heroBanners);
-          }
+          setBanners(heroBanners);
         }
       } catch (err) {
-        // Keep default banner on error
+        console.warn('[LOGOS] Error loading hero banners:', err);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
     load();
@@ -47,7 +40,7 @@ export const HeroBanner = () => {
     };
   }, []);
 
-  // 3-Second Auto-Transition
+  // 3-Second Auto-Transition between dynamic banners
   useEffect(() => {
     if (banners.length <= 1) return;
     const interval = setInterval(() => {
@@ -56,47 +49,66 @@ export const HeroBanner = () => {
     return () => clearInterval(interval);
   }, [banners.length]);
 
-  // Pre-cache next banner slide in browser memory
+  // Pre-cache next banner slide in browser memory (skipping data URLs)
   useEffect(() => {
     if (banners.length <= 1 || typeof window === 'undefined') return;
     const nextIdx = (currentIndex + 1) % banners.length;
     const nextImgUrl = optimizeImageUrl(banners[nextIdx]?.image, { width: 1920 });
-    if (nextImgUrl) {
+    if (nextImgUrl && !nextImgUrl.startsWith('data:')) {
       const img = new Image();
       img.src = nextImgUrl;
     }
   }, [currentIndex, banners]);
 
-  const currentBanner = banners.length > 0 ? banners[currentIndex] : null;
-  const rawBannerImage = currentBanner?.image || '/banner.webp';
+  if (loading && banners.length === 0) {
+    return <HeroBannerSkeleton />;
+  }
 
-  // Cloudinary compressed image URLs (WebP/AVIF auto formats)
-  const bannerImage = optimizeImageUrl(rawBannerImage, { width: 1920, quality: 'auto' });
+  if (!banners || banners.length === 0) {
+    return null;
+  }
+
+  const currentBanner = banners[currentIndex] || banners[0];
+  const bannerImage = optimizeImageUrl(currentBanner?.image, { width: 1920, quality: 'auto' });
   const bannerLink = currentBanner?.link || null;
+
+  if (!bannerImage) return null;
 
   const content = (
     <div className="relative w-full aspect-[16/9] sm:aspect-[16/9] md:aspect-auto md:h-[100dvh] md:min-h-[100svh] overflow-hidden select-none bg-slate-900 flex items-center justify-center">
       <img
-        key={bannerImage}
+        key={currentBanner?._id || currentIndex}
         src={bannerImage}
         alt={currentBanner?.title || 'LOGOS Banner'}
         referrerPolicy="no-referrer"
         loading="eager"
         fetchPriority="high"
         decoding="async"
-        crossOrigin="anonymous"
-        onError={(e) => {
-          e.currentTarget.onerror = null;
-          e.currentTarget.src = '/banner.webp';
-        }}
         className="w-full h-full object-cover object-center block select-none transition-opacity duration-500 animate-in fade-in"
       />
+
+      {/* Slide Navigation Dots if multiple banners exist */}
+      {banners.length > 1 && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-black/40 backdrop-blur-xs px-3 py-1.5 rounded-full">
+          {banners.map((_, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setCurrentIndex(idx);
+              }}
+              className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                currentIndex === idx ? 'w-6 bg-white' : 'w-1.5 bg-white/60 hover:bg-white/90'
+              }`}
+              aria-label={`Go to slide ${idx + 1}`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
-
-  if (!banners || banners.length === 0) {
-    return null;
-  }
 
   return (
     <section className="relative w-full pt-16 sm:pt-20 md:pt-0 md:h-[100dvh] md:min-h-[100svh] overflow-hidden bg-white">
