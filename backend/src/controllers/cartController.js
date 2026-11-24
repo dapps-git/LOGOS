@@ -5,16 +5,96 @@ const Book = require('../models/Book');
 // Helper to extract clean string ID for a cart item's book
 const getItemBookId = (item) => {
   if (!item || !item.book) return null;
+  if (item.book instanceof mongoose.Types.ObjectId) {
+    return item.book.toString();
+  }
   if (typeof item.book === 'object' && item.book !== null) {
-    return (item.book._id || item.book.id || item.book).toString();
+    if (item.book._id) return item.book._id.toString();
+    return item.book.toString();
   }
   return item.book.toString();
+};
+
+// Helper to merge guest cart into customer cart
+const mergeGuestCartIntoCustomer = async (customerId, guestId, extraItems = []) => {
+  if (!customerId) return null;
+
+  try {
+    let customerCart = await Cart.findOne({ customer: customerId });
+    if (!customerCart) {
+      customerCart = await Cart.create({ customer: customerId, items: [] });
+    }
+
+    let modified = false;
+
+    // 1. Merge items from guestCart in DB if guestId provided
+    if (guestId) {
+      const guestCart = await Cart.findOne({ guestId });
+      if (guestCart && Array.isArray(guestCart.items) && guestCart.items.length > 0) {
+        for (const guestItem of guestCart.items) {
+          const guestBookId = getItemBookId(guestItem);
+          if (!guestBookId) continue;
+
+          const existingIndex = customerCart.items.findIndex(i => getItemBookId(i) === guestBookId);
+          if (existingIndex > -1) {
+            customerCart.items[existingIndex].quantity += (guestItem.quantity || 1);
+            if (guestItem.price) {
+              customerCart.items[existingIndex].price = guestItem.price;
+            }
+          } else {
+            const bookRef = (guestItem.book && (guestItem.book._id || guestItem.book)) || guestBookId;
+            customerCart.items.push({
+              book: bookRef,
+              quantity: guestItem.quantity || 1,
+              price: guestItem.price
+            });
+          }
+        }
+        modified = true;
+        await Cart.findByIdAndDelete(guestCart._id);
+      }
+    }
+
+    // 2. Merge any extra items passed directly (e.g. from client memory/state)
+    if (Array.isArray(extraItems) && extraItems.length > 0) {
+      for (const item of extraItems) {
+        const rawId = item.bookId || item.id || item._id || (item.book && (item.book._id || item.book.id || item.book));
+        const bookId = typeof rawId === 'object' && rawId !== null ? (rawId._id || rawId.id) : rawId;
+        if (!bookId) continue;
+        const bIdStr = bookId.toString();
+
+        const existingIndex = customerCart.items.findIndex(i => getItemBookId(i) === bIdStr);
+        if (existingIndex > -1) {
+          customerCart.items[existingIndex].quantity = Math.max(customerCart.items[existingIndex].quantity, item.quantity || 1);
+        } else {
+          customerCart.items.push({
+            book: bookId,
+            quantity: item.quantity || 1,
+            price: item.price || 0
+          });
+        }
+        modified = true;
+      }
+    }
+
+    if (modified) {
+      await customerCart.save();
+    }
+
+    return customerCart;
+  } catch (err) {
+    console.error('[CartController] Merge error:', err);
+    return null;
+  }
 };
 
 // Helper to get or initialize unpopulated cart (for mutating operations)
 const findOrCreateCart = async (customerId, guestId) => {
   let cart = null;
   if (customerId) {
+    if (guestId) {
+      await mergeGuestCartIntoCustomer(customerId, guestId);
+    }
     cart = await Cart.findOne({ customer: customerId });
     if (!cart) {
       cart = await Cart.create({ customer: customerId, items: [] });
@@ -214,36 +294,17 @@ const removeFromCart = async (req, res) => {
 // @access  Private (Customer)
 const mergeGuestCart = async (req, res) => {
   try {
-    const { guestId } = req.body;
-    if (!guestId) {
-      return res.status(400).json({ success: false, message: 'Guest ID is required' });
+    const { guestId, items } = req.body;
+    const customerId = req.customer ? req.customer._id : null;
+    if (!customerId) {
+      return res.status(401).json({ success: false, message: 'Customer authentication required' });
+    }
+    if (!guestId && (!items || items.length === 0)) {
+      return res.status(400).json({ success: false, message: 'Guest ID or items required for merge' });
     }
 
-    const guestCart = await Cart.findOne({ guestId });
-    let customerCart = await Cart.findOne({ customer: req.customer._id });
-    if (!customerCart) {
-      customerCart = await Cart.create({ customer: req.customer._id, items: [] });
-    }
-
-    if (guestCart && guestCart.items.length > 0) {
-      for (const guestItem of guestCart.items) {
-        const guestBookId = getItemBookId(guestItem);
-        if (!guestBookId) continue;
-        const idx = customerCart.items.findIndex(i => getItemBookId(i) === guestBookId);
-        if (idx > -1) {
-          customerCart.items[idx].quantity += guestItem.quantity;
-        } else {
-          customerCart.items.push({
-            book: (guestItem.book && (guestItem.book._id || guestItem.book)) || guestBookId,
-            quantity: guestItem.quantity,
-            price: guestItem.price
-          });
-        }
-      }
-      await customerCart.save();
-      await Cart.findByIdAndDelete(guestCart._id);
-    }
-
+    await mergeGuestCartIntoCustomer(customerId, guestId, items);
+    const customerCart = await Cart.findOne({ customer: customerId });
     return sendCartResponse(customerCart, res);
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

@@ -1,11 +1,12 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import {
   fetchCart,
   apiAddToCart,
   apiUpdateCart,
   apiRemoveFromCart,
+  apiMergeCart,
   apiValidateCoupon,
   apiValidateReferral
 } from '../lib/api';
@@ -36,7 +37,29 @@ export function CartProvider({ children }) {
     }
   }, []);
 
+  const prevUserRef = useRef(user);
+
   useEffect(() => {
+    const prevUser = prevUserRef.current;
+    prevUserRef.current = user;
+
+    // If user just transitioned from guest (null) to authenticated (user)
+    if (!prevUser && user) {
+      const guestId = typeof window !== 'undefined' ? localStorage.getItem('logos_guest_session_id') : null;
+      if (guestId) {
+        apiMergeCart(guestId, items)
+          .then((merged) => {
+            if (merged && Array.isArray(merged.items)) {
+              setItems(merged.items);
+            } else {
+              loadCart();
+            }
+          })
+          .catch(() => loadCart());
+        return;
+      }
+    }
+
     loadCart();
   }, [loadCart, user]);
 

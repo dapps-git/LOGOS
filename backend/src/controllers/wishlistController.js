@@ -2,9 +2,46 @@ const mongoose = require('mongoose');
 const Wishlist = require('../models/Wishlist');
 const Book = require('../models/Book');
 
+const mergeGuestWishlistIntoCustomer = async (customerId, guestId) => {
+  if (!customerId || !guestId) return null;
+  try {
+    const guestWishlist = await Wishlist.findOne({ guestId });
+    if (!guestWishlist || !Array.isArray(guestWishlist.books) || guestWishlist.books.length === 0) {
+      return null;
+    }
+
+    let customerWishlist = await Wishlist.findOne({ customer: customerId });
+    if (!customerWishlist) {
+      customerWishlist = await Wishlist.create({ customer: customerId, books: [] });
+    }
+
+    let modified = false;
+    for (const bookId of guestWishlist.books) {
+      const bIdStr = (bookId?._id || bookId).toString();
+      const exists = customerWishlist.books.some(b => (b?._id || b).toString() === bIdStr);
+      if (!exists) {
+        customerWishlist.books.push(bookId?._id || bookId);
+        modified = true;
+      }
+    }
+
+    if (modified) {
+      await customerWishlist.save();
+    }
+    await Wishlist.findByIdAndDelete(guestWishlist._id);
+    return customerWishlist;
+  } catch (err) {
+    console.error('[WishlistController] Merge error:', err);
+    return null;
+  }
+};
+
 const findOrCreateWishlist = async (customerId, guestId) => {
   let wishlist;
   if (customerId) {
+    if (guestId) {
+      await mergeGuestWishlistIntoCustomer(customerId, guestId);
+    }
     wishlist = await Wishlist.findOne({ customer: customerId }).populate('books', 'title author price discountPrice discountPercent images stock stockStatus slug rating');
     if (!wishlist) {
       wishlist = await Wishlist.create({ customer: customerId, books: [] });
@@ -106,29 +143,15 @@ const toggleWishlist = async (req, res) => {
 const mergeGuestWishlist = async (req, res) => {
   try {
     const { guestId } = req.body;
+    const customerId = req.customer ? req.customer._id : null;
+    if (!customerId) {
+      return res.status(401).json({ success: false, message: 'Customer authentication required' });
+    }
     if (!guestId) {
       return res.status(400).json({ success: false, message: 'Guest ID is required' });
     }
 
-    const guestWishlist = await Wishlist.findOne({ guestId });
-    if (!guestWishlist || guestWishlist.books.length === 0) {
-      return getWishlist(req, res);
-    }
-
-    let customerWishlist = await Wishlist.findOne({ customer: req.customer._id });
-    if (!customerWishlist) {
-      customerWishlist = await Wishlist.create({ customer: req.customer._id, books: [] });
-    }
-
-    for (const bookId of guestWishlist.books) {
-      if (!customerWishlist.books.includes(bookId)) {
-        customerWishlist.books.push(bookId);
-      }
-    }
-
-    await customerWishlist.save();
-    await Wishlist.findByIdAndDelete(guestWishlist._id);
-
+    await mergeGuestWishlistIntoCustomer(customerId, guestId);
     return getWishlist(req, res);
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

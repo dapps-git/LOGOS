@@ -8,7 +8,9 @@ import {
   fetchCustomerProfile,
   updateCustomerProfile,
   addCustomerAddress,
-  deleteCustomerAddress
+  deleteCustomerAddress,
+  apiMergeCart,
+  apiMergeWishlist
 } from '../lib/api';
 
 const AuthContext = createContext(null);
@@ -50,6 +52,15 @@ export function AuthProvider({ children }) {
     const data = await customerLogin(email, password);
     if (data.token) {
       localStorage.setItem('logos_customer_token', data.token);
+      const guestId = typeof window !== 'undefined' ? localStorage.getItem('logos_guest_session_id') : null;
+      if (guestId) {
+        try {
+          await Promise.allSettled([
+            apiMergeCart(guestId),
+            apiMergeWishlist(guestId)
+          ]);
+        } catch {}
+      }
       setUser(data.customer);
     }
     return data;
@@ -59,6 +70,15 @@ export function AuthProvider({ children }) {
     const data = await customerRegister(formData);
     if (data.token) {
       localStorage.setItem('logos_customer_token', data.token);
+      const guestId = typeof window !== 'undefined' ? localStorage.getItem('logos_guest_session_id') : null;
+      if (guestId) {
+        try {
+          await Promise.allSettled([
+            apiMergeCart(guestId),
+            apiMergeWishlist(guestId)
+          ]);
+        } catch {}
+      }
       setUser(data.customer);
     }
     return data;
@@ -68,6 +88,15 @@ export function AuthProvider({ children }) {
     const data = await customerGoogleAuth(googleData);
     if (data.token) {
       localStorage.setItem('logos_customer_token', data.token);
+      const guestId = typeof window !== 'undefined' ? localStorage.getItem('logos_guest_session_id') : null;
+      if (guestId) {
+        try {
+          await Promise.allSettled([
+            apiMergeCart(guestId),
+            apiMergeWishlist(guestId)
+          ]);
+        } catch {}
+      }
       setUser(data.customer);
     }
     return data;
@@ -75,6 +104,10 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     localStorage.removeItem('logos_customer_token');
+    if (typeof window !== 'undefined') {
+      const guestId = 'guest_' + Math.random().toString(36).substring(2, 15);
+      localStorage.setItem('logos_guest_session_id', guestId);
+    }
     setUser(null);
   };
 

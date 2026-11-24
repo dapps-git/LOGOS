@@ -134,7 +134,7 @@ export async function fetchBookOfTheWeek() {
       const data = await res.json();
       if (data?.book) return data.book;
     }
-  } catch {}
+  } catch { }
 
   // Resilient fallback: Query books list and find isBookOfTheWeek or spotlight
   try {
@@ -162,7 +162,7 @@ export async function fetchComingSoonBooks() {
       const data = await res.json();
       if (Array.isArray(data?.books) && data.books.length > 0) return data.books;
     }
-  } catch {}
+  } catch { }
 
   // Resilient fallback: Query books list and find isComingSoon / isPreBook
   try {
@@ -377,6 +377,38 @@ export async function fetchCart() {
   });
   const data = await res.json();
   return data.cart || { items: [] };
+}
+
+export async function apiMergeCart(guestId, items = []) {
+  const gId = guestId || getGuestSessionId();
+  try {
+    const res = await fetch(`${getApiBase()}/cart/merge`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ guestId: gId, items })
+    });
+    const data = await res.json();
+    return data.cart || null;
+  } catch (err) {
+    console.warn('[LOGOS API] apiMergeCart error:', err.message);
+    return null;
+  }
+}
+
+export async function apiMergeWishlist(guestId) {
+  const gId = guestId || getGuestSessionId();
+  try {
+    const res = await fetch(`${getApiBase()}/wishlist/merge`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ guestId: gId })
+    });
+    const data = await res.json();
+    return data.wishlist || null;
+  } catch (err) {
+    console.warn('[LOGOS API] apiMergeWishlist error:', err.message);
+    return null;
+  }
 }
 
 export async function apiAddToCart(bookOrId, quantity = 1) {
