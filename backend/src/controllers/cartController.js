@@ -58,8 +58,16 @@ const mergeGuestCartIntoCustomer = async (customerId, guestId, extraItems = []) 
     // 2. Merge any extra items passed directly (e.g. from client memory/state)
     if (Array.isArray(extraItems) && extraItems.length > 0) {
       for (const item of extraItems) {
-        const rawId = item.bookId || item.id || item._id || (item.book && (item.book._id || item.book.id || item.book));
-        const bookId = typeof rawId === 'object' && rawId !== null ? (rawId._id || rawId.id) : rawId;
+        const bookObj = item.book;
+        let bookId = null;
+        if (bookObj) {
+          bookId = typeof bookObj === 'object' ? (bookObj._id || bookObj.id || bookObj.bookId) : bookObj;
+        } else {
+          bookId = item.bookId || item.id;
+        }
+        if (!bookId && item._id && !item.book) {
+          bookId = item._id;
+        }
         if (!bookId) continue;
         const bIdStr = bookId.toString();
 

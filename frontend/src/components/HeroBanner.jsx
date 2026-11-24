@@ -15,7 +15,7 @@ export const HeroBanner = () => {
           const parsed = JSON.parse(cached);
           if (Array.isArray(parsed) && parsed.length > 0) return parsed;
         }
-      } catch {}
+      } catch { }
     }
     return [];
   });
@@ -37,12 +37,12 @@ export const HeroBanner = () => {
             setBanners(heroBanners);
             try {
               localStorage.setItem('logos_cached_hero_banners', JSON.stringify(heroBanners));
-            } catch {}
+            } catch { }
           } else {
             setBanners([]);
             try {
               localStorage.removeItem('logos_cached_hero_banners');
-            } catch {}
+            } catch { }
           }
         }
       } catch (err) {
@@ -120,9 +120,8 @@ export const HeroBanner = () => {
                 e.stopPropagation();
                 setCurrentIndex(idx);
               }}
-              className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                currentIndex === idx ? 'w-6 bg-white' : 'w-1.5 bg-white/60 hover:bg-white/90'
-              }`}
+              className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${currentIndex === idx ? 'w-6 bg-white' : 'w-1.5 bg-white/60 hover:bg-white/90'
+                }`}
               aria-label={`Go to slide ${idx + 1}`}
             />
           ))}
