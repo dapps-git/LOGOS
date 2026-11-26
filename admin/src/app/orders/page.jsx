@@ -190,8 +190,8 @@ export default function OrdersPage() {
                   <th className="py-3 px-4 font-bold min-w-[170px]">Customer Details</th>
                   <th className="py-3 px-4 font-bold min-w-[200px]">Items Purchased</th>
                   <th className="py-3 px-4 font-bold text-right min-w-[110px]">Total Amount</th>
-                  <th className="py-3 px-4 font-bold text-center min-w-[120px]">Payment Status</th>
-                  <th className="py-3 px-4 font-bold text-center min-w-[130px]">Order Status</th>
+                  <th className="py-3 px-4 font-bold text-center min-w-[168px]">Payment Status</th>
+                  <th className="py-3 px-4 font-bold text-center min-w-[168px]">Order Status</th>
                   <th className="py-3 px-4 font-bold text-right min-w-[110px]">Actions</th>
                 </tr>
               </thead>
@@ -259,13 +259,13 @@ export default function OrdersPage() {
                             const isPending = !isPaid && !isRefunded;
 
                             return (
-                              <div className="flex flex-col items-center justify-center gap-1">
+                              <div className="w-[144px] mx-auto flex flex-col items-stretch gap-1">
                                 <select
                                   value={isPaid ? 'Paid' : isRefunded ? 'Refunded' : 'Pending'}
                                   onChange={(e) => handlePaymentChange(order._id, e.target.value)}
-                                  className={`text-[11px] font-bold px-2 py-1 border rounded-sm focus:outline-hidden cursor-pointer transition-colors ${
+                                  className={`w-full text-[11px] font-bold px-2.5 py-1.5 border rounded-md focus:outline-hidden cursor-pointer transition-colors ${
                                     isPending
-                                      ? 'bg-amber-50 border-amber-300 text-amber-900 font-extrabold shadow-2xs'
+                                      ? 'bg-amber-50 border-amber-300 text-amber-900 shadow-2xs'
                                       : isPaid
                                       ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
                                       : 'bg-purple-50 border-purple-300 text-purple-800'
@@ -286,7 +286,7 @@ export default function OrdersPage() {
                                   )}
                                 </select>
                                 <span
-                                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded-xs tracking-wider uppercase ${
+                                  className={`w-full text-center text-[9.5px] font-bold py-0.5 px-2 rounded-md tracking-wider uppercase ${
                                     isCod ? 'text-amber-800 bg-amber-100/70 border border-amber-200' : 'text-blue-800 bg-blue-50 border border-blue-200'
                                   }`}
                                 >
@@ -302,11 +302,17 @@ export default function OrdersPage() {
                           <select
                             value={order.orderStatus || 'Confirmed'}
                             onChange={(e) => handleStatusChange(order._id, e.target.value)}
-                            className={`text-[11px] font-bold px-2 py-1 border rounded-sm focus:outline-hidden cursor-pointer ${
-                              order.orderStatus === 'Return Requested'
-                                ? 'bg-amber-50 border-amber-300 text-amber-900 font-extrabold'
-                                : order.orderStatus === 'Cancelled'
+                            className={`w-[148px] mx-auto block text-[11px] font-bold px-2.5 py-1.5 border rounded-md focus:outline-hidden cursor-pointer transition-colors ${
+                              order.orderStatus === 'Delivered'
+                                ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                                : order.orderStatus === 'Cancelled' || order.orderStatus === 'Return Rejected'
                                 ? 'bg-rose-50 border-rose-200 text-rose-800'
+                                : order.orderStatus === 'Shipped' || order.orderStatus === 'Out for Delivery'
+                                ? 'bg-indigo-50 border-indigo-200 text-indigo-800'
+                                : order.orderStatus === 'Confirmed'
+                                ? 'bg-blue-50 border-blue-200 text-[#1E3A8A]'
+                                : order.orderStatus?.includes('Return') || order.orderStatus === 'Returned'
+                                ? 'bg-amber-50 border-amber-300 text-amber-900'
                                 : 'bg-slate-50 border-slate-300 text-slate-800'
                             }`}
                           >
