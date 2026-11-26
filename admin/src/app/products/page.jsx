@@ -168,6 +168,11 @@ export default function ProductsPage() {
 
       if (currentRequestId === fetchRequestIdRef.current && Array.isArray(data?.books)) {
         let displayList = data.books;
+        if (statusFilter === 'inactive') {
+          displayList = displayList.filter((b) => b.isActive === false);
+        } else if (statusFilter === 'active') {
+          displayList = displayList.filter((b) => b.isActive !== false);
+        }
         if (featureFilter === 'book_of_the_week') {
           displayList = displayList.filter((b) => Boolean(b.isBookOfTheWeek));
         } else if (featureFilter === 'coming_soon') {
@@ -381,7 +386,7 @@ export default function ProductsPage() {
         </div>
 
         {/* Quick Filter Pills (1-Click Highlights Bar) */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex flex-wrap items-center gap-2 pb-1">
           <button
             type="button"
             onClick={() => {

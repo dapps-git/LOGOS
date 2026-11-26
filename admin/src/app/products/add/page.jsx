@@ -122,7 +122,16 @@ function ProductFormContent() {
       setShowNewCategoryBox(false);
       showToast(`Category "${createdName}" added and selected!`, 'success');
     } catch (err) {
-      showToast(err.message || 'Failed to create category', 'error');
+      if (String(err.message || '').includes('404')) {
+        // Fallback if backend server hasn't restarted with /categories yet: still allow selecting for this book
+        setCategoriesList((prev) => (prev.some((c) => c.toLowerCase() === trimmed.toLowerCase()) ? prev : [...prev, trimmed]));
+        setFormData((prev) => ({ ...prev, theme: trimmed }));
+        setNewCategoryName('');
+        setShowNewCategoryBox(false);
+        showToast(`Category "${trimmed}" selected for this book (deploy/restart backend on cPanel to persist global category list).`, 'info');
+      } else {
+        showToast(err.message || 'Failed to create category', 'error');
+      }
     } finally {
       setCreatingCategory(false);
     }
@@ -530,7 +539,7 @@ function ProductFormContent() {
                   className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-[#1E3A8A] hover:bg-[#152e72] text-white shadow-2xs transition-colors cursor-pointer"
                 >
                   {showNewCategoryBox ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-                  {showNewCategoryBox ? 'Close' : '+ Add New Category'}
+                  {showNewCategoryBox ? 'Close' : 'Add New Category'}
                 </button>
               </div>
 

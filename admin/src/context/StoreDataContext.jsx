@@ -71,6 +71,12 @@ export const StoreDataProvider = ({ children }) => {
 
   // Fetch fresh data from backend API in parallel for high performance
   const fetchAllData = async () => {
+    const activeToken = token || (typeof window !== 'undefined' ? localStorage.getItem('logos_admin_token') : null);
+    if (!activeToken) {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
       const [

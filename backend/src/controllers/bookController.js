@@ -70,7 +70,7 @@ const getBooks = async (req, res) => {
     if (isActive === 'false' || status === 'inactive') {
       query.isActive = false;
     } else if (isActive === 'true' || status === 'active') {
-      query.isActive = true;
+      query.isActive = { $ne: false };
     } else if (includeInactive === 'true' || all === 'true') {
       query = {};
     } else {
@@ -434,8 +434,8 @@ const getFilterOptions = async (req, res) => {
       Book.distinct('author', { isActive: true }),
       Book.distinct('publisher', { isActive: true }),
       Book.distinct('languages', { isActive: true }),
-      Book.countDocuments({ isActive: true }),
-      Book.countDocuments({ isActive: true }),
+      Book.countDocuments({ isActive: { $ne: false } }),
+      Book.countDocuments({ isActive: { $ne: false } }),
       Book.countDocuments({ isActive: false }),
       Book.countDocuments({ isActive: true, stock: { $gt: 5 } }),
       Book.countDocuments({ isActive: true, stock: { $gt: 0, $lte: 5 } }),

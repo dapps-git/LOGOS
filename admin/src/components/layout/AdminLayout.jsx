@@ -35,10 +35,12 @@ export const AdminLayout = ({ children }) => {
         />
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto animate-in fade-in duration-200">
-          {!mounted || loading ? (
+          {!mounted || loading || !isAuthenticated ? (
             <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-3">
               <div className="w-8 h-8 border-3 border-[#1E3A8A] border-t-transparent rounded-full animate-spin" />
-              <p className="text-xs text-slate-400 font-medium">Loading Bookstore Console...</p>
+              <p className="text-xs text-slate-400 font-medium">
+                {!loading && !isAuthenticated ? 'Redirecting to Admin Login...' : 'Loading Bookstore Console...'}
+              </p>
             </div>
           ) : (
             children

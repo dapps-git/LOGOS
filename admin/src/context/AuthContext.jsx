@@ -38,11 +38,10 @@ export const AuthProvider = ({ children }) => {
         .finally(() => {
           setLoading(false);
         });
-      return;
     } else {
       localStorage.removeItem('logos_admin_token');
+      setLoading(false);
     }
-    setLoading(false);
 
     // Session expired / rejected by backend -> force re-login
     const onUnauthorized = () => {
