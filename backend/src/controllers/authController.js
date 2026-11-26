@@ -308,7 +308,7 @@ const updateProfile = async (req, res) => {
 // @access  Private (Customer)
 const addAddress = async (req, res) => {
   try {
-    const { fullName, phone, streetAddress, city, state, postalCode, country, isDefault } = req.body;
+    const { fullName, phone, streetAddress, postOffice, city, state, postalCode, country, isDefault } = req.body;
 
     if (!fullName || !phone || !streetAddress || !city || !state || !postalCode) {
       return res.status(400).json({ success: false, message: 'All address fields are required' });
@@ -323,6 +323,7 @@ const addAddress = async (req, res) => {
       fullName,
       phone,
       streetAddress,
+      postOffice: postOffice || '',
       city,
       state,
       postalCode,

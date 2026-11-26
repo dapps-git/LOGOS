@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -112,8 +112,11 @@ export default function CheckoutPage() {
   const effectiveShippingFee = effectiveBaseShipping + codFee;
   const effectiveGrandTotal = Math.max(0, subtotal - (couponDiscount || 0) - (referralDiscount || 0) - (walletDiscount || 0) + effectiveShippingFee);
 
+  const hasConfirmedAddressRef = useRef(false);
+
   // Restore saved address on initial load (persists in same system/browser)
   useEffect(() => {
+    if (hasConfirmedAddressRef.current) return;
     if (user?.addresses && user.addresses.length > 0) {
       const saved = user.addresses[selectedAddressIndex] || user.addresses[0];
       setAddressForm((prev) => ({
@@ -230,6 +233,7 @@ export default function CheckoutPage() {
       country: 'India'
     };
 
+    hasConfirmedAddressRef.current = true;
     setAddressForm(sanitized);
     setAddressErrors({});
 
@@ -241,7 +245,10 @@ export default function CheckoutPage() {
 
     if (user && addAddress) {
       try {
-        await addAddress(sanitized);
+        const updatedAddresses = await addAddress(sanitized);
+        if (Array.isArray(updatedAddresses) && updatedAddresses.length > 0) {
+          setSelectedAddressIndex(updatedAddresses.length - 1);
+        }
       } catch (err) {
         console.warn('Profile address sync note:', err.message);
       }
@@ -605,7 +612,7 @@ export default function CheckoutPage() {
                 type="button"
                 onClick={() => {
                   setShowAddressModal(true);
-                  setIsEditingAddress(true);
+                  setIsEditingAddress(!(user?.addresses && user.addresses.length > 0));
                 }}
                 className="shrink-0 inline-flex items-center gap-0.5 px-2.5 py-1.5 text-xs font-semibold text-[#1044A5] bg-blue-50/70 hover:bg-blue-100/70 rounded-lg transition-colors"
               >
@@ -910,6 +917,7 @@ export default function CheckoutPage() {
                     <label
                       key={addr._id || idx}
                       onClick={() => {
+                        hasConfirmedAddressRef.current = true;
                         setSelectedAddressIndex(idx);
                         setAddressForm({
                           fullName: addr.fullName || '',
@@ -951,14 +959,31 @@ export default function CheckoutPage() {
                   <button
                     type="button"
                     onClick={() => setIsEditingAddress(true)}
-                    className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors"
+                    className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
                   >
-                    + Enter New Address
+                    + Enter / Edit Address
                   </button>
                   <button
                     type="button"
-                    onClick={() => setShowAddressModal(false)}
-                    className="flex-1 py-2.5 px-4 bg-[#1044A5] hover:bg-[#0c3986] text-white rounded-xl text-xs font-semibold shadow-xs transition-colors"
+                    onClick={() => {
+                      const chosen = user?.addresses?.[selectedAddressIndex];
+                      if (chosen) {
+                        hasConfirmedAddressRef.current = true;
+                        setAddressForm({
+                          fullName: chosen.fullName || '',
+                          email: chosen.email || user?.email || '',
+                          phone: chosen.phone || '',
+                          streetAddress: chosen.streetAddress || '',
+                          postOffice: chosen.postOffice || '',
+                          city: chosen.city || '',
+                          state: chosen.state || 'Kerala',
+                          postalCode: chosen.postalCode || '',
+                          country: 'India'
+                        });
+                      }
+                      setShowAddressModal(false);
+                    }}
+                    className="flex-1 py-2.5 px-4 bg-[#1044A5] hover:bg-[#0c3986] text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"
                   >
                     Confirm Selection
                   </button>
