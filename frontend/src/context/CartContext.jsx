@@ -8,7 +8,8 @@ import {
   apiRemoveFromCart,
   apiMergeCart,
   apiValidateCoupon,
-  apiValidateReferral
+  apiValidateReferral,
+  fetchPublicStoreSettings
 } from '../lib/api';
 import { useAuth } from './AuthContext';
 
@@ -21,6 +22,30 @@ export function CartProvider({ children }) {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [appliedReferral, setAppliedReferral] = useState(null);
   const [useWalletBalance, setUseWalletBalance] = useState(false);
+  const [shippingConfig, setShippingConfig] = useState({
+    keralaShippingCharge: 0,
+    outsideKeralaShippingCharge: 0,
+    freeShippingFirstOrder: false,
+    freeShippingOnOnlinePayment: true,
+    codFeeEnabled: true,
+    codFeePercent: 2,
+    codFreeThreshold: 1000
+  });
+  const [isFirstOrder, setIsFirstOrder] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetchPublicStoreSettings()
+      .then((res) => {
+        if (!active || !res?.settings) return;
+        setShippingConfig(res.settings);
+        setIsFirstOrder(Boolean(res.isFirstOrder));
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   const loadCart = useCallback(async () => {
     try {
@@ -199,7 +224,11 @@ export function CartProvider({ children }) {
     walletDiscount = Math.min(remainingAfterDiscounts, user.referralRewardBalance);
   }
 
-  const shippingFee = subtotal > 499 || subtotal === 0 ? 0 : 40;
+  const defaultState = user?.addresses?.[0]?.state || 'Kerala';
+  const isDefaultKerala = !defaultState || String(defaultState).trim().toLowerCase() === 'kerala';
+  const regionalFee = Number(isDefaultKerala ? shippingConfig.keralaShippingCharge : shippingConfig.outsideKeralaShippingCharge) || 0;
+  const freeOnFirst = Boolean(shippingConfig.freeShippingFirstOrder && isFirstOrder);
+  const shippingFee = (subtotal === 0 || freeOnFirst || shippingConfig.freeShippingOnOnlinePayment) ? 0 : regionalFee;
   const totalDiscounts = Math.min(subtotal, couponDiscount + referralDiscount + walletDiscount);
   const grandTotal = Math.max(0, subtotal - totalDiscounts + shippingFee);
   const totalSavings = productSavings + totalDiscounts;

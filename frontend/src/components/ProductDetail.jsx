@@ -274,7 +274,7 @@ export const ProductDetail = ({ book }) => {
                   >
                     <img
                       src={optimizeImageUrl(img, { width: 600, quality: 'auto' })}
-                      alt={`${title} - view ${idx + 1}`}
+                      alt={book?.coverAltText ? (idx === 0 ? book.coverAltText : `${book.coverAltText} - view ${idx + 1}`) : `${title} - view ${idx + 1}`}
                       referrerPolicy="no-referrer"
                       loading="eager"
                       draggable={false}

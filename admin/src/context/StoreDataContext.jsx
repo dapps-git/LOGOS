@@ -190,36 +190,22 @@ export const StoreDataProvider = ({ children }) => {
 
   // --- Actions ---
   const addBook = async (newBook) => {
-    const id = `bk-${Date.now().toString().slice(-6)}`;
     const coverImage = newBook.coverImage || (Array.isArray(newBook.images) && (newBook.images.find(img => typeof img === 'string' && img.trim() && !img.includes('placeholder')) || newBook.images[0])) || '';
-    const bookWithId = {
+    const payload = {
       ...newBook,
-      _id: id,
       coverImage,
-      image: coverImage,
-      rating: newBook.rating || 5.0,
-      reviewsCount: newBook.reviewsCount || 0,
-      salesCount: 0,
-      stockStatus: newBook.stock === 0 ? 'out_of_stock' : newBook.stock <= 5 ? 'low_stock' : 'in_stock',
-      discountPercent: newBook.discountPrice && newBook.discountPrice < newBook.price
-        ? Math.round(((newBook.price - newBook.discountPrice) / newBook.price) * 100)
-        : 0
+      image: coverImage
     };
 
-    // Try backend
-    try {
-      const backendRes = await apiClient('/books', {
-        method: 'POST',
-        body: JSON.stringify(bookWithId)
-      });
-      if (backendRes?.book) {
-        setBooks((prev) => [backendRes.book, ...prev]);
-        return backendRes.book;
-      }
-    } catch {}
-
-    setBooks((prev) => [bookWithId, ...prev]);
-    return bookWithId;
+    const backendRes = await apiClient('/books', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    if (backendRes?.book) {
+      setBooks((prev) => [backendRes.book, ...prev]);
+      return backendRes.book;
+    }
+    throw new Error(backendRes?.message || 'Failed to save book to server');
   };
 
   const updateBook = async (id, updatedFields) => {
@@ -243,15 +229,14 @@ export const StoreDataProvider = ({ children }) => {
       ...(coverImage ? { coverImage, image: coverImage } : {})
     };
 
-    // Try backend
-    try {
-      await apiClient(`/books/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(merged)
-      });
-    } catch {}
+    const backendRes = await apiClient(`/books/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(merged)
+    });
 
-    setBooks((prev) => prev.map((b) => (b._id === id ? { ...b, ...merged } : b)));
+    const savedBook = backendRes?.book || merged;
+    setBooks((prev) => prev.map((b) => (b._id === id ? { ...b, ...savedBook } : b)));
+    return savedBook;
   };
 
   const deleteBook = async (id) => {

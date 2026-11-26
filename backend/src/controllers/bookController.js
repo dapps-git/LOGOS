@@ -1,6 +1,17 @@
 const Book = require('../models/Book');
+const Category = require('../models/Category');
 const AuthorHighlight = require('../models/AuthorHighlight');
 const cloudinary = require('../config/cloudinary');
+
+const sanitizeSlug = (val) => {
+  if (!val || typeof val !== 'string') return '';
+  return val
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/(^-|-$)/g, '');
+};
 
 // Helper to upload base64 or remote URL images to Cloudinary in WebP format
 const uploadToCloudinaryWebp = async (imageInput, folder = 'logos_books') => {
@@ -50,10 +61,21 @@ const getBooks = async (req, res) => {
       page = 1,
       limit = 15,
       includeInactive,
+      isActive,
+      status,
       all
     } = req.query;
 
-    const query = (includeInactive === 'true' || all === 'true') ? {} : { isActive: true };
+    let query = {};
+    if (isActive === 'false' || status === 'inactive') {
+      query.isActive = false;
+    } else if (isActive === 'true' || status === 'active') {
+      query.isActive = true;
+    } else if (includeInactive === 'true' || all === 'true') {
+      query = {};
+    } else {
+      query = { isActive: true };
+    }
 
     if (search) {
       const trimmedSearch = String(search).trim();
@@ -394,10 +416,13 @@ const getFilterOptions = async (req, res) => {
   try {
     const [
       themes,
+      dbCategories,
       authors,
       publishers,
       languages,
       totalBooks,
+      activeBooksCount,
+      inactiveBooksCount,
       inStockCount,
       lowStockCount,
       outOfStockCount,
@@ -405,10 +430,13 @@ const getFilterOptions = async (req, res) => {
       comingSoonCount
     ] = await Promise.all([
       Book.distinct('theme', { isActive: true }),
+      Category.find({ isActive: true }).select('name').lean(),
       Book.distinct('author', { isActive: true }),
       Book.distinct('publisher', { isActive: true }),
       Book.distinct('languages', { isActive: true }),
       Book.countDocuments({ isActive: true }),
+      Book.countDocuments({ isActive: true }),
+      Book.countDocuments({ isActive: false }),
       Book.countDocuments({ isActive: true, stock: { $gt: 5 } }),
       Book.countDocuments({ isActive: true, stock: { $gt: 0, $lte: 5 } }),
       Book.countDocuments({ isActive: true, stock: { $lte: 0 } }),
@@ -416,16 +444,25 @@ const getFilterOptions = async (req, res) => {
       Book.countDocuments({ isActive: true, $or: [{ isComingSoon: true }, { isPreBook: true }] })
     ]);
 
+    const mergedThemes = Array.from(
+      new Set([
+        ...(dbCategories || []).map((c) => (c.name || '').trim()).filter(Boolean),
+        ...(themes || []).map((t) => (t || '').trim()).filter(Boolean)
+      ])
+    );
+
     return res.json({
       success: true,
       options: {
-        themes: themes.filter(Boolean),
+        themes: mergedThemes,
         authors: authors.filter(Boolean),
         publishers: publishers.filter(Boolean),
         languages: languages.filter(Boolean)
       },
       counts: {
         total: totalBooks,
+        active: activeBooksCount,
+        inactive: inactiveBooksCount,
         inStock: inStockCount,
         lowStock: lowStockCount,
         outOfStock: outOfStockCount,
@@ -475,7 +512,12 @@ const createBook = async (req, res) => {
       isAuthorSpotlight,
       isFeaturedSpotlight,
       isBestAuthor,
-      tags
+      tags,
+      slug,
+      seoTitle,
+      metaDescription,
+      coverAltText,
+      isActive
     } = req.body;
 
     const bookTitle = title || name;
@@ -491,6 +533,24 @@ const createBook = async (req, res) => {
         success: false,
         message: 'Please provide at least 1 photo per product'
       });
+    }
+
+    let cleanedSlug = '';
+    if (slug && String(slug).trim()) {
+      cleanedSlug = sanitizeSlug(String(slug));
+      if (!cleanedSlug) {
+        return res.status(400).json({
+          success: false,
+          message: 'URL slug must contain valid English letters or numbers (e.g. my-book-title).'
+        });
+      }
+      const existingSlugBook = await Book.findOne({ slug: cleanedSlug }).select('_id').lean();
+      if (existingSlugBook) {
+        return res.status(400).json({
+          success: false,
+          message: `URL slug "${cleanedSlug}" is already used by another book. Please choose a different URL text.`
+        });
+      }
     }
 
     if (isAuthorSpotlight) {
@@ -510,6 +570,7 @@ const createBook = async (req, res) => {
     const book = await Book.create({
       title: bookTitle.trim(),
       name: bookTitle.trim(),
+      ...(cleanedSlug ? { slug: cleanedSlug } : {}),
       author: author.trim(),
       authorPhoto: authorPhoto || '',
       authorBio: authorBio || '',
@@ -541,7 +602,11 @@ const createBook = async (req, res) => {
       isAuthorSpotlight: Boolean(isAuthorSpotlight),
       isFeaturedSpotlight: Boolean(isFeaturedSpotlight),
       isBestAuthor: Boolean(isBestAuthor),
-      tags: Array.isArray(tags) ? tags : []
+      isActive: isActive !== false,
+      tags: Array.isArray(tags) ? tags : [],
+      seoTitle: seoTitle ? String(seoTitle).trim() : '',
+      metaDescription: metaDescription ? String(metaDescription).trim() : '',
+      coverAltText: coverAltText ? String(coverAltText).trim() : ''
     });
 
     return res.status(201).json({
@@ -612,6 +677,29 @@ const updateBook = async (req, res) => {
       const parsedStock = Math.max(0, parseInt(otherFields.stock, 10) || 0);
       otherFields.stock = parsedStock;
       otherFields.stockStatus = parsedStock === 0 ? 'out_of_stock' : parsedStock <= 5 ? 'low_stock' : 'in_stock';
+    }
+
+    if (otherFields.slug !== undefined) {
+      const trimmedSlug = String(otherFields.slug || '').trim();
+      if (trimmedSlug) {
+        const cleanedSlug = sanitizeSlug(trimmedSlug);
+        if (!cleanedSlug) {
+          return res.status(400).json({
+            success: false,
+            message: 'URL slug must contain valid English letters or numbers (e.g. my-book-title).'
+          });
+        }
+        const existingSlugBook = await Book.findOne({ slug: cleanedSlug, _id: { $ne: book._id } }).select('_id').lean();
+        if (existingSlugBook) {
+          return res.status(400).json({
+            success: false,
+            message: `URL slug "${cleanedSlug}" is already used by another book. Please choose a different URL text.`
+          });
+        }
+        otherFields.slug = cleanedSlug;
+      } else {
+        delete otherFields.slug;
+      }
     }
 
     Object.assign(book, otherFields);

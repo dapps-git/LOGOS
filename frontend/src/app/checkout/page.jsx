@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Sparkles, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
-import { apiCreateOrder, apiCreateRazorpayOrder, apiVerifyRazorpayPayment, apiGetAvailableCoupons } from '../../lib/api';
+import { apiCreateOrder, apiCreateRazorpayOrder, apiVerifyRazorpayPayment, apiGetAvailableCoupons, fetchPublicStoreSettings } from '../../lib/api';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 
@@ -64,14 +64,52 @@ export default function CheckoutPage() {
   });
   const [addressErrors, setAddressErrors] = useState({});
 
-  // Payment Method
+  // Payment Method & Dynamic Shipping Configuration
   const [paymentMethod, setPaymentMethod] = useState('razorpay'); // 'razorpay' or 'cod'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [shippingConfig, setShippingConfig] = useState({
+    keralaShippingCharge: 0,
+    outsideKeralaShippingCharge: 0,
+    freeShippingFirstOrder: false,
+    freeShippingOnOnlinePayment: true,
+    codFeeEnabled: true,
+    codFeePercent: 2,
+    codFreeThreshold: 1000
+  });
+  const [isFirstOrder, setIsFirstOrder] = useState(false);
 
-  // 1. Calculate COD vs Prepaid Shipping Fee: COD is FREE if subtotal >= 1000, otherwise 2% of product price. Prepaid is always FREE
-  const codShippingFee = subtotal >= 1000 ? 0 : Math.round(subtotal * 0.02);
-  const effectiveShippingFee = paymentMethod === 'cod' ? codShippingFee : 0;
+  useEffect(() => {
+    let active = true;
+    fetchPublicStoreSettings()
+      .then((res) => {
+        if (!active || !res?.settings) return;
+        setShippingConfig(res.settings);
+        setIsFirstOrder(Boolean(res.isFirstOrder));
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  const activeAddressObj = (addressForm.fullName && addressForm.streetAddress)
+    ? addressForm
+    : ((user?.addresses && user.addresses[selectedAddressIndex]) || addressForm);
+  const resolvedState = activeAddressObj?.state || 'Kerala';
+  const isKeralaOrder = !resolvedState || String(resolvedState).trim().toLowerCase() === 'kerala';
+  const regionalShippingCharge = Math.max(
+    0,
+    Number(isKeralaOrder ? shippingConfig.keralaShippingCharge : shippingConfig.outsideKeralaShippingCharge) || 0
+  );
+  const isOnlinePayment = paymentMethod !== 'cod';
+  const freeByFirstOrder = Boolean(shippingConfig.freeShippingFirstOrder && isFirstOrder);
+  const freeByOnline = Boolean(isOnlinePayment && shippingConfig.freeShippingOnOnlinePayment);
+  const effectiveBaseShipping = (subtotal <= 0 || freeByFirstOrder || freeByOnline) ? 0 : regionalShippingCharge;
+  const codFee = (!isOnlinePayment && shippingConfig.codFeeEnabled !== false && subtotal > 0 && subtotal < Number(shippingConfig.codFreeThreshold ?? 1000))
+    ? Math.round((subtotal * Number(shippingConfig.codFeePercent ?? 2)) / 100)
+    : 0;
+  const effectiveShippingFee = effectiveBaseShipping + codFee;
   const effectiveGrandTotal = Math.max(0, subtotal - (couponDiscount || 0) - (referralDiscount || 0) - (walletDiscount || 0) + effectiveShippingFee);
 
   // Restore saved address on initial load (persists in same system/browser)
@@ -655,18 +693,34 @@ export default function CheckoutPage() {
                   </p>
                 </div>
                 {paymentMethod === 'cod' ? (
-                  <span className="text-[10px] font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md shrink-0">+2% fee</span>
+                  codFee > 0 ? (
+                    <span className="text-[10px] font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md shrink-0">
+                      +{shippingConfig.codFeePercent ?? 2}% COD fee
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-medium text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded-md shrink-0">
+                      {effectiveBaseShipping === 0 ? 'No COD fee' : `₹${effectiveBaseShipping} shipping`}
+                    </span>
+                  )
                 ) : (
-                  <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md shrink-0">Free shipping</span>
+                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md shrink-0 ${
+                    freeByOnline || freeByFirstOrder || effectiveBaseShipping === 0
+                      ? 'text-emerald-700 bg-emerald-50'
+                      : 'text-slate-700 bg-slate-100'
+                  }`}>
+                    {freeByOnline || freeByFirstOrder || effectiveBaseShipping === 0
+                      ? 'Free shipping'
+                      : `₹${effectiveBaseShipping} shipping`}
+                  </span>
                 )}
               </div>
             </div>
           </div>
 
-          {/* 5. Price Details Card */}
+          {/* 5. Order Summary / Price Details Card */}
           <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm space-y-2 text-xs text-slate-600">
             <h3 className="text-xs font-semibold text-slate-900 pb-2 border-b border-slate-100">
-              Price Details
+              Order Summary &amp; Price Details
             </h3>
 
             <div className="flex justify-between pt-1">
@@ -674,21 +728,41 @@ export default function CheckoutPage() {
               <span className="font-mono text-slate-900">₹{subtotal}</span>
             </div>
 
-            <div className="flex justify-between">
-              <span className="font-light">Shipping Charges</span>
-              <span className="font-mono text-slate-900">
-                {effectiveShippingFee === 0 ? (
+            <div className="flex justify-between items-baseline gap-2">
+              <span className="font-light">
+                Shipping Charges ({isKeralaOrder ? 'Kerala' : 'Outside Kerala'})
+              </span>
+              <span className="font-mono text-slate-900 text-right">
+                {freeByFirstOrder ? (
                   <span className="text-emerald-600 font-medium">
-                    FREE {paymentMethod === 'cod' && subtotal >= 1000 ? '(Orders ≥ ₹1,000)' : '(₹0.00)'}
+                    {regionalShippingCharge > 0 && (
+                      <span className="line-through text-slate-400 mr-1.5 font-normal">₹{regionalShippingCharge}</span>
+                    )}
+                    FREE (First Order)
                   </span>
+                ) : freeByOnline ? (
+                  <span className="text-emerald-600 font-medium">
+                    {regionalShippingCharge > 0 && (
+                      <span className="line-through text-slate-400 mr-1.5 font-normal">₹{regionalShippingCharge}</span>
+                    )}
+                    FREE (GPay / Online)
+                  </span>
+                ) : effectiveBaseShipping === 0 ? (
+                  <span className="text-emerald-600 font-medium">FREE (₹0.00)</span>
                 ) : (
-                  <span>
-                    ₹{effectiveShippingFee}{' '}
-                    <span className="text-[10px] text-slate-400 font-sans font-normal">(COD 2% under ₹1,000)</span>
-                  </span>
+                  <span>₹{effectiveBaseShipping}</span>
                 )}
               </span>
             </div>
+
+            {codFee > 0 && (
+              <div className="flex justify-between items-baseline gap-2">
+                <span className="font-light">
+                  COD Handling Charge ({shippingConfig.codFeePercent ?? 2}% under ₹{shippingConfig.codFreeThreshold ?? 1000})
+                </span>
+                <span className="font-mono text-slate-900">₹{codFee}</span>
+              </div>
+            )}
 
             {/* Referral Reward Balance Card */}
             {user?.referralRewardBalance > 0 && (
@@ -1241,7 +1315,19 @@ export default function CheckoutPage() {
                   </span>
                   <span className="font-medium text-slate-900">UPI / Cards / Net Banking</span>
                 </div>
-                <span className="text-[10px] text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-md font-medium">Free Shipping</span>
+                <span className={`text-[10px] px-2 py-0.5 rounded-md font-medium ${
+                  shippingConfig.freeShippingOnOnlinePayment || freeByFirstOrder || regionalShippingCharge === 0
+                    ? 'text-emerald-700 bg-emerald-100/70'
+                    : 'text-slate-700 bg-slate-100'
+                }`}>
+                  {shippingConfig.freeShippingOnOnlinePayment
+                    ? 'Free Shipping'
+                    : freeByFirstOrder
+                      ? 'Free (First Order)'
+                      : regionalShippingCharge === 0
+                        ? 'Free Shipping'
+                        : `₹${regionalShippingCharge} (${isKeralaOrder ? 'Kerala' : 'Outside Kerala'})`}
+                </span>
               </label>
 
               <label
@@ -1260,9 +1346,15 @@ export default function CheckoutPage() {
                   <span className="font-medium text-slate-900">Cash on Delivery (COD)</span>
                 </div>
                 <span className={`text-[10px] px-2 py-0.5 rounded-md font-medium ${
-                  subtotal >= 1000 ? 'text-emerald-700 bg-emerald-100/70' : 'text-amber-700 bg-amber-100/70'
+                  !shippingConfig.codFeeEnabled || subtotal >= Number(shippingConfig.codFreeThreshold ?? 1000)
+                    ? 'text-emerald-700 bg-emerald-100/70'
+                    : 'text-amber-700 bg-amber-100/70'
                 }`}>
-                  {subtotal >= 1000 ? 'Free (Above ₹1,000)' : '+2% fee (< ₹1,000)'}
+                  {!shippingConfig.codFeeEnabled
+                    ? (freeByFirstOrder || regionalShippingCharge === 0 ? 'Free Shipping' : `₹${regionalShippingCharge} shipping`)
+                    : subtotal >= Number(shippingConfig.codFreeThreshold ?? 1000)
+                      ? `Free (Above ₹${shippingConfig.codFreeThreshold ?? 1000})`
+                      : `+${shippingConfig.codFeePercent ?? 2}% fee (< ₹${shippingConfig.codFreeThreshold ?? 1000})`}
                 </span>
               </label>
             </div>

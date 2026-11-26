@@ -29,6 +29,30 @@ const DEFAULT_BOOK = {
   ]
 };
 
+export async function generateMetadata({ params }) {
+  const { slug } = await params;
+  const book = await fetchBookBySlugOrId(slug);
+  if (!book) {
+    return {
+      title: 'Book Details | LOGOS Books',
+      description: 'Official online bookstore for LOGOS publications, bestsellers, new arrivals, and literature.'
+    };
+  }
+  const title = book.seoTitle || book.title || book.name || 'LOGOS Books';
+  const description = book.metaDescription || (book.description ? String(book.description).slice(0, 160) : `${title} by ${book.author || 'LOGOS Books'}`);
+  const coverImage = (Array.isArray(book.images) && book.images[0]) || book.coverImage || book.image;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      ...(coverImage ? { images: [{ url: coverImage, alt: book.coverAltText || title }] } : {})
+    }
+  };
+}
+
 export default async function BookDetailPage({ params }) {
   const { slug } = await params;
   let bookData = await fetchBookBySlugOrId(slug);

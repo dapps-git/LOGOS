@@ -209,7 +209,7 @@ export async function fetchFeaturedBooks() {
 export async function fetchBookBySlugOrId(idOrSlug) {
   try {
     const res = await fetch(`${getApiBase()}/books/${idOrSlug}`, {
-      next: { revalidate: 30 }
+      cache: 'no-store'
     });
     if (!res.ok) throw new Error(`Failed to fetch book: ${res.status}`);
     const data = await res.json();
@@ -728,6 +728,21 @@ export async function submitBookReview(reviewData) {
     throw new Error(data.message || 'Failed to submit review');
   }
   return data.review;
+}
+
+// ----------------- Store & Shipping Settings APIs -----------------
+export async function fetchPublicStoreSettings() {
+  try {
+    const res = await fetch(`${getApiBase()}/settings/public`, {
+      headers: getAuthHeaders(),
+      cache: 'no-store'
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.warn('[LOGOS API] fetchPublicStoreSettings error:', err.message);
+    return null;
+  }
 }
 
 // ----------------- Book Cover Image Resolver -----------------

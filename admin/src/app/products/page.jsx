@@ -34,6 +34,7 @@ export default function ProductsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [themeFilter, setThemeFilter] = useState('ALL');
   const [stockFilter, setStockFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [featureFilter, setFeatureFilter] = useState('ALL');
   const [authorFilter, setAuthorFilter] = useState('ALL');
 
@@ -49,6 +50,8 @@ export default function ProductsPage() {
   const [filterOptions, setFilterOptions] = useState({ themes: ['ALL'], authors: ['ALL'] });
   const [counts, setCounts] = useState({
     total: 0,
+    active: 0,
+    inactive: 0,
     inStock: 0,
     lowStock: 0,
     outOfStock: 0
@@ -108,12 +111,9 @@ export default function ProductsPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Load distinct filter options & summary counts once on mount
-  useEffect(() => {
-    let active = true;
+  const loadFilterMeta = useCallback(() => {
     apiClient('/books/filters/options')
       .then((res) => {
-        if (!active) return;
         if (res?.options) {
           setFilterOptions({
             themes: ['ALL', ...(res.options.themes || [])],
@@ -125,11 +125,12 @@ export default function ProductsPage() {
         }
       })
       .catch(() => {});
-
-    return () => {
-      active = false;
-    };
   }, []);
+
+  // Load distinct filter options & summary counts once on mount
+  useEffect(() => {
+    loadFilterMeta();
+  }, [loadFilterMeta]);
 
   // Server-side paginated book loader
   const loadBooks = useCallback(async () => {
@@ -139,9 +140,16 @@ export default function ProductsPage() {
     try {
       const params = new URLSearchParams({
         page: String(currentPage),
-        limit: String(itemsPerPage),
-        includeInactive: 'true'
+        limit: String(itemsPerPage)
       });
+
+      if (statusFilter === 'inactive') {
+        params.append('isActive', 'false');
+      } else if (statusFilter === 'active') {
+        params.append('isActive', 'true');
+      } else {
+        params.append('includeInactive', 'true');
+      }
 
       if (debouncedSearch.trim()) params.append('search', debouncedSearch.trim());
       if (themeFilter !== 'ALL') params.append('theme', themeFilter);
@@ -180,12 +188,12 @@ export default function ProductsPage() {
         setLoading(false);
       }
     }
-  }, [currentPage, debouncedSearch, themeFilter, stockFilter, featureFilter, authorFilter]);
+  }, [currentPage, debouncedSearch, themeFilter, stockFilter, statusFilter, featureFilter, authorFilter]);
 
   // Reset to page 1 whenever filters or search query change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, themeFilter, stockFilter, featureFilter, authorFilter]);
+  }, [debouncedSearch, themeFilter, stockFilter, statusFilter, featureFilter, authorFilter]);
 
   // Trigger paginated fetch
   useEffect(() => {
@@ -214,6 +222,10 @@ export default function ProductsPage() {
     try {
       await updateBook(book._id, { isActive: newActive });
       showToast(`Book marked as ${newActive ? 'Active' : 'Inactive'}`, 'success');
+      loadFilterMeta();
+      if (statusFilter !== 'ALL') {
+        loadBooks();
+      }
     } catch {
       showToast('Failed to update book status', 'error');
       loadBooks();
@@ -372,14 +384,29 @@ export default function ProductsPage() {
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
           <button
             type="button"
-            onClick={() => setFeatureFilter('ALL')}
+            onClick={() => {
+              setFeatureFilter('ALL');
+              setStatusFilter('ALL');
+            }}
             className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
-              featureFilter === 'ALL'
+              featureFilter === 'ALL' && statusFilter === 'ALL'
                 ? 'bg-slate-900 text-white shadow-xs'
                 : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
             }`}
           >
             All Books <span className="text-[10px] opacity-75 font-mono">({counts.total || totalItems})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter(statusFilter === 'inactive' ? 'ALL' : 'inactive')}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+              statusFilter === 'inactive'
+                ? 'bg-slate-800 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200'
+            }`}
+          >
+            🚫 Inactive <span className="text-[10px] opacity-75 font-mono">({counts.inactive || 0})</span>
           </button>
 
           <button
@@ -519,6 +546,17 @@ export default function ProductsPage() {
               <option value="in_stock">In Stock ({counts.inStock || 0})</option>
               <option value="low_stock">Low Stock ({counts.lowStock || 0})</option>
               <option value="out_of_stock">Out of Stock ({counts.outOfStock || 0})</option>
+            </select>
+
+            {/* Visibility Status Filter Dropdown */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-xs font-semibold text-slate-700 focus:outline-hidden"
+            >
+              <option value="ALL">All Status</option>
+              <option value="active">Active ({counts.active ?? counts.total ?? 0})</option>
+              <option value="inactive">Inactive ({counts.inactive || 0})</option>
             </select>
           </div>
         </div>

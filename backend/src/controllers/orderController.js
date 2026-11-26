@@ -8,6 +8,11 @@ const {
   evaluateCustomerReferralEligibility,
   processReferralRewardOnCompletion
 } = require('../utils/referralService');
+const {
+  getStoreSettings,
+  checkCustomerFirstOrder,
+  calculateShippingDetails
+} = require('../utils/shippingCalculator');
 
 // Helper to safely deduct stock and sync stockStatus
 async function deductBookStock(bookId, qty) {
@@ -207,8 +212,18 @@ const createOrder = async (req, res) => {
     const totalDiscount = Math.min(subtotal, referralDiscount + couponDiscount + walletDeduction);
 
     const normalizedPaymentMethod = (paymentMethod || 'COD').toString().toUpperCase() === 'COD' ? 'COD' : 'Online';
-    // Shipping fee: COD is FREE if subtotal >= 1000, otherwise 2% of product price. Online/Prepaid is FREE (0)
-    const shippingFee = normalizedPaymentMethod === 'COD' ? (subtotal >= 1000 ? 0 : Math.round(subtotal * 0.02)) : 0;
+    const [storeSettings, isFirstOrder] = await Promise.all([
+      getStoreSettings(),
+      checkCustomerFirstOrder(customer)
+    ]);
+    const shippingDetails = calculateShippingDetails({
+      settings: storeSettings,
+      state: shippingAddress?.state || 'Kerala',
+      paymentMethod: normalizedPaymentMethod,
+      subtotal,
+      isFirstOrder
+    });
+    const shippingFee = shippingDetails.shippingFee;
     const finalTotal = Math.max(0, subtotal - totalDiscount + shippingFee);
 
     const generatedOrderNumber = `LGS-${Date.now().toString().slice(-8)}-${Math.floor(100 + Math.random() * 900)}`;
@@ -1013,8 +1028,18 @@ const createRazorpayOrder = async (req, res) => {
     }
 
     const totalDiscount = referralDiscount + couponDiscount + walletDeduction;
-    // Online payment gives FREE shipping
-    const shippingFee = 0;
+    const [storeSettings, isFirstOrder] = await Promise.all([
+      getStoreSettings(),
+      checkCustomerFirstOrder(customer)
+    ]);
+    const shippingDetails = calculateShippingDetails({
+      settings: storeSettings,
+      state: shippingAddress?.state || 'Kerala',
+      paymentMethod: 'Online',
+      subtotal,
+      isFirstOrder
+    });
+    const shippingFee = shippingDetails.shippingFee;
     const finalTotal = Math.max(1, subtotal - totalDiscount + shippingFee);
 
     const { keyId, keySecret } = getRazorpayKeys();
@@ -1201,7 +1226,18 @@ const verifyRazorpayPayment = async (req, res) => {
     }
 
     const totalDiscount = Math.min(subtotal, referralDiscount + couponDiscount + walletDeduction);
-    const shippingFee = 0; // FREE for online
+    const [storeSettings, isFirstOrder] = await Promise.all([
+      getStoreSettings(),
+      checkCustomerFirstOrder(customer)
+    ]);
+    const shippingDetails = calculateShippingDetails({
+      settings: storeSettings,
+      state: shippingAddress?.state || 'Kerala',
+      paymentMethod: 'Online',
+      subtotal,
+      isFirstOrder
+    });
+    const shippingFee = shippingDetails.shippingFee;
     const finalTotal = Math.max(1, subtotal - totalDiscount + shippingFee);
 
     const generatedOrderNumber = `LGS-${Date.now().toString().slice(-8)}-${Math.floor(100 + Math.random() * 900)}`;

@@ -16,6 +16,7 @@ import {
   Users,
   BarChart3,
   Settings,
+  Truck,
   Ticket,
   Gift,
   Star,
@@ -56,6 +57,7 @@ export const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
     { name: 'Reviews', href: '/reviews', icon: Star },
     { name: 'Customers', href: '/customers', icon: Users },
     { name: 'Reports', href: '/reports', icon: BarChart3 },
+    { name: 'Shipping Settings', href: '/shipping-settings', icon: Truck },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];
 

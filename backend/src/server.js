@@ -15,6 +15,8 @@ const wishlistRoutes = require('./routes/wishlistRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const authorHighlightRoutes = require('./routes/authorHighlightRoutes');
 const newsRoutes = require('./routes/newsRoutes');
+const categoryRoutes = require('./routes/categoryRoutes');
+const settingsRoutes = require('./routes/settingsRoutes');
 
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 
@@ -140,7 +142,9 @@ const routeList = [
   ['/wishlist', wishlistRoutes],
   ['/reviews', reviewRoutes],
   ['/author-highlights', authorHighlightRoutes],
-  ['/news', newsRoutes]
+  ['/news', newsRoutes],
+  ['/categories', categoryRoutes],
+  ['/settings', settingsRoutes]
 ];
 
 routeList.forEach(([path, router]) => {

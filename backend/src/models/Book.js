@@ -216,6 +216,21 @@ const bookSchema = new mongoose.Schema({
   tags: {
     type: [String],
     default: []
+  },
+  seoTitle: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  metaDescription: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  coverAltText: {
+    type: String,
+    trim: true,
+    default: ''
   }
 }, {
   timestamps: true
@@ -245,8 +260,18 @@ bookSchema.pre('save', function (next) {
     this.genre = this.theme;
   }
 
-  if (this.isModified('title') || !this.slug) {
-    const raw = (this.title || this.name || 'book').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  if (this.isModified('slug') && this.slug && String(this.slug).trim()) {
+    const cleanedSlug = String(this.slug)
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/(^-|-$)/g, '');
+    if (cleanedSlug) {
+      this.slug = cleanedSlug;
+    }
+  } else if (!this.slug) {
+    const raw = (this.title || this.name || 'book').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'book';
     this.slug = `${raw}-${Date.now().toString().slice(-6)}`;
   }
 

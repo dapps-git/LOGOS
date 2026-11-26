@@ -558,7 +558,7 @@ function ProductsContent() {
                       <Link href={`/books/${book.slug || bookId}`} className="block w-full h-full">
                         <img
                           src={optimizeImageUrl(image, { width: 450, quality: 'auto' })}
-                          alt={title}
+                          alt={book.coverAltText || title}
                           referrerPolicy="no-referrer"
                           loading="lazy"
                           onError={(e) => {
