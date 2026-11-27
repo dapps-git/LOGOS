@@ -98,14 +98,14 @@ const initDefaults = async () => {
       console.log(`[LOGOS Init] Auto-synchronized stock status for ${totalFixed} catalog books.`);
     }
 
-    // 4. Auto-sync coverImage & image fields for books that have photos in images array
+    // 4. Auto-sync coverImage & image fields for books that have non-base64 photos in images array
     const booksNeedingCover = await Book.find({
       $or: [
         { coverImage: { $exists: false } },
         { coverImage: '' },
         { coverImage: /placeholder/i }
       ],
-      'images.0': { $exists: true }
+      'images.0': { $exists: true, $not: /^data:image/ }
     }).select('_id images coverImage').lean();
 
     let coverFixedCount = 0;

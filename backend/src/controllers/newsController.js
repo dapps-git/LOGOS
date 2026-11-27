@@ -1,5 +1,6 @@
 const News = require('../models/News');
 const cloudinary = require('../config/cloudinary');
+const { normalizeSingleMediaToCloudinary } = require('../utils/mediaUtils');
 
 // Helper to generate a clean URL slug from title
 const generateSlug = (text) => {
@@ -336,9 +337,13 @@ const updateNews = async (req, res) => {
     if (summary !== undefined) article.summary = summary ? summary.trim() : '';
     if (content !== undefined) article.content = content.trim();
     if (mediaType !== undefined) article.mediaType = mediaType;
-    if (mediaUrl !== undefined) article.mediaUrl = mediaUrl;
+    if (mediaUrl !== undefined) {
+      article.mediaUrl = await normalizeSingleMediaToCloudinary(mediaUrl, 'logos_news', { width: 1400 });
+    }
     if (videoUrl !== undefined) article.videoUrl = videoUrl ? videoUrl.trim() : '';
-    if (thumbnailUrl !== undefined) article.thumbnailUrl = thumbnailUrl;
+    if (thumbnailUrl !== undefined) {
+      article.thumbnailUrl = await normalizeSingleMediaToCloudinary(thumbnailUrl, 'logos_news', { width: 1400 });
+    }
     if (author !== undefined) article.author = author.trim();
     if (category !== undefined) article.category = category;
     if (tags !== undefined) {

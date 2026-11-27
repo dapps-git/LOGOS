@@ -9,6 +9,24 @@ export const getApiBase = () => {
   throw new Error('API URL is not configured. Please define NEXT_PUBLIC_API_URL in your environment.');
 };
 
+const DEFAULT_FETCH_TIMEOUT_MS = 10000;
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = DEFAULT_FETCH_TIMEOUT_MS) {
+  if (typeof AbortController === 'undefined') {
+    return fetch(url, options);
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: options.signal || controller.signal
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function getGuestSessionId() {
   if (typeof window === 'undefined') return '';
   let guestId = localStorage.getItem('logos_guest_session_id');
@@ -35,7 +53,7 @@ export async function fetchBooks(params = {}) {
       ([_, v]) => v !== undefined && v !== null && v !== ''
     );
     const query = new URLSearchParams(cleanParams).toString();
-    const res = await fetch(`${getApiBase()}/books${query ? `?${query}` : ''}`, {
+    const res = await fetchWithTimeout(`${getApiBase()}/books${query ? `?${query}` : ''}`, {
       cache: 'no-store'
     });
     if (!res.ok) throw new Error(`Failed to fetch books: ${res.status}`);
@@ -54,7 +72,7 @@ export async function fetchBooksPaginated(params = {}) {
       ([_, v]) => v !== undefined && v !== null && v !== ''
     );
     const query = new URLSearchParams(cleanParams).toString();
-    const res = await fetch(`${getApiBase()}/books${query ? `?${query}` : ''}`, {
+    const res = await fetchWithTimeout(`${getApiBase()}/books${query ? `?${query}` : ''}`, {
       cache: 'no-store'
     });
     if (!res.ok) throw new Error(`Failed to fetch books: ${res.status}`);
@@ -84,7 +102,7 @@ export async function fetchBooksPaginated(params = {}) {
 
 export async function fetchFilterOptions() {
   try {
-    const res = await fetch(`${getApiBase()}/books/filters/options`, {
+    const res = await fetchWithTimeout(`${getApiBase()}/books/filters/options`, {
       next: { revalidate: 60 }
     });
     if (!res.ok) throw new Error(`Failed to fetch filter options: ${res.status}`);
@@ -99,7 +117,7 @@ export async function fetchFilterOptions() {
 export async function fetchBookSuggestions(q) {
   if (!q || !q.trim()) return [];
   try {
-    const res = await fetch(`${getApiBase()}/books/search/suggest?q=${encodeURIComponent(q.trim())}`, {
+    const res = await fetchWithTimeout(`${getApiBase()}/books/search/suggest?q=${encodeURIComponent(q.trim())}`, {
       cache: 'no-store'
     });
     if (!res.ok) throw new Error(`Failed to fetch suggestions: ${res.status}`);
@@ -113,7 +131,7 @@ export async function fetchBookSuggestions(q) {
 
 export async function fetchNewArrivals() {
   try {
-    const res = await fetch(`${getApiBase()}/books/collections/new-arrivals`, {
+    const res = await fetchWithTimeout(`${getApiBase()}/books/collections/new-arrivals`, {
       cache: 'no-store'
     });
     if (!res.ok) throw new Error(`Failed to fetch new arrivals: ${res.status}`);
@@ -127,25 +145,21 @@ export async function fetchNewArrivals() {
 
 export async function fetchBookOfTheWeek() {
   try {
-    const res = await fetch(`${getApiBase()}/books/collections/book-of-the-week`, {
+    const res = await fetchWithTimeout(`${getApiBase()}/books/collections/book-of-the-week`, {
       cache: 'no-store'
     });
     if (res.ok) {
       const data = await res.json();
-      if (data?.book) return data.book;
+      return data?.book || null;
     }
   } catch { }
 
-  // Resilient fallback: Query books list and find isBookOfTheWeek or spotlight
+  // Lightweight fallback only if specialized endpoint failed/timed out
   try {
-    const res = await fetch(`${getApiBase()}/books?limit=100`, { cache: 'no-store' });
+    const res = await fetchWithTimeout(`${getApiBase()}/books?isBookOfTheWeek=true&limit=1`, { cache: 'no-store' });
     if (res.ok) {
       const data = await res.json();
-      const list = data.books || [];
-      const botw = list.find((b) => Boolean(b.isBookOfTheWeek));
-      if (botw) return botw;
-      const spot = list.find((b) => Boolean(b.isFeaturedSpotlight || b.isFeatured));
-      if (spot) return spot;
+      return (data.books && data.books[0]) || null;
     }
   } catch (err) {
     console.warn('[LOGOS API] fetchBookOfTheWeek fallback:', err.message);
@@ -155,22 +169,21 @@ export async function fetchBookOfTheWeek() {
 
 export async function fetchComingSoonBooks() {
   try {
-    const res = await fetch(`${getApiBase()}/books/collections/coming-soon`, {
+    const res = await fetchWithTimeout(`${getApiBase()}/books/collections/coming-soon`, {
       cache: 'no-store'
     });
     if (res.ok) {
       const data = await res.json();
-      if (Array.isArray(data?.books) && data.books.length > 0) return data.books;
+      return Array.isArray(data?.books) ? data.books : [];
     }
   } catch { }
 
-  // Resilient fallback: Query books list and find isComingSoon / isPreBook
+  // Lightweight fallback only if specialized endpoint failed/timed out
   try {
-    const res = await fetch(`${getApiBase()}/books?limit=100`, { cache: 'no-store' });
+    const res = await fetchWithTimeout(`${getApiBase()}/books?isComingSoon=true&limit=8`, { cache: 'no-store' });
     if (res.ok) {
       const data = await res.json();
-      const list = data.books || [];
-      return list.filter((b) => Boolean(b.isComingSoon || b.isPreBook));
+      return data.books || [];
     }
   } catch (err) {
     console.warn('[LOGOS API] fetchComingSoonBooks fallback:', err.message);
@@ -180,7 +193,7 @@ export async function fetchComingSoonBooks() {
 
 export async function fetchBestSellers() {
   try {
-    const res = await fetch(`${getApiBase()}/books/collections/best-sellers`, {
+    const res = await fetchWithTimeout(`${getApiBase()}/books/collections/best-sellers`, {
       cache: 'no-store'
     });
     if (!res.ok) throw new Error(`Failed to fetch bestsellers: ${res.status}`);
@@ -194,7 +207,7 @@ export async function fetchBestSellers() {
 
 export async function fetchFeaturedBooks() {
   try {
-    const res = await fetch(`${getApiBase()}/books/collections/featured`, {
+    const res = await fetchWithTimeout(`${getApiBase()}/books/collections/featured`, {
       cache: 'no-store'
     });
     if (!res.ok) throw new Error(`Failed to fetch featured books: ${res.status}`);
@@ -208,7 +221,7 @@ export async function fetchFeaturedBooks() {
 
 export async function fetchBookBySlugOrId(idOrSlug) {
   try {
-    const res = await fetch(`${getApiBase()}/books/${idOrSlug}`, {
+    const res = await fetchWithTimeout(`${getApiBase()}/books/${idOrSlug}`, {
       cache: 'no-store'
     });
     if (!res.ok) throw new Error(`Failed to fetch book: ${res.status}`);
@@ -260,7 +273,7 @@ export async function fetchBanners(params = {}) {
       const clean = Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== '');
       if (clean.length > 0) queryString = `?${new URLSearchParams(clean).toString()}`;
     }
-    const res = await fetch(`${getApiBase()}/banners${queryString}`, {
+    const res = await fetchWithTimeout(`${getApiBase()}/banners${queryString}`, {
       next: { revalidate: 60 }
     });
     if (!res.ok) throw new Error(`Failed to fetch banners: ${res.status}`);
@@ -598,7 +611,7 @@ export async function apiRequestReturn(orderId, reason, description = '') {
 
 export async function fetchSpotlightAuthor() {
   try {
-    const res = await fetch(`${getApiBase()}/books/spotlight/author`, {
+    const res = await fetchWithTimeout(`${getApiBase()}/books/spotlight/author`, {
       next: { revalidate: 15 }
     });
     if (!res.ok) return null;
@@ -612,7 +625,7 @@ export async function fetchSpotlightAuthor() {
 
 export async function fetchSpotlightBook() {
   try {
-    const res = await fetch(`${getApiBase()}/books/spotlight/book`, {
+    const res = await fetchWithTimeout(`${getApiBase()}/books/spotlight/book`, {
       next: { revalidate: 15 }
     });
     if (!res.ok) return null;
@@ -630,7 +643,7 @@ export async function fetchAuthors(params = {}) {
       ([_, v]) => v !== undefined && v !== null && v !== ''
     );
     const query = new URLSearchParams(cleanParams).toString();
-    const res = await fetch(`${getApiBase()}/books/authors/all${query ? `?${query}` : ''}`, {
+    const res = await fetchWithTimeout(`${getApiBase()}/books/authors/all${query ? `?${query}` : ''}`, {
       next: { revalidate: 30 }
     });
     if (!res.ok) return [];
@@ -644,7 +657,7 @@ export async function fetchAuthors(params = {}) {
 
 export async function fetchTestimonials() {
   try {
-    const res = await fetch(`${getApiBase()}/reviews/testimonials`, {
+    const res = await fetchWithTimeout(`${getApiBase()}/reviews/testimonials`, {
       next: { revalidate: 30 }
     });
     if (!res.ok) return [];
@@ -663,7 +676,7 @@ export async function fetchNews(params = {}) {
       ([_, v]) => v !== undefined && v !== null && v !== ''
     );
     const query = new URLSearchParams(cleanParams).toString();
-    const res = await fetch(`${getApiBase()}/news${query ? `?${query}` : ''}`, {
+    const res = await fetchWithTimeout(`${getApiBase()}/news${query ? `?${query}` : ''}`, {
       cache: 'no-store'
     });
     if (!res.ok) return { articles: [], pagination: { totalItems: 0 } };
@@ -676,7 +689,7 @@ export async function fetchNews(params = {}) {
 
 export async function fetchRecentNews(limit = 4) {
   try {
-    const res = await fetch(`${getApiBase()}/news/recent?limit=${limit}`, {
+    const res = await fetchWithTimeout(`${getApiBase()}/news/recent?limit=${limit}`, {
       next: { revalidate: 15 }
     });
     if (!res.ok) return [];
@@ -690,7 +703,7 @@ export async function fetchRecentNews(limit = 4) {
 
 export async function fetchNewsBySlug(idOrSlug) {
   try {
-    const res = await fetch(`${getApiBase()}/news/${idOrSlug}`, {
+    const res = await fetchWithTimeout(`${getApiBase()}/news/${idOrSlug}`, {
       cache: 'no-store'
     });
     if (!res.ok) return null;
@@ -705,7 +718,7 @@ export async function fetchNewsBySlug(idOrSlug) {
 export async function fetchBookReviews(bookId) {
   try {
     if (!bookId) return [];
-    const res = await fetch(`${getApiBase()}/reviews/book/${bookId}`, {
+    const res = await fetchWithTimeout(`${getApiBase()}/reviews/book/${bookId}`, {
       cache: 'no-store'
     });
     if (!res.ok) return [];
@@ -733,7 +746,7 @@ export async function submitBookReview(reviewData) {
 // ----------------- Store & Shipping Settings APIs -----------------
 export async function fetchPublicStoreSettings() {
   try {
-    const res = await fetch(`${getApiBase()}/settings/public`, {
+    const res = await fetchWithTimeout(`${getApiBase()}/settings/public`, {
       headers: getAuthHeaders(),
       cache: 'no-store'
     });

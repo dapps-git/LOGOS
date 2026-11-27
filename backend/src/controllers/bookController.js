@@ -1,7 +1,15 @@
 const Book = require('../models/Book');
 const Category = require('../models/Category');
 const AuthorHighlight = require('../models/AuthorHighlight');
-const cloudinary = require('../config/cloudinary');
+const {
+  PLACEHOLDER_BOOK_IMAGE,
+  PLACEHOLDER_AUTHOR_IMAGE,
+  isOversizedOrDataUrl,
+  uploadToCloudinaryWebp,
+  normalizeSingleMediaToCloudinary,
+  normalizeImageListToCloudinary,
+  sanitizeBookMedia
+} = require('../utils/mediaUtils');
 
 const sanitizeSlug = (val) => {
   if (!val || typeof val !== 'string') return '';
@@ -11,24 +19,6 @@ const sanitizeSlug = (val) => {
     .replace(/[^a-z0-9-]+/g, '-')
     .replace(/-+/g, '-')
     .replace(/(^-|-$)/g, '');
-};
-
-// Helper to upload base64 or remote URL images to Cloudinary in WebP format
-const uploadToCloudinaryWebp = async (imageInput, folder = 'logos_books') => {
-  if (!imageInput || typeof imageInput !== 'string') return imageInput;
-  if (imageInput.includes('res.cloudinary.com') && (imageInput.includes('f_webp') || imageInput.endsWith('.webp'))) {
-    return imageInput;
-  }
-
-  const uploadResponse = await cloudinary.uploader.upload(imageInput, {
-    folder,
-    format: 'webp',
-    transformation: [
-      { width: 1200, crop: 'limit' },
-      { quality: 'auto', fetch_format: 'webp' }
-    ]
-  });
-  return uploadResponse.secure_url;
 };
 
 // @desc    Get all books with rich filters, search, pagination, and sorting
@@ -230,20 +220,7 @@ const getBooks = async (req, res) => {
     ]);
 
     // Sanitize any massive base64 payloads to keep JSON lightweight & fast
-    const sanitizedBooks = books.map((book) => {
-      if (Array.isArray(book.images)) {
-        book.images = book.images.map((img) => {
-          if (typeof img === 'string' && (img.startsWith('data:image') || img.length > 2000)) {
-            return '/book-placeholder.svg';
-          }
-          return img;
-        });
-      }
-      if (typeof book.coverImage === 'string' && (book.coverImage.startsWith('data:image') || book.coverImage.length > 2000)) {
-        book.coverImage = '/book-placeholder.svg';
-      }
-      return book;
-    });
+    const sanitizedBooks = books.map(sanitizeBookMedia);
 
     return res.json({
       success: true,
@@ -280,7 +257,7 @@ const getBookByIdOrSlug = async (req, res) => {
 
     return res.json({
       success: true,
-      book
+      book: sanitizeBookMedia(book)
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -294,14 +271,16 @@ const getBestSellers = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit || '8', 10);
     const books = await Book.find({ isActive: true, isBestSeller: true })
+      .select('-__v')
       .sort({ rating: -1, createdAt: -1 })
       .limit(limit)
       .lean();
 
+    const sanitized = books.map(sanitizeBookMedia);
     return res.json({
       success: true,
-      count: books.length,
-      books
+      count: sanitized.length,
+      books: sanitized
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -315,14 +294,16 @@ const getNewArrivals = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit || '8', 10);
     const books = await Book.find({ isActive: true, isNewArrival: true })
+      .select('-__v')
       .sort({ createdAt: -1 })
       .limit(limit)
       .lean();
 
+    const sanitized = books.map(sanitizeBookMedia);
     return res.json({
       success: true,
-      count: books.length,
-      books
+      count: sanitized.length,
+      books: sanitized
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -336,14 +317,16 @@ const getFeaturedBooks = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit || '8', 10);
     const books = await Book.find({ isActive: true, isFeatured: true })
+      .select('-__v')
       .sort({ createdAt: -1 })
       .limit(limit)
       .lean();
 
+    const sanitized = books.map(sanitizeBookMedia);
     return res.json({
       success: true,
-      count: books.length,
-      books
+      count: sanitized.length,
+      books: sanitized
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -378,7 +361,7 @@ const getBookOfTheWeek = async (req, res) => {
 
     return res.json({
       success: true,
-      book
+      book: sanitizeBookMedia(book)
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -395,14 +378,16 @@ const getComingSoonBooks = async (req, res) => {
       isActive: true,
       $or: [{ isComingSoon: true }, { isPreBook: true }]
     })
+      .select('-__v')
       .sort({ createdAt: -1 })
       .limit(limit)
       .lean();
 
+    const sanitized = books.map(sanitizeBookMedia);
     return res.json({
       success: true,
-      count: books.length,
-      books
+      count: sanitized.length,
+      books: sanitized
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -553,12 +538,23 @@ const createBook = async (req, res) => {
       }
     }
 
+    const uploadedImages = await normalizeImageListToCloudinary(images, 'logos_books');
+    if (uploadedImages.length < 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide at least 1 valid photo per product'
+      });
+    }
+    const uploadedAuthorPhoto = authorPhoto
+      ? await normalizeSingleMediaToCloudinary(authorPhoto, 'logos_authors', { width: 800 })
+      : '';
+
     if (isAuthorSpotlight) {
       await Book.updateMany({ author: { $ne: author.trim() } }, { $set: { isAuthorSpotlight: false } });
-      if (authorPhoto || authorBio) {
+      if (uploadedAuthorPhoto || authorBio) {
         await Book.updateMany(
           { author: author.trim() },
-          { $set: { ...(authorPhoto ? { authorPhoto } : {}), ...(authorBio ? { authorBio } : {}) } }
+          { $set: { ...(uploadedAuthorPhoto ? { authorPhoto: uploadedAuthorPhoto } : {}), ...(authorBio ? { authorBio } : {}) } }
         );
       }
     }
@@ -567,12 +563,17 @@ const createBook = async (req, res) => {
       await Book.updateMany({}, { $set: { isFeaturedSpotlight: false } });
     }
 
+    const primaryCover =
+      uploadedImages.find((img) => typeof img === 'string' && img.trim() && !img.includes('placeholder')) ||
+      uploadedImages[0] ||
+      '';
+
     const book = await Book.create({
       title: bookTitle.trim(),
       name: bookTitle.trim(),
       ...(cleanedSlug ? { slug: cleanedSlug } : {}),
       author: author.trim(),
-      authorPhoto: authorPhoto || '',
+      authorPhoto: uploadedAuthorPhoto || '',
       authorBio: authorBio || '',
       publisher: publisher.trim(),
       edition: edition || '1st Edition',
@@ -586,9 +587,9 @@ const createBook = async (req, res) => {
       price: Number(price),
       discountPrice: discountPrice ? Number(discountPrice) : null,
       stock: Number(stock),
-      images,
-      coverImage: (Array.isArray(images) && (images.find((img) => typeof img === 'string' && img.trim() && !img.includes('placeholder')) || images[0])) || '',
-      image: (Array.isArray(images) && (images.find((img) => typeof img === 'string' && img.trim() && !img.includes('placeholder')) || images[0])) || '',
+      images: uploadedImages,
+      coverImage: primaryCover,
+      image: primaryCover,
       sku: sku || `LGS-BK-${Date.now().toString().slice(-6)}`,
       isbn: isbn || '',
       isBestSeller: Boolean(isBestSeller),
@@ -638,8 +639,17 @@ const updateBook = async (req, res) => {
           message: 'A minimum of 1 photo is required per book'
         });
       }
-      book.images = images;
-      const firstReal = images.find((img) => typeof img === 'string' && img.trim() && !img.includes('placeholder')) || images[0];
+      const normalizedImages = await normalizeImageListToCloudinary(images, 'logos_books');
+      if (normalizedImages.length < 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'A minimum of 1 valid photo is required per book'
+        });
+      }
+      book.images = normalizedImages;
+      const firstReal =
+        normalizedImages.find((img) => typeof img === 'string' && img.trim() && !img.includes('placeholder')) ||
+        normalizedImages[0];
       if (firstReal) {
         book.coverImage = firstReal;
         book.image = firstReal;
@@ -650,6 +660,16 @@ const updateBook = async (req, res) => {
         book.coverImage = firstReal;
         book.image = firstReal;
       }
+    }
+
+    if (otherFields.authorPhoto) {
+      otherFields.authorPhoto = await normalizeSingleMediaToCloudinary(otherFields.authorPhoto, 'logos_authors', { width: 800 });
+    }
+    if (otherFields.coverImage && typeof otherFields.coverImage === 'string' && otherFields.coverImage.startsWith('data:image')) {
+      otherFields.coverImage = await normalizeSingleMediaToCloudinary(otherFields.coverImage, 'logos_books');
+    }
+    if (otherFields.image && typeof otherFields.image === 'string' && otherFields.image.startsWith('data:image')) {
+      otherFields.image = await normalizeSingleMediaToCloudinary(otherFields.image, 'logos_books');
     }
 
     const authorToUse = (otherFields.author || book.author || '').trim();
@@ -762,11 +782,15 @@ const uploadBookImage = async (req, res) => {
 // @access  Public / Private (Admin)
 const convertImagesToCloudinaryWebp = async (req, res) => {
   try {
-    const books = await Book.find({});
+    // Only fetch _id first so huge base64 books never exhaust RAM/network all at once
+    const bookIds = await Book.find({}).select('_id').lean();
     let totalUpdated = 0;
     const report = [];
 
-    for (const book of books) {
+    for (const { _id } of bookIds) {
+      const book = await Book.findById(_id);
+      if (!book) continue;
+
       let changed = false;
       const newImages = [];
 
@@ -793,7 +817,10 @@ const convertImagesToCloudinaryWebp = async (req, res) => {
 
       if (changed) {
         book.images = newImages;
-        if (newImages[0]) book.coverImage = newImages[0];
+        if (newImages[0]) {
+          book.coverImage = newImages[0];
+          book.image = newImages[0];
+        }
         await book.save();
         totalUpdated++;
         report.push({ id: book._id, title: book.title, imagesCount: newImages.length });
@@ -1023,14 +1050,16 @@ const getSpotlightAuthor = async (req, res) => {
     }
 
     // Get list of books under this author
-    const authorBooks = await Book.find({
+    const authorBooksRaw = await Book.find({
       isActive: true,
       author: { $regex: new RegExp(`^${authorName.trim()}$`, 'i') }
     }).select('title name slug price discountPrice images coverImage author').limit(8).lean();
 
+    const authorBooks = authorBooksRaw.map(sanitizeBookMedia);
+
     // Sanitize authorPhoto to prevent huge base64 strings from bloating response
-    if (authorPhoto && typeof authorPhoto === 'string' && authorPhoto.startsWith('data:image') && authorPhoto.length > 1000) {
-      authorPhoto = '/author_benyamin.webp';
+    if (isOversizedOrDataUrl(authorPhoto)) {
+      authorPhoto = PLACEHOLDER_AUTHOR_IMAGE;
     }
 
     return res.json({
@@ -1066,17 +1095,18 @@ const getSpotlightBook = async (req, res) => {
     }
 
     if (book) {
+      const cleanBook = sanitizeBookMedia(book);
       return res.json({
         success: true,
         book: {
-          id: book._id,
-          title: book.title || book.name,
-          author: book.author,
-          description: book.spotlightDescription || book.description,
-          image: (book.images && book.images[0]) || book.coverImage || '/featured_parajitha.png',
-          slug: book.slug,
-          price: book.price,
-          discountPrice: book.discountPrice
+          id: cleanBook._id,
+          title: cleanBook.title || cleanBook.name,
+          author: cleanBook.author,
+          description: cleanBook.spotlightDescription || cleanBook.description,
+          image: (cleanBook.images && cleanBook.images[0]) || cleanBook.coverImage || '/featured_parajitha.png',
+          slug: cleanBook.slug,
+          price: cleanBook.price,
+          discountPrice: cleanBook.discountPrice
         }
       });
     }
@@ -1236,18 +1266,19 @@ const getBookSuggestions = async (req, res) => {
         matchedBy = 'Keyword';
       }
 
+      const safeBook = sanitizeBookMedia(b);
       return {
-        _id: b._id,
-        slug: b.slug,
-        title: b.title || b.name,
-        titleMalayalam: b.titleMalayalam,
-        author: b.author,
-        publisher: b.publisher,
-        price: b.price,
-        discountPrice: b.discountPrice,
-        coverImage: (b.images && b.images[0]) || '/book-placeholder.svg',
-        isbn: b.isbn,
-        theme: b.theme,
+        _id: safeBook._id,
+        slug: safeBook.slug,
+        title: safeBook.title || safeBook.name,
+        titleMalayalam: safeBook.titleMalayalam,
+        author: safeBook.author,
+        publisher: safeBook.publisher,
+        price: safeBook.price,
+        discountPrice: safeBook.discountPrice,
+        coverImage: (safeBook.images && safeBook.images[0]) || safeBook.coverImage || PLACEHOLDER_BOOK_IMAGE,
+        isbn: safeBook.isbn,
+        theme: safeBook.theme,
         matchedBy
       };
     });

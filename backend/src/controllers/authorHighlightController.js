@@ -1,4 +1,18 @@
 const AuthorHighlight = require('../models/AuthorHighlight');
+const {
+  PLACEHOLDER_AUTHOR_IMAGE,
+  isOversizedOrDataUrl,
+  normalizeSingleMediaToCloudinary
+} = require('../utils/mediaUtils');
+
+const sanitizeHighlight = (item) => {
+  if (!item) return item;
+  const obj = typeof item.toObject === 'function' ? item.toObject() : { ...item };
+  if (isOversizedOrDataUrl(obj.photo)) {
+    obj.photo = PLACEHOLDER_AUTHOR_IMAGE;
+  }
+  return obj;
+};
 
 // @desc    Get active author highlights (public for storefront)
 // @route   GET /api/author-highlights
@@ -9,10 +23,10 @@ const getAuthorHighlights = async (req, res) => {
     const query = { isActive: true };
     if (position) query.position = position;
 
-    const highlights = await AuthorHighlight.find(query).sort({ order: 1, createdAt: -1 });
+    const highlights = await AuthorHighlight.find(query).sort({ order: 1, createdAt: -1 }).lean();
     return res.json({
       success: true,
-      highlights
+      highlights: highlights.map(sanitizeHighlight)
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -24,10 +38,10 @@ const getAuthorHighlights = async (req, res) => {
 // @access  Admin
 const getAuthorHighlightsAdmin = async (req, res) => {
   try {
-    const highlights = await AuthorHighlight.find().sort({ position: 1, order: 1, createdAt: -1 });
+    const highlights = await AuthorHighlight.find().sort({ position: 1, order: 1, createdAt: -1 }).lean();
     return res.json({
       success: true,
-      highlights
+      highlights: highlights.map(sanitizeHighlight)
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -48,6 +62,10 @@ const createAuthorHighlight = async (req, res) => {
       });
     }
 
+    const normalizedPhoto = photo
+      ? await normalizeSingleMediaToCloudinary(photo, 'logos_authors', { width: 800 })
+      : '';
+
     if (isSpotlight) {
       await AuthorHighlight.updateMany({}, { $set: { isSpotlight: false } });
     }
@@ -56,7 +74,7 @@ const createAuthorHighlight = async (req, res) => {
       name: name.trim(),
       tagline: tagline || 'Meet the author',
       bio: bio ? bio.trim() : '',
-      photo: photo ? photo.trim() : '',
+      photo: normalizedPhoto || '',
       isSpotlight: Boolean(isSpotlight),
       position: position || 'position_1',
       shopLink: shopLink || `/products?search=${encodeURIComponent(name.trim())}`,
@@ -90,9 +108,16 @@ const updateAuthorHighlight = async (req, res) => {
       await AuthorHighlight.updateMany({ _id: { $ne: id } }, { $set: { isSpotlight: false } });
     }
 
+    const normalizedPhoto =
+      req.body.photo !== undefined
+        ? await normalizeSingleMediaToCloudinary(req.body.photo, 'logos_authors', { width: 800 })
+        : undefined;
+
     const fields = ['name', 'tagline', 'bio', 'photo', 'isSpotlight', 'position', 'shopLink', 'isActive', 'order'];
     fields.forEach((field) => {
-      if (req.body[field] !== undefined) {
+      if (field === 'photo' && normalizedPhoto !== undefined) {
+        highlight.photo = normalizedPhoto;
+      } else if (req.body[field] !== undefined) {
         highlight[field] = req.body[field];
       }
     });

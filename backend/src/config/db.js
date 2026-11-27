@@ -7,7 +7,10 @@ const connectDB = async () => {
       serverSelectionTimeoutMS: 5000,
     });
     console.log(`[LOGOS DB] MongoDB Connected: ${conn.connection.host}`);
-    await initDefaults();
+    // Run idempotent startup maintenance in the background so API requests aren't delayed on boot
+    initDefaults().catch((err) => {
+      console.warn(`[LOGOS Init Warning] ${err.message}`);
+    });
   } catch (error) {
     console.error(`[LOGOS DB Error] ${error.message}`);
     process.exit(1);
