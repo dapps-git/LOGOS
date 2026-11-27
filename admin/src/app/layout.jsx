@@ -7,7 +7,12 @@ export const metadata = {
   title: 'LOGOS | Bookstore Admin Panel',
   description: 'Enterprise Malayalam & English Bookstore Administration System',
   icons: {
-    icon: '/logo.png',
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon.png', type: 'image/png', sizes: '256x256' },
+    ],
+    shortcut: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
   },
 };
 

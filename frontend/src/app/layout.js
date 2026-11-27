@@ -4,6 +4,14 @@ import Providers from "../components/Providers";
 export const metadata = {
   title: "LOGOS Books | Malayalam & English Book Store",
   description: "Official online bookstore for LOGOS publications, bestsellers, new arrivals, and literature.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.png", type: "image/png", sizes: "256x256" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export const viewport = {
